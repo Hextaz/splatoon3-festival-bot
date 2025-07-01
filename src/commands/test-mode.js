@@ -634,7 +634,7 @@ async function handleCleanup(interaction) {
     let searchesCanceled = 0;
     
     // 1. Nettoyer les recherches de match en cours
-    const { getSearchingTeams, cleanupSearch, resetSearchQueue } = require('../utils/matchSearch');
+    const { getSearchingTeams, cleanupSearch } = require('../utils/matchSearch');
     const searchingTeams = getSearchingTeams();
     
     for (const team of virtualTeams) {

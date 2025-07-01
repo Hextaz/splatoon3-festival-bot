@@ -81,8 +81,7 @@ npm start
 ## 📋 Commandes disponibles
 
 ### 👑 Administration (Permissions Administrateur)
-- `/create-festival` - Créer un nouveau festival avec tous les paramètres
-- `/activate-festival` - Activer manuellement un festival
+- `/start-festival` - Créer un nouveau festival avec tous les paramètres
 - `/end-festival` - Terminer le festival actuel proprement
 - `/reset-system` - Réinitialisation complète du système
 - `/config` - Configuration avancée du bot

@@ -73,7 +73,7 @@ module.exports = {
         
         try {
             // Créer l'équipe
-            const team = createTeam(teamName, interaction.user.id, playerCamp, false, null, interaction.guild);
+            const team = createTeam(teamName, interaction.user.id, playerCamp, true, null, interaction.guild);
             
             // Message de succès adapté au format
             await interaction.reply({
