@@ -9,6 +9,8 @@ const readyEvent = require('./events/ready');
 const festivalManager = require('./utils/festivalManager');
 const teamManager = require('./utils/teamManager');
 const scoreTracker = require('./utils/scoreTracker');
+const { SmartSleepManager } = require('./utils/smartSleep');
+const { HealthServer } = require('./utils/healthServer');
 
 const client = new Client({
     intents: [
@@ -21,6 +23,14 @@ const client = new Client({
 });
 
 global.client = client;
+
+// Initialiser le système de veille intelligente et le serveur de santé
+const smartSleepManager = new SmartSleepManager();
+const healthServer = new HealthServer();
+
+// Rendre les instances disponibles globalement
+global.smartSleepManager = smartSleepManager;
+global.healthServer = healthServer;
 
 // Créer une collection pour les commandes
 client.commands = new Collection();
@@ -41,6 +51,9 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
     readyEvent.execute(client);
+    
+    // Vérification du nombre de serveurs
+    checkGuildLimits();
 });
 
 client.on('interactionCreate', interaction => {
@@ -51,6 +64,59 @@ client.tempTeamData = {};
 
 // Deploy slash commands
 deployCommands();
+
+// Vérification des limites de serveurs
+function checkGuildLimits() {
+    const config = require('./config');
+    const guilds = client.guilds.cache;
+    
+    console.log(`🏰 Bot connecté à ${guilds.size} serveur(s) Discord`);
+    
+    // Vérifier la limite de serveurs
+    if (config.maxGuilds && guilds.size > config.maxGuilds) {
+        console.error(`❌ LIMITE DÉPASSÉE: Le bot est connecté à ${guilds.size} serveurs mais la limite est de ${config.maxGuilds}.`);
+        console.error('⚠️  Ce bot est conçu pour un seul serveur à la fois pour éviter les conflits de données.');
+        console.error('📋 Serveurs connectés:');
+        guilds.forEach(guild => {
+            console.error(`   - ${guild.name} (${guild.id})`);
+        });
+        console.error('🔧 Solution: Retirez le bot des serveurs supplémentaires ou configurez ALLOWED_GUILD_ID');
+        
+        // Optionnel: Quitter automatiquement les serveurs supplémentaires
+        if (config.allowedGuildId) {
+            guilds.forEach(async (guild) => {
+                if (guild.id !== config.allowedGuildId) {
+                    console.log(`🚪 Quittant automatiquement le serveur: ${guild.name} (${guild.id})`);
+                    try {
+                        await guild.leave();
+                    } catch (error) {
+                        console.error(`❌ Erreur en quittant ${guild.name}:`, error);
+                    }
+                }
+            });
+        }
+    }
+    
+    // Vérifier le serveur autorisé spécifique
+    if (config.allowedGuildId) {
+        const allowedGuild = guilds.get(config.allowedGuildId);
+        if (!allowedGuild) {
+            console.error(`❌ ERREUR: Le bot n'est pas connecté au serveur autorisé (${config.allowedGuildId})`);
+        } else {
+            console.log(`✅ Bot correctement connecté au serveur autorisé: ${allowedGuild.name}`);
+        }
+    }
+    
+    // Afficher les serveurs actuels
+    if (guilds.size > 0) {
+        console.log('📋 Serveurs Discord connectés:');
+        guilds.forEach(guild => {
+            const isAllowed = !config.allowedGuildId || guild.id === config.allowedGuildId;
+            const status = isAllowed ? '✅' : '⚠️';
+            console.log(`   ${status} ${guild.name} (${guild.id}) - ${guild.memberCount} membres`);
+        });
+    }
+}
 
 // Chargement des données au démarrage
 async function loadAllData() {
@@ -304,6 +370,12 @@ async function loadAllData() {
         
         console.log('✅ Toutes les données chargées avec succès');
         
+        // Démarrer le système de veille intelligente
+        console.log('🛡️ Démarrage du système de veille intelligente...');
+        healthServer.start();
+        smartSleepManager.start();
+        console.log('✅ Système de veille intelligente démarré');
+        
     } catch (error) {
         console.error('❌ Erreur lors du chargement des données:', error);
     }
@@ -400,6 +472,31 @@ async function syncAllRoles() {
 
 // Démarrer le chargement des données
 loadAllData();
+
+// Gestionnaire d'arrêt propre
+process.on('SIGINT', () => {
+    console.log('🛑 Arrêt du bot détecté...');
+    if (global.smartSleepManager) {
+        global.smartSleepManager.stop();
+    }
+    if (global.healthServer) {
+        global.healthServer.stop();
+    }
+    console.log('✅ Ressources nettoyées');
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('🛑 Arrêt du bot détecté (SIGTERM)...');
+    if (global.smartSleepManager) {
+        global.smartSleepManager.stop();
+    }
+    if (global.healthServer) {
+        global.healthServer.stop();
+    }
+    console.log('✅ Ressources nettoyées');
+    process.exit(0);
+});
 
 // Connexion du client Discord
 client.login(botToken);

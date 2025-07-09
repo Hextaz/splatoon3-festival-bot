@@ -490,6 +490,12 @@ async function deleteFestival() {
             }
         });
         
+        // 🛡️ Déclencher une vérification immédiate du système de veille intelligente
+        if (global.smartSleepManager) {
+            console.log('🛡️ Déclenchement vérification veille intelligente (suppression festival)...');
+            global.smartSleepManager.checkFestivalState();
+        }
+        
         console.log('Festival supprimé avec succès');
         return true;
     } catch (error) {
@@ -599,6 +605,12 @@ async function activateFestivalNow(festival, client) {
         festival.activate();
         await saveFestival(festival);
         
+        // 🛡️ Déclencher une vérification immédiate du système de veille intelligente
+        if (global.smartSleepManager) {
+            console.log('🛡️ Déclenchement vérification veille intelligente (activation festival)...');
+            global.smartSleepManager.checkFestivalState();
+        }
+        
         // Envoyer l'annonce de début
         if (client.guilds.cache.size > 0) {
             const guild = client.guilds.cache.first();
@@ -636,6 +648,12 @@ async function deactivateFestivalNow(festival, client) {
         // Désactiver le festival
         festival.deactivate();
         await saveFestival(festival);
+        
+        // 🛡️ Déclencher une vérification immédiate du système de veille intelligente
+        if (global.smartSleepManager) {
+            console.log('🛡️ Déclenchement vérification veille intelligente (désactivation festival)...');
+            global.smartSleepManager.checkFestivalState();
+        }
         
         // Envoyer l'annonce de fin
         if (client.guilds.cache.size > 0) {
