@@ -11,7 +11,7 @@ const teamManager = require('./utils/teamManager');
 const scoreTracker = require('./utils/scoreTracker');
 const { SmartSleepManager } = require('./utils/smartSleep');
 const { HealthServer } = require('./utils/healthServer');
-const { guildDataManager } = require('./utils/database');
+const { guildDataManager, connectMongoDB } = require('./utils/database');
 
 const client = new Client({
     intents: [
@@ -500,5 +500,27 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-// Connexion du client Discord
-client.login(botToken);
+// Fonction d'initialisation asynchrone
+async function startBot() {
+    console.log('🚀 Démarrage du bot Splat Festival...');
+    
+    // Tentative de connexion MongoDB
+    console.log('🔗 Tentative de connexion à MongoDB...');
+    const mongoConnected = await connectMongoDB();
+    
+    if (mongoConnected) {
+        console.log('✅ MongoDB connecté - Persistance des données activée');
+    } else {
+        console.log('⚠️  MongoDB non disponible - Utilisation des fichiers JSON locaux');
+        console.log('   Les données seront perdues à chaque redéploiement.');
+    }
+    
+    // Connexion du client Discord
+    await client.login(botToken);
+}
+
+// Démarrer le bot
+startBot().catch(error => {
+    console.error('❌ Erreur lors du démarrage du bot:', error);
+    process.exit(1);
+});

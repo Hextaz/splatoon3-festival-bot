@@ -1,10 +1,66 @@
 // filepath: c:\Users\Hextaz\Documents\splatoon-festival-bot\splatoon3-festival-bot\src\utils\database.js
 const mongoose = require('mongoose');
-const { MongoClient } = require('mongodb');
+const fs = require('fs').promises;
+const path = require('path');
 const { guildDataManager } = require('./guildDataManager');
-const config = require('../config');
 
-const uri = process.env.MONGODB_URI; // Connection string from .env
+// Connexion MongoDB
+let isConnected = false;
+
+async function connectMongoDB() {
+    if (isConnected) {
+        return true;
+    }
+
+    try {
+        const mongoUri = process.env.MONGODB_URI;
+        if (!mongoUri) {
+            console.warn('MONGODB_URI not found, falling back to JSON files');
+            return false;
+        }
+
+        await mongoose.connect(mongoUri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+
+        isConnected = true;
+        console.log('✅ Connected to MongoDB Atlas');
+        
+        // Set up connection event listeners
+        mongoose.connection.on('disconnected', () => {
+            console.log('MongoDB disconnected');
+            isConnected = false;
+        });
+
+        mongoose.connection.on('error', (err) => {
+            console.error('MongoDB error:', err);
+        });
+
+        return true;
+    } catch (error) {
+        console.error('❌ MongoDB connection failed:', error);
+        console.log('Falling back to JSON files');
+        return false;
+    }
+}
+
+// Vérifier si MongoDB est disponible
+function isMongoDBAvailable() {
+    return isConnected && mongoose.connection.readyState === 1;
+}
+
+// Fermer la connexion MongoDB
+async function disconnectMongoDB() {
+    if (isConnected) {
+        await mongoose.disconnect();
+        isConnected = false;
+        console.log('MongoDB disconnected');
+    }
+}
+
+// Legacy MongoDB client (keeping for compatibility)
+const uri = process.env.MONGODB_URI;
 let db;
 
 const connectDB = async () => {
@@ -80,5 +136,8 @@ module.exports = {
     connectDB,
     getDB,
     getGuildDatabase,
-    guildDataManager
+    guildDataManager,
+    connectMongoDB,
+    disconnectMongoDB,
+    isMongoDBAvailable
 };

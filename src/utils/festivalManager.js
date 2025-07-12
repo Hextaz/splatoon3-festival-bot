@@ -7,6 +7,7 @@ const scheduler = require('node-schedule');
 const { ChannelType } = require('discord.js');
 const { loadConfig } = require('../commands/config');
 const { getGuildDatabase } = require('./database');
+const DataAdapter = require('./dataAdapter');
 
 // Import du smart sleep manager
 let smartSleepManager;
@@ -19,7 +20,34 @@ try {
 
 // Singleton pour gérer le festival actif
 let currentFestival = null;
-let currentGuildId = null; // Stocker l'ID du serveur actuel
+let currentGuildId = null;
+
+// Fonction helper pour obtenir l'adaptateur de données
+// Fonction pour obtenir le festival actuel (async)
+async function getCurrentFestival(guildId = currentGuildId) {
+    if (!guildId) return null;
+    
+    try {
+        const adapter = getDataAdapter(guildId);
+        const festival = await adapter.getFestival();
+        
+        // Mettre à jour le cache local
+        if (festival) {
+            currentFestival = festival;
+            currentGuildId = guildId;
+        }
+        
+        return festival;
+    } catch (error) {
+        console.error('Erreur lors de la récupération du festival:', error);
+        return currentFestival; // Fallback vers le cache local
+    }
+}
+
+// Fonction synchrone pour le cache local (compatibilité)
+function getCurrentFestivalSync() {
+    return currentFestival;
+} // Stocker l'ID du serveur actuel
 let scheduledJobs = {};
 
 // Fonctions helpers pour gérer le guildId automatiquement
@@ -896,7 +924,8 @@ function getFestivalStatus(festival) {
 
 // Exporter les fonctions
 module.exports = {
-    getCurrentFestival: () => currentFestival,
+    getCurrentFestival,
+    getCurrentFestivalSync: () => currentFestival,
     loadFestival,
     loadFestivalAuto,
     createFestival,
