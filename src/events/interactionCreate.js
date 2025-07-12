@@ -32,6 +32,27 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
         try {
+            // CRITICAL: Immediate defer for critical commands that are known to timeout
+            const criticalCommands = ['start-festival'];
+            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_'];
+            
+            const isCriticalCommand = interaction.type === InteractionType.ApplicationCommand && 
+                                     criticalCommands.includes(interaction.commandName);
+            const isCriticalButton = interaction.isButton() && 
+                                    criticalButtons.some(prefix => interaction.customId.startsWith(prefix));
+            
+            if (isCriticalCommand || isCriticalButton) {
+                // Defer immediately without any checks to prevent timeout
+                try {
+                    if (!interaction.deferred && !interaction.replied) {
+                        await interaction.deferReply({ ephemeral: true });
+                    }
+                } catch (deferError) {
+                    console.error('Critical defer failed:', deferError);
+                    return; // Abort if we can't defer critical interactions
+                }
+            }
+
             if (interaction.type === InteractionType.ApplicationCommand) {
                 // Cherche et exécute la commande dans la collection client.commands
                 const command = interaction.client.commands.get(interaction.commandName);

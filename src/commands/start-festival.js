@@ -10,8 +10,12 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ADMINISTRATOR),
     
     async execute(interaction) {
-        // CRITICAL: Defer as the absolute first operation
-        const deferResult = await safeDefer(interaction, true);
+        // Check if interaction was already deferred by the event handler
+        let deferResult = true;
+        if (!interaction.deferred && !interaction.replied) {
+            // Only defer if not already deferred
+            deferResult = await safeDefer(interaction, true);
+        }
         
         // If defer failed (interaction expired), don't attempt any further operations
         if (!deferResult) {
