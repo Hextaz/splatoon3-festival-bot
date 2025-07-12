@@ -34,21 +34,25 @@ module.exports = {
         const startTime = Date.now();
         const interactionId = `${interaction.id}_${interaction.user.id}`;
         
-        // Protection contre les doublons d'interaction
+        // Protection contre les doublons d'interaction avec détection améliorée
         if (!interaction.client._processedInteractions) {
             interaction.client._processedInteractions = new Map();
         }
         
-        if (interaction.client._processedInteractions.has(interactionId)) {
-            console.log(`🔄 Interaction duplicate ignorée: ${interaction.commandName || interaction.customId}`);
+        // Créer une clé unique basée sur l'utilisateur, le type et le timestamp arrondi
+        const roundedTimestamp = Math.floor(startTime / 1000) * 1000; // Arrondir à la seconde
+        const interactionKey = `${interaction.user.id}_${interaction.type}_${interaction.commandName || interaction.customId}_${roundedTimestamp}`;
+        
+        if (interaction.client._processedInteractions.has(interactionKey)) {
+            console.log(`🔄 Interaction duplicate ignorée: ${interaction.commandName || interaction.customId} (${startTime - interaction.client._processedInteractions.get(interactionKey)}ms d'écart)`);
             return;
         }
         
-        // Marquer l'interaction comme en cours de traitement (expire après 10 secondes)
-        interaction.client._processedInteractions.set(interactionId, Date.now());
+        // Marquer l'interaction comme en cours de traitement
+        interaction.client._processedInteractions.set(interactionKey, startTime);
         setTimeout(() => {
-            interaction.client._processedInteractions.delete(interactionId);
-        }, 10000);
+            interaction.client._processedInteractions.delete(interactionKey);
+        }, 5000); // Réduction à 5 secondes pour être plus agressif
         
         console.log(`📱 Interaction received: ${interaction.commandName || interaction.customId} at ${startTime}`);
         
@@ -72,8 +76,14 @@ module.exports = {
                     if (!interaction.deferred && !interaction.replied) {
                         // Vérifier si l'interaction est encore valide avant de defer
                         const timeSinceCreation = Date.now() - interaction.createdTimestamp;
-                        if (timeSinceCreation > 2500) { // Si plus de 2.5 secondes, probablement trop tard
+                        if (timeSinceCreation > 2000) { // Réduction à 2 secondes
                             console.warn(`⚠️ Interaction trop ancienne (${timeSinceCreation}ms), abandon du defer`);
+                            return;
+                        }
+                        
+                        // Vérification supplémentaire : ignorer si l'interaction arrive trop tôt après la création
+                        if (timeSinceCreation < 50) {
+                            console.warn(`⚠️ Interaction trop récente (${timeSinceCreation}ms), possible double-clic`);
                             return;
                         }
                         

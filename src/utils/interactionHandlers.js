@@ -1636,17 +1636,11 @@ const handleFestivalSetup = async (interaction) => {
                         .setStyle(ButtonStyle.Success)
                 );
 
-            if (interaction.deferred) {
-                await safeEdit(interaction, {
-                    embeds: [embed],
-                    components: [gameModeRow]
-                });
-            } else {
-                await safeUpdate(interaction, {
-                    embeds: [embed],
-                    components: [gameModeRow]
-                });
-            }
+            // Pour les boutons après deferUpdate, toujours utiliser safeEdit
+            await safeEdit(interaction, {
+                embeds: [embed],
+                components: [gameModeRow]
+            });
 
         } else if (interaction.customId.startsWith('gamemode_')) {
         // Étape 2: Mode de jeu sélectionné
@@ -1695,7 +1689,7 @@ const handleFestivalSetup = async (interaction) => {
                     .setStyle(ButtonStyle.Danger)
             );
 
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             embeds: [embed],
             components: [mapBanRow]
         });
@@ -1739,7 +1733,7 @@ const handleFestivalSetup = async (interaction) => {
 
         setup.bannedMaps = [];
 
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             embeds: [embed],
             components: [actionRow, confirmRow]
         });
