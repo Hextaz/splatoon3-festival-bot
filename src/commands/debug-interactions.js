@@ -26,19 +26,29 @@ module.exports = {
                 // Afficher l'état du système anti-doublons
                 const processedCount = interaction.client._processedInteractions?.size || 0;
                 const userActionsCount = interaction.client._lastUserActions?.size || 0;
+                const recentInteractionsCount = interaction.client._recentInteractions?.size || 0;
                 const lastCleanup = interaction.client._lastCleanup || 'Jamais';
 
                 const embed = new EmbedBuilder()
                     .setColor('#00ff00')
-                    .setTitle('🔍 État du système anti-doublons')
+                    .setTitle('🔍 État du système anti-doublons (Triple couche)')
                     .addFields(
-                        { name: 'Interactions en cours', value: processedCount.toString(), inline: true },
-                        { name: 'Actions utilisateur trackées', value: userActionsCount.toString(), inline: true },
-                        { name: 'Dernier nettoyage', value: lastCleanup.toString(), inline: true },
+                        { name: 'Couche 1: IDs traités', value: processedCount.toString(), inline: true },
+                        { name: 'Couche 2: Actions utilisateur', value: userActionsCount.toString(), inline: true },
+                        { name: 'Couche 3: Interactions récentes', value: recentInteractionsCount.toString(), inline: true },
+                        { name: 'Dernier nettoyage', value: new Date(lastCleanup).toLocaleTimeString(), inline: true },
                         { name: 'Uptime', value: process.uptime().toFixed(0) + 's', inline: true },
                         { name: 'Mémoire utilisée', value: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2) + ' MB', inline: true },
                         { name: 'Version Node.js', value: process.version, inline: true }
-                    );
+                    )
+                    .setDescription(`
+**Protection active :**
+• ✅ ID unique Discord (10s)
+• ✅ Action utilisateur (1s)
+• ✅ Fenêtre temporelle (2s)
+• ✅ État interaction pré-defer
+• ✅ Erreur spécialisée par code
+                    `);
 
                 return await safeEdit(interaction, { embeds: [embed] });
             }
