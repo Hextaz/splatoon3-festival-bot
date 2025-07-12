@@ -37,19 +37,26 @@ module.exports = {
         try {
             // CRITICAL: Immediate defer for critical commands that are known to timeout
             const criticalCommands = ['start-festival'];
-            const criticalButtons = ['teamsize_', 'gamemode_']; // Reduced to most critical ones
+            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_']; // Extended critical buttons
+            const criticalModals = ['festivalSetupModal']; // Add modal handling
             
             const isCriticalCommand = interaction.type === InteractionType.ApplicationCommand && 
                                      criticalCommands.includes(interaction.commandName);
             const isCriticalButton = interaction.isButton() && 
                                     criticalButtons.some(prefix => interaction.customId.startsWith(prefix));
+            const isCriticalModal = interaction.type === InteractionType.ModalSubmit &&
+                                   criticalModals.includes(interaction.customId);
             
-            if (isCriticalCommand || isCriticalButton) {
+            if (isCriticalCommand || isCriticalButton || isCriticalModal) {
                 // Defer immediately without any checks to prevent timeout
                 const deferStart = Date.now();
                 try {
                     if (!interaction.deferred && !interaction.replied) {
-                        await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag
+                        if (interaction.isButton() || interaction.isStringSelectMenu()) {
+                            await interaction.deferUpdate({ flags: 64 }); // 64 = ephemeral flag for updates
+                        } else {
+                            await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag for replies
+                        }
                         console.log(`⚡ Critical defer completed in ${Date.now() - deferStart}ms`);
                     }
                 } catch (deferError) {
@@ -125,7 +132,7 @@ module.exports = {
             try {
                 await safeReply(interaction, {
                     content: 'Une erreur est survenue lors de l\'exécution de cette commande.',
-                    ephemeral: true
+                    flags: 64 // Use flags instead of ephemeral
                 });
             } catch (replyError) {
                 console.error('La gestion d\'erreur a échoué:', replyError);

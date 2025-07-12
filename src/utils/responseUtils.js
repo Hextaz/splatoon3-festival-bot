@@ -73,18 +73,22 @@ function isInteractionUsable(interaction) {
  * Safely defer an interaction reply
  * @param {CommandInteraction} interaction - The Discord interaction
  * @param {boolean} ephemeral - Whether the deferred reply should be ephemeral
+ * @param {boolean} isUpdate - Whether this is a button/select update (use deferUpdate)
  */
-async function safeDefer(interaction, ephemeral = false) {
+async function safeDefer(interaction, ephemeral = false, isUpdate = false) {
     try {
         if (interaction.deferred || interaction.replied) {
             return true; // Already handled
         }
 
-        // Skip usability check for command interactions to avoid any delays
-        // The Discord API will return an appropriate error if the interaction has expired
-
-        const options = ephemeral ? { flags: MessageFlags.Ephemeral } : {};
-        await interaction.deferReply(options);
+        // For button/select interactions, use deferUpdate instead of deferReply
+        if (isUpdate || interaction.isButton() || interaction.isStringSelectMenu()) {
+            const options = ephemeral ? { flags: MessageFlags.Ephemeral } : {};
+            await interaction.deferUpdate(options);
+        } else {
+            const options = ephemeral ? { flags: MessageFlags.Ephemeral } : {};
+            await interaction.deferReply(options);
+        }
         return true;
     } catch (error) {
         console.error('Error in safeDefer:', error);
@@ -92,7 +96,7 @@ async function safeDefer(interaction, ephemeral = false) {
             console.log('Interaction expired, cannot defer');
             return false;
         }
-        if (error.code === 40060) {
+        if (error.code === 40060 || error.code === 'InteractionAlreadyReplied') {
             console.log('Interaction already acknowledged, skipping defer');
             return true; // Consider as "successful" since it's already handled
         }
@@ -162,6 +166,12 @@ async function safeEdit(interaction, options) {
  */
 async function safeUpdate(interaction, options) {
     try {
+        // Don't attempt update if interaction is already replied/deferred in a non-compatible way
+        if (interaction.replied) {
+            console.log('Interaction already replied, cannot update');
+            return null;
+        }
+
         // Convert ephemeral to flags format if needed
         const updateOptions = { ...options };
         if (options.ephemeral) {
@@ -175,25 +185,11 @@ async function safeUpdate(interaction, options) {
         
         if (error.code === 10062) {
             console.log('Interaction expired, cannot update');
-            // Try to send a new reply as fallback
-            try {
-                return await safeReply(interaction, {
-                    content: '⚠️ Cette interaction a expiré. Veuillez recommencer.',
-                    ephemeral: true
-                });
-            } catch (fallbackError) {
-                console.log('Fallback reply also failed:', fallbackError.message);
-                return null;
-            }
-        }
-        
-        if (error.code === 40060) {
-            console.log('Interaction already acknowledged, cannot update');
             return null;
         }
         
-        if (error.code === 'InteractionNotReplied') {
-            console.log('Interaction not replied/deferred, cannot update');
+        if (error.code === 40060 || error.code === 'InteractionAlreadyReplied') {
+            console.log('Interaction already acknowledged, cannot update');
             return null;
         }
         

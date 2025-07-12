@@ -12,8 +12,8 @@ module.exports = {
     async execute(interaction) {
         // Check if interaction was already deferred by the event handler
         let deferResult = true;
-        if (!interaction.deferred && !interaction.replied) {
-            // Only defer if not already deferred
+        if (!interaction._preDeferredByEventHandler && !interaction.deferred && !interaction.replied) {
+            // Only defer if not already deferred by the event handler
             deferResult = await safeDefer(interaction, true);
         }
         

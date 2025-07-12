@@ -89,56 +89,60 @@ loadPendingResults().then(() => {
 
 // Gestionnaire pour le modal de configuration du festival
 const handleFestivalSetupModal = async (interaction) => {
-    // Récupérer les données du modal
-    const title = interaction.fields.getTextInputValue('festivalTitle');
-    const camp1 = interaction.fields.getTextInputValue('camp1Name');
-    const camp2 = interaction.fields.getTextInputValue('camp2Name');
-    const camp3 = interaction.fields.getTextInputValue('camp3Name');
-    const startDateStr = interaction.fields.getTextInputValue('startDate');
-    
-    // Convertir la date de début (format: DD/MM/YYYY HH:MM)
-    const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/;
-    let startDate;
-    
     try {
-        if (!dateRegex.test(startDateStr)) {
-            throw new Error("Format de date invalide. Utilisez JJ/MM/AAAA HH:MM");
+        // CRITICAL: Defer immédiatement pour éviter l'expiration
+        if (!interaction.deferred && !interaction.replied) {
+            await safeDefer(interaction, true);
         }
         
-        const [, day, month, year, hours, minutes] = startDateStr.match(dateRegex);
+        // Récupérer les données du modal
+        const title = interaction.fields.getTextInputValue('festivalTitle');
+        const camp1 = interaction.fields.getTextInputValue('camp1Name');
+        const camp2 = interaction.fields.getTextInputValue('camp2Name');
+        const camp3 = interaction.fields.getTextInputValue('camp3Name');
+        const startDateStr = interaction.fields.getTextInputValue('startDate');
         
-        // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
-        const utcDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+        // Convertir la date de début (format: DD/MM/YYYY HH:MM)
+        const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/;
+        let startDate;
         
-        // Ajuster pour le fuseau horaire français : soustraire 2 heures 
-        // car Render.com fonctionne en UTC et nous voulons l'heure française
-        startDate = new Date(utcDate.getTime() - (2 * 60 * 60 * 1000));
-        
-        if (isNaN(startDate.getTime())) {
-            throw new Error("Date invalide");
-        }
+        try {
+            if (!dateRegex.test(startDateStr)) {
+                throw new Error("Format de date invalide. Utilisez JJ/MM/AAAA HH:MM");
+            }
+            
+            const [, day, month, year, hours, minutes] = startDateStr.match(dateRegex);
+            
+            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
+            const utcDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+            
+            // Ajuster pour le fuseau horaire français : soustraire 2 heures 
+            // car Render.com fonctionne en UTC et nous voulons l'heure française
+            startDate = new Date(utcDate.getTime() - (2 * 60 * 60 * 1000));
+            
+            if (isNaN(startDate.getTime())) {
+                throw new Error("Date invalide");
+            }
 
-        const now = new Date();
-        if (startDate <= now) {
-            throw new Error("La date de début du festival doit être dans le futur. Veuillez choisir une date et heure ultérieure à maintenant.");
+            const now = new Date();
+            if (startDate <= now) {
+                throw new Error("La date de début du festival doit être dans le futur. Veuillez choisir une date et heure ultérieure à maintenant.");
+            }
+        } catch (error) {
+            return await safeEdit(interaction, {
+                content: `Erreur de format de date: ${error.message}`
+            });
         }
-    } catch (error) {
-        return await safeReply(interaction, {
-            content: `Erreur de format de date: ${error.message}`,
-            ephemeral: true
-        });
-    }
-    
-    // Récupérer la configuration
-    const config = interaction.client.configData || await loadConfig(interaction.guild.id);
-    
-    // Vérifier si un canal d'annonce est configuré
-    if (!config.announcementChannelId) {
-        return await safeReply(interaction, {
-            content: '⚠️ Aucun salon d\'annonces n\'est configuré. Veuillez utiliser `/config channel` pour en définir un.',
-            ephemeral: true
-        });
-    }
+        
+        // Récupérer la configuration
+        const config = interaction.client.configData || await loadConfig(interaction.guild.id);
+        
+        // Vérifier si un canal d'annonce est configuré
+        if (!config.announcementChannelId) {
+            return await safeEdit(interaction, {
+                content: '⚠️ Aucun salon d\'annonces n\'est configuré. Veuillez utiliser `/config channel` pour en définir un.'
+            });
+        }
     
     // Créer les options pour la durée du festival
     const oneWeekButton = new ButtonBuilder()
@@ -188,11 +192,17 @@ const handleFestivalSetupModal = async (interaction) => {
 
     const durationRow = new ActionRowBuilder().addComponents(oneWeekButton, twoWeeksButton, oneMonthButton, customDateButton);
 
-    await safeReply(interaction, {
+    await safeEdit(interaction, {
         embeds: [embed],
-        components: [durationRow],
-        ephemeral: true
+        components: [durationRow]
     });
+    
+    } catch (error) {
+        console.error('Erreur dans handleFestivalSetupModal:', error);
+        await safeEdit(interaction, {
+            content: `Une erreur s'est produite: ${error.message}`
+        });
+    }
 };
 
 const handleCreateFestivalConfirm = async (interaction) => {
@@ -1565,16 +1575,27 @@ const handleRejectButton = async (interaction) => {
 
 const handleFestivalSetup = async (interaction) => {
     try {
-        // IMPORTANT: Defer immédiatement pour éviter l'expiration
+        // CRITICAL: Defer immédiatement selon le type d'interaction
         if (!interaction.deferred && !interaction.replied) {
-            await safeDefer(interaction, true);
+            if (interaction.isButton() || interaction.isStringSelectMenu()) {
+                await safeDefer(interaction, true, true); // true for ephemeral, true for isUpdate
+            } else {
+                await safeDefer(interaction, true);
+            }
         }
         
         const setup = interaction.client.festivalSetup?.[interaction.user.id];
         if (!setup) {
-            return await safeEdit(interaction, {
-                content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.'
-            });
+            if (interaction.deferred) {
+                return await safeEdit(interaction, {
+                    content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.'
+                });
+            } else {
+                return await safeReply(interaction, {
+                    content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
+                    ephemeral: true
+                });
+            }
         }
 
         if (interaction.customId.startsWith('teamsize_')) {
@@ -1583,44 +1604,51 @@ const handleFestivalSetup = async (interaction) => {
             setup.teamSize = teamSize;
             setup.step = 2;
 
-        // Étape 2: Choix du mode de jeu
-        const embed = new EmbedBuilder()
-            .setColor('#0099ff')
-            .setTitle(`🎮 Configuration du Festival - Étape 2/4`)
-            .setDescription(`Équipes ${teamSize}v${teamSize} sélectionnées.\n\nChoisissez maintenant le type de modes de jeu:`)
-            .addFields(
-                { name: '🌱 Guerre de Territoire', value: 'Tous les matchs en Turf War uniquement', inline: true },
-                { name: '⚔️ Modes Pro', value: 'Tous les matchs en modes classés (Zones, Tour, Rainmaker, Palourdes)', inline: true },
-                { name: '🎯 Défense de Zone', value: 'Tous les matchs en Défense de Zone uniquement', inline: true },
-                { name: '🎲 Modes Mixtes', value: 'BO3 avec des modes variés (recommandé)', inline: true }
-            );
+            // Étape 2: Choix du mode de jeu
+            const embed = new EmbedBuilder()
+                .setColor('#0099ff')
+                .setTitle(`🎮 Configuration du Festival - Étape 2/4`)
+                .setDescription(`Équipes ${teamSize}v${teamSize} sélectionnées.\n\nChoisissez maintenant le type de modes de jeu:`)
+                .addFields(
+                    { name: '🌱 Guerre de Territoire', value: 'Tous les matchs en Turf War uniquement', inline: true },
+                    { name: '⚔️ Modes Pro', value: 'Tous les matchs en modes classés (Zones, Tour, Rainmaker, Palourdes)', inline: true },
+                    { name: '🎯 Défense de Zone', value: 'Tous les matchs en Défense de Zone uniquement', inline: true },
+                    { name: '🎲 Modes Mixtes', value: 'BO3 avec des modes variés (recommandé)', inline: true }
+                );
 
-        const gameModeRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('gamemode_turf')
-                    .setLabel('Guerre de Territoire')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('gamemode_ranked')
-                    .setLabel('Modes Pro')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('gamemode_splat_zones')
-                    .setLabel('Défense de Zone')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('gamemode_mixed')
-                    .setLabel('Modes Mixtes')
-                    .setStyle(ButtonStyle.Success)
-            );
+            const gameModeRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('gamemode_turf')
+                        .setLabel('Guerre de Territoire')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('gamemode_ranked')
+                        .setLabel('Modes Pro')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('gamemode_splat_zones')
+                        .setLabel('Défense de Zone')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId('gamemode_mixed')
+                        .setLabel('Modes Mixtes')
+                        .setStyle(ButtonStyle.Success)
+                );
 
-        await safeUpdate(interaction, {
-            embeds: [embed],
-            components: [gameModeRow]
-        });
+            if (interaction.deferred) {
+                await safeEdit(interaction, {
+                    embeds: [embed],
+                    components: [gameModeRow]
+                });
+            } else {
+                await safeUpdate(interaction, {
+                    embeds: [embed],
+                    components: [gameModeRow]
+                });
+            }
 
-    } else if (interaction.customId.startsWith('gamemode_')) {
+        } else if (interaction.customId.startsWith('gamemode_')) {
         // Étape 2: Mode de jeu sélectionné
         const rawGameMode = interaction.customId.replace('gamemode_', '');
     
