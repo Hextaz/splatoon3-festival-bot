@@ -101,9 +101,20 @@ async function loadFestival(guildId = null) {
                 festivalData.campNames,
                 festivalData.startTime,
                 festivalData.endTime,
-                null, // announcementChannelId n'est pas dans MongoDB
+                null, // Sera défini depuis la config plus bas
                 { modes: festivalData.modes }
             );
+            
+            // Récupérer l'announcementChannelId depuis la configuration
+            try {
+                const { loadConfig } = require('../commands/config');
+                const config = await loadConfig(guildId);
+                if (config && config.announcementChannelId) {
+                    festival.announcementChannelId = config.announcementChannelId;
+                }
+            } catch (error) {
+                console.warn('Impossible de charger la configuration pour l\'announcementChannelId:', error);
+            }
         } else {
             // Format JSON classique
             festival = Festival.fromJSON(festivalData);

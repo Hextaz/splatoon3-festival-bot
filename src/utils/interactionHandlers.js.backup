@@ -1564,14 +1564,13 @@ const handleRejectButton = async (interaction) => {
 // Add this function in src/utils/interactionHandlers.js
 
 const handleFestivalSetup = async (interaction) => {
-    try {
-        const setup = interaction.client.festivalSetup?.[interaction.user.id];
-        if (!setup) {
-            return await safeReply(interaction, {
-                content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
-                ephemeral: true
-            });
-        }
+    const setup = interaction.client.festivalSetup?.[interaction.user.id];
+    if (!setup) {
+        return await safeReply(interaction, {
+            content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
+            ephemeral: true
+        });
+    }
 
     if (interaction.customId.startsWith('teamsize_')) {
         // Étape 1: Taille des équipes sélectionnée
@@ -1659,7 +1658,11 @@ const handleFestivalSetup = async (interaction) => {
     } else if (interaction.customId === 'mapban_none') {
         // Étape 3: Aucune map bannie
         setup.bannedMaps = [];
-        await showFinalSetup(interaction, setup);
+        if (!interaction.replied && !interaction.deferred) {
+            await showFinalSetup(interaction, setup);
+        } else {
+            console.log('Interaction déjà traitée, skip showFinalSetup');
+        }
 
     } else if (interaction.customId === 'mapban_select') {
         // Étape 3: Sélection des maps à bannir
@@ -1704,26 +1707,18 @@ const handleFestivalSetup = async (interaction) => {
         // Confirmer la sélection des maps bannies
         await showFinalSetup(interaction, setup);
     }
-
-    } catch (error) {
-        console.error('Erreur dans handleFestivalSetup:', error);
-        
-        // Nettoyer la session en cas d'erreur
-        if (interaction.client.festivalSetup && interaction.client.festivalSetup[interaction.user.id]) {
-            delete interaction.client.festivalSetup[interaction.user.id];
-        }
-        
-        await safeReply(interaction, {
-            content: `Une erreur s'est produite lors de la configuration: ${error.message}\nVeuillez recommencer avec \`/start-festival\`.`,
-            ephemeral: true
-        });
-    }
 };
 
 
 
 // Helper function for the final setup step
 async function showFinalSetup(interaction, setup) {
+    // VÉRIFIER si l'interaction a déjà été répondue
+    if (interaction.replied || interaction.deferred) {
+        console.error('Interaction déjà traitée, impossible d\'afficher showFinalSetup');
+        return;
+    }
+
     const embed = new EmbedBuilder()
         .setColor('#0099ff')
         .setTitle(`🎮 Configuration du Festival - Étape 4/5`)
@@ -1761,6 +1756,7 @@ async function showFinalSetup(interaction, setup) {
                 .setStyle(ButtonStyle.Secondary)
         );
 
+    // UTILISER update AU LIEU de editReply car nous sommes dans une interaction de bouton
     try {
         await safeUpdate(interaction, {
             embeds: [embed],
@@ -1768,10 +1764,9 @@ async function showFinalSetup(interaction, setup) {
         });
     } catch (error) {
         console.error('Erreur showFinalSetup:', error);
-        // En cas d'erreur, nettoyer la session et informer l'utilisateur
-        delete interaction.client.festivalSetup[interaction.user.id];
-        throw error;
+        // Ne pas essayer de fallback car l'interaction est déjà corrompue
     }
+
 }
 
 const handleFinalFestivalSetup = async (interaction) => {

@@ -96,22 +96,33 @@ module.exports = {
                     
                     // Envoyer l'annonce de début maintenant
                     try {
-                        const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
-                        if (channel) {
+                        // Vérifier que l'announcementChannelId existe
+                        if (!festival.announcementChannelId) {
                             const { loadConfig } = require('./config');
                             const config = await loadConfig(interaction.guild.id);
-                            const mentionText = config.announcementRoleId ? 
-                                `<@&${config.announcementRoleId}> ` : '';
-                            
-                            const { createStartEmbed } = require('../utils/festivalManager');
-                            const startEmbed = createStartEmbed(festival);
-                            
-                            await channel.send({
-                                content: `${mentionText}🎉 **LE FESTIVAL COMMENCE MAINTENANT !** 🎉`,
-                                embeds: [startEmbed]
-                            });
-                            
-                            console.log('✅ Annonce de début du festival envoyée');
+                            festival.announcementChannelId = config.announcementChannelId;
+                        }
+                        
+                        if (festival.announcementChannelId) {
+                            const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
+                            if (channel) {
+                                const { loadConfig } = require('./config');
+                                const config = await loadConfig(interaction.guild.id);
+                                const mentionText = config.announcementRoleId ? 
+                                    `<@&${config.announcementRoleId}> ` : '';
+                                
+                                const { createStartEmbed } = require('../utils/festivalManager');
+                                const startEmbed = createStartEmbed(festival);
+                                
+                                await channel.send({
+                                    content: `${mentionText}🎉 **LE FESTIVAL COMMENCE MAINTENANT !** 🎉`,
+                                    embeds: [startEmbed]
+                                });
+                                
+                                console.log('✅ Annonce de début du festival envoyée');
+                            }
+                        } else {
+                            console.warn('⚠️ Aucun canal d\'annonce configuré pour le festival');
                         }
                     } catch (error) {
                         console.error('Erreur lors de l\'envoi de l\'annonce de début:', error);
