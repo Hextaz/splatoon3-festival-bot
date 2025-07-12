@@ -11,6 +11,23 @@ const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
 const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
 
+// Helper function for safe interaction updates
+async function safeUpdate(interaction, options) {
+    try {
+        return await interaction.update(options);
+    } catch (error) {
+        if (error.code === 10062) {
+            console.log('Interaction expired, cannot update');
+            return null;
+        }
+        if (error.code === 40060) {
+            console.log('Interaction already acknowledged, cannot update');
+            return null;
+        }
+        throw error;
+    }
+}
+
 // Global variables
 const pendingResults = new Map();
 let currentGuildId = null;
@@ -1610,7 +1627,7 @@ const handleFestivalSetup = async (interaction) => {
                     .setStyle(ButtonStyle.Success)
             );
 
-        await interaction.update({
+        await safeUpdate(interaction, {
             embeds: [embed],
             components: [gameModeRow]
         });
@@ -1650,7 +1667,7 @@ const handleFestivalSetup = async (interaction) => {
                     .setStyle(ButtonStyle.Danger)
             );
 
-        await interaction.update({
+        await safeUpdate(interaction, {
             embeds: [embed],
             components: [mapBanRow]
         });

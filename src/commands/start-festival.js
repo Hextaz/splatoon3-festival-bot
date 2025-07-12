@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { loadConfig } = require('../commands/config');
 const { setCurrentGuildId } = require('../utils/festivalManager');
-const { safeReply } = require('../utils/responseUtils');
+const { safeReply, safeDefer } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,13 +14,10 @@ module.exports = {
             // Définir le serveur actuel pour le gestionnaire de festival
             setCurrentGuildId(interaction.guild.id);
             
-            // Répondre immédiatement avec un message de démarrage
-            await safeReply(interaction, {
-                content: '🔧 Configuration du festival en cours...',
-                ephemeral: true
-            });
+            // Defer la réponse pour avoir le temps de traiter
+            await safeDefer(interaction, true);
             
-            // Charger la configuration en arrière-plan
+            // Charger la configuration
             const config = await loadConfig(interaction.guild.id);
             
             // Vérifier si un salon d'annonces est configuré
