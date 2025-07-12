@@ -148,11 +148,10 @@ async function saveFestival(festival, guildId = null) {
 
 // Créer un nouveau festival
 async function createFestival(title, campNames, startDate, endDate, announcementChannelId, guild = null, options = {}) {
-    // IMPORTANT: Réinitialiser les votes avant de créer le nouveau festival
-    console.log('🧹 Nettoyage des données avant création du nouveau festival...');
-    const { resetVotes } = require('./vote');
-    await resetVotes();
-    console.log('✅ Votes réinitialisés pour le nouveau festival');
+    // IMPORTANT: Nettoyage complet de toutes les données avant création du nouveau festival
+    console.log('🧹 Nettoyage complet des données avant création du nouveau festival...');
+    await resetFestivalData(guild);
+    console.log('✅ Toutes les données réinitialisées pour le nouveau festival');
     
     const festival = new Festival(title, campNames, startDate, endDate, announcementChannelId, options);
     
@@ -333,6 +332,17 @@ async function resetFestivalData(guild = null) {
     const matchSearch = require('./matchSearch');
     matchSearch.resetSearchQueue();
     console.log('File d\'attente de recherche réinitialisée');
+
+    // Réinitialiser les résultats en attente
+    try {
+        const { pendingResults } = require('./interactionHandlers');
+        if (pendingResults && pendingResults.clear) {
+            pendingResults.clear();
+            console.log('Résultats en attente réinitialisés');
+        }
+    } catch (error) {
+        console.warn('Impossible de réinitialiser les résultats en attente:', error.message);
+    }
 
     // Réinitialiser les scores
     scoreTracker.scores = {
