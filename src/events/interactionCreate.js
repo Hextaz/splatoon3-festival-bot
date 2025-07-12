@@ -157,6 +157,8 @@ module.exports = {
                     await handleConfirmButton(interaction);
                 } else if (interaction.customId.startsWith('reject_')) {
                     await handleRejectButton(interaction);
+                } else if (interaction.customId.startsWith('debug_')) {
+                    await handleDebugButton(interaction);
                 } else if (interaction.customId.startsWith('teamsize_') || 
                            interaction.customId.startsWith('gamemode_') || 
                            interaction.customId.startsWith('mapban_')) {
@@ -188,6 +190,34 @@ module.exports = {
         }
     },
 };
+
+async function handleDebugButton(interaction) {
+    try {
+        await interaction.deferUpdate({ flags: 64 });
+        
+        const { safeEdit } = require('../utils/responseUtils');
+        const { EmbedBuilder } = require('discord.js');
+        
+        const buttonId = interaction.customId;
+        const timestamp = Date.now();
+        
+        const embed = new EmbedBuilder()
+            .setColor('#00ff00')
+            .setTitle('✅ Debug Button Response')
+            .addFields(
+                { name: 'Button ID', value: buttonId, inline: true },
+                { name: 'User', value: interaction.user.username, inline: true },
+                { name: 'Timestamp', value: new Date(timestamp).toISOString(), inline: true },
+                { name: 'Interaction ID', value: interaction.id, inline: true },
+                { name: 'Processing Time', value: `${Date.now() - timestamp}ms`, inline: true }
+            );
+        
+        await safeEdit(interaction, { embeds: [embed], components: [] });
+        
+    } catch (error) {
+        console.error('Erreur dans handleDebugButton:', error);
+    }
+}
 
 async function handleDocumentationSelect(interaction) {
     const section = interaction.values[0];
