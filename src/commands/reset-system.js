@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
+const { safeEdit } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -90,14 +91,14 @@ module.exports = {
             console.log('=== FIN RÉINITIALISATION COMPLÈTE DU SYSTÈME ===');
             
             // Réponse à l'utilisateur
-            await interaction.editReply({
+            await safeEdit(interaction, {
                 content: '✅ Système entièrement réinitialisé. Vous pouvez maintenant redémarrer le bot pour un démarrage propre.',
                 ephemeral: true
             });
             
         } catch (error) {
             console.error('Erreur lors de la réinitialisation du système:', error);
-            await interaction.editReply({
+            await safeEdit(interaction, {
                 content: `❌ Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });

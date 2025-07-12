@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { findTeamByMember } = require('../utils/teamManager');
 const { getCurrentFestival } = require('../utils/festivalManager');
 const { startMatchSearch } = require('../utils/matchSearch');
+const { safeReply, safeFollowUp } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -13,7 +14,7 @@ module.exports = {
             // Vérifier si un festival est actif
             const festival = getCurrentFestival();
             if (!festival || !festival.isActive) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: 'Aucun festival actif actuellement. Les matchs seront disponibles quand le festival démarrera.',
                     ephemeral: true
                 });
@@ -22,7 +23,7 @@ module.exports = {
             // Vérifier si l'utilisateur est dans une équipe
             const team = findTeamByMember(interaction.user.id);
             if (!team) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: "Vous n'êtes membre d'aucune équipe. Rejoignez ou créez une équipe d'abord.",
                     ephemeral: true
                 });
@@ -34,7 +35,7 @@ module.exports = {
             
             if (currentSize < requiredSize) {
                 const formatDisplay = `${requiredSize}v${requiredSize}`;
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: `Votre équipe doit avoir exactement ${requiredSize} membres pour rechercher un match en ${formatDisplay}. Votre équipe actuelle : ${currentSize}/${requiredSize} membres. Recrutez ${requiredSize - currentSize} joueur(s) supplémentaire(s) !`,
                     ephemeral: true
                 });
@@ -42,7 +43,7 @@ module.exports = {
             
             // Vérifier si l'équipe est déjà en match
             if (team.currentOpponent) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: `Votre équipe est déjà en match contre l'équipe ${team.currentOpponent}. Terminez ce match avant d'en chercher un nouveau.`,
                     ephemeral: true
                 });
@@ -56,13 +57,13 @@ module.exports = {
             
             // Vérifier si l'interaction a déjà été répondue
             if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({
+                await safeReply(interaction, {
                     content: `Une erreur s'est produite: ${error.message}`,
                     ephemeral: true
                 });
             } else {
                 // Si l'interaction a déjà été répondue, utiliser followUp
-                await interaction.followUp({
+                await safeFollowUp(interaction, {
                     content: `Une erreur s'est produite: ${error.message}`,
                     ephemeral: true
                 });

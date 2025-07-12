@@ -5,6 +5,7 @@ const { createMatchChannel, scheduleMatchChannelDeletion } = require('./channelM
 const scoreTracker = require('./scoreTracker');
 const BO3Generator = require('./bo3Generator');
 const matchHistoryManager = require('./matchHistoryManager');
+const { safeUpdate, safeReply } = require('../utils/responseUtils');
 
 // File d'attente pour les équipes en recherche
 const searchingTeams = [];
@@ -117,7 +118,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     if (!festival || !festival.isActive) {
         console.log(`Tentative de recherche annulée: aucun festival actif`);
         if (interaction) {
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: "Aucun festival actif actuellement. Les matchs seront disponibles quand un festival démarrera.",
                 ephemeral: true
             });
@@ -130,7 +131,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
 
     // Vérifier si l'utilisateur est le leader de l'équipe (sauf en mode test)
     if (!isTestMode && !team.isLeader(interaction.user.id)) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: "Seul le chef d'équipe peut lancer une recherche de match.",
             ephemeral: true
         });
@@ -144,7 +145,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
         
         if (currentSize !== requiredSize) {
             const formatDisplay = `${requiredSize}v${requiredSize}`;
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Votre équipe doit avoir exactement ${requiredSize} membres pour rechercher un match en ${formatDisplay}. Votre équipe actuelle : ${currentSize}/${requiredSize} membres.`,
                 ephemeral: true
             });
@@ -184,7 +185,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
         
         const buttonRow = new ActionRowBuilder().addComponents(cancelButton);
         
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: 'Votre équipe est déjà en recherche. Utilisez le bouton ci-dessous pour annuler.',
             embeds: [embed],
             components: [buttonRow],
@@ -194,7 +195,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     
     // Vérifier si l'équipe est en match
     if (team.currentOpponent) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: `Votre équipe est déjà en match contre l'équipe ${team.currentOpponent}.`,
             ephemeral: true
         });
@@ -205,7 +206,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     
     if (match) {
         // Un match a été trouvé immédiatement
-        await interaction.reply({
+        await safeReply(interaction, {
             content: "Un adversaire a été trouvé immédiatement! Création du match en cours...",
             ephemeral: true
         });
@@ -258,7 +259,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     searchingTeams.push(searchEntry);
     
     // Informer l'utilisateur que la recherche commence avec un message éphémère
-    await interaction.reply({
+    await safeReply(interaction, {
         content: `La recherche de match a commencé pour votre équipe. Un message a été envoyé dans le salon d'équipe.`,
         ephemeral: true
     });

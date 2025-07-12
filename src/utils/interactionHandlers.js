@@ -9,24 +9,7 @@ const { startMatchSearch, cleanupSearch } = require('./matchSearch');
 const { loadConfig, saveConfig } = require('../commands/config');
 const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
-const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
-
-// Helper function for safe interaction updates
-async function safeUpdate(interaction, options) {
-    try {
-        return await interaction.update(options);
-    } catch (error) {
-        if (error.code === 10062) {
-            console.log('Interaction expired, cannot update');
-            return null;
-        }
-        if (error.code === 40060) {
-            console.log('Interaction already acknowledged, cannot update');
-            return null;
-        }
-        throw error;
-    }
-}
+const { safeReply, safeDefer, safeFollowUp, safeEdit, safeUpdate } = require('./responseUtils');
 
 // Global variables
 const pendingResults = new Map();
@@ -278,13 +261,13 @@ const handleCreateFestivalConfirm = async (interaction) => {
         delete interaction.client.tempFestivalData;
         
         // Éditer la réponse différée au lieu d'utiliser update
-        await interaction.editReply({
+        await safeEdit(interaction, {
             embeds: [embed],
             components: []
         });
     } catch (error) {
         console.error('Error creating festival:', error);
-        await interaction.editReply({
+        await safeEdit(interaction, {
             content: `Erreur lors de la création du festival: ${error.message}`,
             embeds: [],
             components: []
@@ -328,7 +311,7 @@ const handleDurationButton = async (interaction) => {
     tempFestivalData.endDate = endDate.toISOString();
 
     if (endDate <= startDate) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: "Erreur: La date de fin calculée n'est pas après la date de début. Veuillez choisir une autre durée.",
             ephemeral: true
         });
@@ -351,7 +334,7 @@ const handleDurationButton = async (interaction) => {
             { name: 'Salon d\'annonces', value: `<#${tempFestivalData.announcementChannelId}>` }
         );
     
-    await interaction.update({
+    await safeUpdate(interaction, {
         embeds: [embed],
         components: [confirmRow]
     });
@@ -407,13 +390,13 @@ const handleCustomEndDateModal = async (interaction) => {
                 { name: 'Salon d\'annonces', value: `<#${tempFestivalData.announcementChannelId}>` }
             );
         
-        await interaction.reply({
+        await safeReply(interaction, {
             embeds: [embed],
             components: [confirmRow],
             ephemeral: true
         });
     } catch (error) {
-        await interaction.reply({
+        await safeReply(interaction, {
             content: `Erreur: ${error.message}. Veuillez recommencer la commande.`,
             ephemeral: true
         });
@@ -447,7 +430,7 @@ const handleVoteButton = async (interaction) => {
     const festival = getCurrentFestival();
     
     if (!festival) {
-        return await interaction.update({
+        return await safeUpdate(interaction, {
             content: 'Le festival n\'est plus disponible. Veuillez réessayer plus tard.',
             embeds: [],
             components: []
@@ -462,7 +445,7 @@ const handleVoteButton = async (interaction) => {
         ).filter(role => role);
         
         if (existingCampRoles.length > 0) {
-            return await interaction.update({
+            return await safeUpdate(interaction, {
                 content: `Vous avez déjà rejoint le camp ${existingCampRoles[0].name.replace('Camp ', '')}. Vous ne pouvez pas changer de camp.`,
                 embeds: [],
                 components: []
@@ -511,7 +494,7 @@ const handleVoteButton = async (interaction) => {
             )
             .setFooter({ text: 'Bon festival! Que le meilleur camp gagne!' });
         
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: '',
             embeds: [embed],
             components: []
@@ -519,7 +502,7 @@ const handleVoteButton = async (interaction) => {
         
     } catch (error) {
         console.error('Erreur lors du vote:', error);
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
             embeds: [],
             components: []
@@ -709,7 +692,7 @@ const handleLeaveTeam = async (interaction) => {
                 await interaction.member.roles.remove(leaderRole);
             }
             
-            await interaction.editReply({ 
+            await safeEdit(interaction, { 
                 content: `You have left team "${result.team.name}". The team has been disbanded as it is now empty.`
             });
         } else {
@@ -731,17 +714,17 @@ const handleLeaveTeam = async (interaction) => {
                 }
                 
                 const newLeaderUser = await interaction.client.users.fetch(result.newLeader);
-                await interaction.editReply({ 
+                await safeEdit(interaction, { 
                     content: `You have left team "${result.team.name}". ${newLeaderUser.username} is now the team leader.`
                 });
             } else {
-                await interaction.editReply({ 
+                await safeEdit(interaction, { 
                     content: `You have left team "${result.team.name}".`
                 });
             }
         }
     } catch (error) {
-        await interaction.editReply({ 
+        await safeEdit(interaction, { 
             content: `Error leaving team: ${error.message}`
         });
     }
@@ -764,11 +747,11 @@ const handleKickMember = async (interaction) => {
             }
         }
         
-        await interaction.editReply({ 
+        await safeEdit(interaction, { 
             content: `${memberToKick.username} has been kicked from team "${team.name}".`
         });
     } catch (error) {
-        await interaction.editReply({ 
+        await safeEdit(interaction, { 
             content: `Error kicking member: ${error.message}`
         });
     }
@@ -780,7 +763,7 @@ const handleTeamsList = async (interaction) => {
     const festival = getCurrentFestival();
     
     if (teams.length === 0) {
-        await interaction.editReply({ 
+        await safeEdit(interaction, { 
             content: 'No teams have been registered yet.'
         });
         return;
@@ -829,11 +812,11 @@ const handleTeamsList = async (interaction) => {
         embeds.push(embed);
     }
     
-    await interaction.editReply({ content: 'Teams list:' });
+    await safeEdit(interaction, { content: 'Teams list:' });
     
     // Envoyer tous les embeds
     for (const embed of embeds) {
-        await interaction.followUp({ embeds: [embed], ephemeral: true });
+        await safeFollowUp(interaction, { embeds: [embed], ephemeral: true });
     }
 };
 
@@ -885,9 +868,9 @@ const handleVoteInteraction = async (interaction) => {
     
     try {
         castVote(camp);
-        await interaction.reply(`Vote cast for ${camp}.`);
+        await safeReply(interaction, `Vote cast for ${camp}.`);
     } catch (error) {
-        await interaction.reply(`Error: ${error.message}`);
+        await safeReply(interaction, `Error: ${error.message}`);
     }
 };
 
@@ -903,12 +886,12 @@ const handleMatchupInteraction = async (interaction) => {
         const result = getMatchup(teamName);
         
         if (result.alreadyMatched) {
-            await interaction.reply(`Your team is already matched with: ${result.opponent.name}`);
+            await safeReply(interaction, `Your team is already matched with: ${result.opponent.name}`);
         } else {
-            await interaction.reply(`Matchup: ${result.team.name} vs ${result.opponent.name}`);
+            await safeReply(interaction, `Matchup: ${result.team.name} vs ${result.opponent.name}`);
         }
     } catch (error) {
-        await interaction.reply(`Error: ${error.message}`);
+        await safeReply(interaction, `Error: ${error.message}`);
     }
 };
 
@@ -925,9 +908,9 @@ const handleResultEntry = async (interaction) => {
         // Clear the matchup to make teams available again
         clearMatchup(team1Name, team2Name);
         
-        await interaction.reply(`Results submitted: ${team1Name} - ${team1Result}, ${team2Name} - ${team2Result}`);
+        await safeReply(interaction, `Results submitted: ${team1Name} - ${team1Result}, ${team2Name} - ${team2Result}`);
     } catch (error) {
-        await interaction.reply(`Error: ${error.message}`);
+        await safeReply(interaction, `Error: ${error.message}`);
     }
 };
 
@@ -935,7 +918,7 @@ const handleMatchupModal = async (interaction) => {
     // Vérifier si un festival est actif
     const festival = getCurrentFestival();
     if (!festival || !festival.isActive) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: 'Aucun festival actif actuellement. Les matchups seront disponibles quand le festival démarrera.',
             ephemeral: true
         });
@@ -966,9 +949,9 @@ const handleMatchupModal = async (interaction) => {
                 .addFields({ name: 'Opponent', value: result.opponent.name });
         }
         
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await safeReply(interaction, { embeds: [embed], ephemeral: true });
     } catch (error) {
-        await interaction.reply({ 
+        await safeReply(interaction, { 
             content: `Error finding matchup: ${error.message}`, 
             ephemeral: true 
         });
@@ -992,7 +975,7 @@ const handleCampSelect = async (interaction) => {
         campDisplayName: campDisplayName
     };
     
-    await interaction.update({
+    await safeUpdate(interaction, {
         content: `Creating team "${teamName}". Camp: ${campDisplayName}. Please select if your team is open or closed:`,
         components: interaction.message.components.slice(1) // Garder seulement la rangée des boutons
     });
@@ -1006,7 +989,7 @@ const handleTeamTypeButton = async (interaction) => {
     // Récupérer les données temporaires
     const teamData = interaction.client.tempTeamData?.[interaction.user.id];
     if (!teamData) {
-        return await interaction.update({
+        return await safeUpdate(interaction, {
             content: 'An error occurred. Please try again.',
             components: []
         });
@@ -1047,13 +1030,13 @@ const handleTeamTypeButton = async (interaction) => {
         // Nettoyer les données temporaires
         delete interaction.client.tempTeamData[interaction.user.id];
         
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: '',
             embeds: [embed],
             components: []
         });
     } catch (error) {
-        await interaction.update({ 
+        await safeUpdate(interaction, { 
             content: `Error creating team: ${error.message}`, 
             components: []
         });
@@ -1066,7 +1049,7 @@ const handleCancelSearchButton = async (interaction) => {
     // Trouver l'équipe
     const team = findTeamByName(teamName);
     if (!team) {
-        return await interaction.update({
+        return await safeUpdate(interaction, {
             content: 'Équipe introuvable. La recherche a peut-être déjà été annulée.',
             embeds: [],
             components: []
@@ -1075,7 +1058,7 @@ const handleCancelSearchButton = async (interaction) => {
     
     // Vérifier si l'utilisateur est membre de cette équipe
     if (!team.isMember(interaction.user.id)) {
-        return await interaction.update({
+        return await safeUpdate(interaction, {
             content: 'Vous n\'êtes pas membre de cette équipe.',
             embeds: [],
             components: []
@@ -1086,13 +1069,13 @@ const handleCancelSearchButton = async (interaction) => {
     const cancelled = cleanupSearch(teamName);
     
     if (cancelled) {
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: `La recherche de match pour l'équipe **${teamName}** a été annulée.`,
             embeds: [],
             components: []
         });
     } else {
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: `La recherche de match pour l'équipe **${teamName}** avait déjà été annulée ou l'équipe est déjà en match.`,
             embeds: [],
             components: []
@@ -1103,7 +1086,7 @@ const handleCancelSearchButton = async (interaction) => {
 const handleConfigSelect = async (interaction) => {
     // Vérifier si les données temporaires existent
     if (!interaction.client.tempConfigData || interaction.client.tempConfigData.userId !== interaction.user.id) {
-        return await interaction.update({
+        return await safeUpdate(interaction, {
             content: 'Cette session de configuration a expiré. Veuillez relancer la commande `/config`.',
             components: [],
             ephemeral: true
@@ -1120,7 +1103,7 @@ const handleConfigSelect = async (interaction) => {
             await saveConfig(config);
             
             const channel = await interaction.guild.channels.fetch(selectedId);
-            await interaction.update({
+            await safeUpdate(interaction, {
                 content: `Le salon d'annonces a été défini sur ${channel}`,
                 components: [],
                 ephemeral: true
@@ -1132,7 +1115,7 @@ const handleConfigSelect = async (interaction) => {
             await saveConfig(config);
             
             const role = await interaction.guild.roles.fetch(selectedId);
-            await interaction.update({
+            await safeUpdate(interaction, {
                 content: `Le rôle à mentionner a été défini sur ${role}`,
                 components: [],
                 ephemeral: true
@@ -1143,7 +1126,7 @@ const handleConfigSelect = async (interaction) => {
         delete interaction.client.tempConfigData;
     } catch (error) {
         console.error('Erreur lors de la mise à jour de la configuration:', error);
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
             components: [],
             ephemeral: true
@@ -1162,14 +1145,14 @@ const handleResultButton = async (interaction) => {
         const userTeam = findTeamByMember(interaction.user.id);
         
         if (!userTeam) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Vous n'êtes membre d'aucune équipe.",
                 ephemeral: true
             });
         }
         
         if (!userTeam.isLeader(interaction.user.id)) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Seul le capitaine peut déclarer les résultats.",
                 ephemeral: true
             });
@@ -1177,7 +1160,7 @@ const handleResultButton = async (interaction) => {
         
         // Vérifier si l'équipe est en match
         if (!userTeam.currentOpponent) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Votre équipe n'est pas actuellement en match.",
                 ephemeral: true
             });
@@ -1187,7 +1170,7 @@ const handleResultButton = async (interaction) => {
         const opponentTeam = getAllTeams().find(t => t.name === userTeam.currentOpponent);
         
         if (!opponentTeam) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Équipe adverse introuvable. Veuillez contacter un administrateur.",
                 ephemeral: true
             });
@@ -1208,7 +1191,7 @@ const handleResultButton = async (interaction) => {
         
         // Vérification de sécurité
         if (!team1 || !team2) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Erreur: Une ou les deux équipes n'existent plus.`,
                 ephemeral: true
             });
@@ -1232,7 +1215,7 @@ const handleResultButton = async (interaction) => {
             await savePendingResults();
             
             // Mise à jour du message original
-            await interaction.update({
+            await safeUpdate(interaction, {
                 content: `${interaction.user} a déclaré une ${userResult === 'V' ? 'victoire' : 'défaite'} pour l'équipe ${userTeam.name}. Attendez la confirmation de l'équipe adverse.`,
                 components: [],
                 ephemeral: false
@@ -1294,7 +1277,7 @@ const handleResultButton = async (interaction) => {
                 }
             } catch (error) {
                 console.error('Erreur lors de la demande de confirmation:', error);
-                await interaction.followUp({
+                await safeFollowUp(interaction, {
                     content: "Une erreur s'est produite lors de la notification de l'équipe adverse. Veuillez demander à l'autre capitaine d'utiliser /results pour soumettre le résultat de son côté.",
                     ephemeral: true
                 });
@@ -1302,7 +1285,7 @@ const handleResultButton = async (interaction) => {
         }
     } catch (error) {
         console.error('Erreur dans handleResultButton:', error);
-        await interaction.reply({
+        await safeReply(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
             ephemeral: true
         });
@@ -1319,7 +1302,7 @@ const handleConfirmButton = async (interaction) => {
         console.log('Debug parts:', parts);
         
         if (parts.length < 4) { // Au minimum: ["confirm", "team1", "VS", "team2"]
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Format de bouton invalide. Veuillez contacter un administrateur.",
                 ephemeral: true
             });
@@ -1334,7 +1317,7 @@ const handleConfirmButton = async (interaction) => {
         console.log('Debug teamParts:', teamParts);
         
         if (teamParts.length !== 2) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Format de match invalide: ${receivedMatchId}. Attendu: team1_VS_team2`,
                 ephemeral: true
             });
@@ -1345,7 +1328,7 @@ const handleConfirmButton = async (interaction) => {
         
         // Vérifier que les deux noms sont définis
         if (!team1Name || !team2Name) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Noms d'équipes invalides: team1="${team1Name}", team2="${team2Name}"`,
                 ephemeral: true
             });
@@ -1365,7 +1348,7 @@ const handleConfirmButton = async (interaction) => {
         
         // Vérifier si le résultat en attente existe
         if (!pendingResults.has(matchId)) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Ce résultat n'est plus en attente de confirmation.\nDebug:\n- Cherché: '${matchId}'\n- Disponibles: ${Array.from(pendingResults.keys()).join(', ')}\n- CustomId original: ${customId}`,
                 ephemeral: true
             });
@@ -1381,14 +1364,14 @@ const handleConfirmButton = async (interaction) => {
         const userTeam = findTeamByMember(interaction.user.id);
         
         if (!userTeam || userTeam.name === pendingResult.declaringTeam) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Seul le capitaine de l'équipe adverse peut confirmer ce résultat.",
                 ephemeral: true
             });
         }
         
         if (!userTeam.isLeader(interaction.user.id)) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Seul le capitaine peut confirmer les résultats.",
                 ephemeral: true
             });
@@ -1418,7 +1401,7 @@ const handleConfirmButton = async (interaction) => {
         }
         
         // Mettre à jour le message et supprimer les boutons
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: `${resultMessage}\n\n**Confirmé par:** <@${interaction.user.id}>`,
             embeds: [],
             components: []
@@ -1475,13 +1458,13 @@ const handleConfirmButton = async (interaction) => {
         
         // Vérifier si l'interaction a déjà été répondue
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });
         } else {
             // Si l'interaction a déjà été répondue, utiliser followUp
-            await interaction.followUp({
+            await safeFollowUp(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });
@@ -1497,7 +1480,7 @@ const handleRejectButton = async (interaction) => {
         const parts = customId.split('_');
         
         if (parts.length < 4) { // Au minimum: ["reject", "team1", "VS", "team2"]
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Format de bouton invalide. Veuillez contacter un administrateur.",
                 ephemeral: true
             });
@@ -1510,7 +1493,7 @@ const handleRejectButton = async (interaction) => {
         const teamParts = receivedMatchId.split('_VS_');
         
         if (teamParts.length !== 2) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Format de match invalide: ${receivedMatchId}`,
                 ephemeral: true
             });
@@ -1520,7 +1503,7 @@ const handleRejectButton = async (interaction) => {
         
         // Vérifier que les deux noms sont définis
         if (!team1Name || !team2Name) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Noms d'équipes invalides: team1="${team1Name}", team2="${team2Name}"`,
                 ephemeral: true
             });
@@ -1531,7 +1514,7 @@ const handleRejectButton = async (interaction) => {
         
         // Vérifier si le résultat en attente existe
         if (!pendingResults.has(matchId)) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Ce résultat n'est plus en attente de confirmation.",
                 ephemeral: true
             });
@@ -1543,14 +1526,14 @@ const handleRejectButton = async (interaction) => {
         const userTeam = findTeamByMember(interaction.user.id);
         
         if (!userTeam || userTeam.name === pendingResult.declaringTeam) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Seul le capitaine de l'équipe adverse peut contester ce résultat.",
                 ephemeral: true
             });
         }
         
         if (!userTeam.isLeader(interaction.user.id)) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Seul le capitaine peut contester les résultats.",
                 ephemeral: true
             });
@@ -1562,7 +1545,7 @@ const handleRejectButton = async (interaction) => {
         await savePendingResults();
         
         // Mettre à jour le message
-        await interaction.update({
+        await safeUpdate(interaction, {
             content: `❌ **Résultat contesté** par <@${interaction.user.id}>. Les deux capitaines doivent se mettre d'accord et recommencer la procédure avec \`/results\`.`,
             embeds: [],
             components: []
@@ -1571,7 +1554,7 @@ const handleRejectButton = async (interaction) => {
         
     } catch (error) {
         console.error('Erreur dans handleRejectButton:', error);
-        await interaction.reply({
+        await safeReply(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
             ephemeral: true
         });
@@ -1583,7 +1566,7 @@ const handleRejectButton = async (interaction) => {
 const handleFestivalSetup = async (interaction) => {
     const setup = interaction.client.festivalSetup?.[interaction.user.id];
     if (!setup) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
             ephemeral: true
         });
@@ -1715,7 +1698,7 @@ const handleFestivalSetup = async (interaction) => {
 
         setup.bannedMaps = [];
 
-        await interaction.update({
+        await safeUpdate(interaction, {
             embeds: [embed],
             components: [actionRow, confirmRow]
         });
@@ -1775,7 +1758,7 @@ async function showFinalSetup(interaction, setup) {
 
     // UTILISER update AU LIEU de editReply car nous sommes dans une interaction de bouton
     try {
-        await interaction.update({
+        await safeUpdate(interaction, {
             embeds: [embed],
             components: [durationRow]
         });
@@ -1789,7 +1772,7 @@ async function showFinalSetup(interaction, setup) {
 const handleFinalFestivalSetup = async (interaction) => {
     const setup = interaction.client.festivalSetup?.[interaction.user.id];
     if (!setup) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
             ephemeral: true
         });
@@ -1871,7 +1854,7 @@ const handleFinalFestivalSetup = async (interaction) => {
             console.log(`Dates personnalisées - Début: ${startDate.toISOString()}, Fin: ${endDate.toISOString()}, Durée: ${durationDays} jours`);
             
         } catch (error) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Erreur dates personnalisées : ${error.message}`,
                 ephemeral: true
             });
@@ -1913,7 +1896,7 @@ const handleFinalFestivalSetup = async (interaction) => {
             console.log(`Durée prédéfinie - ${durationDays} jours`);
             
         } catch (error) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Erreur date de début : ${error.message}`,
                 ephemeral: true
             });
@@ -1935,7 +1918,7 @@ const createFinalFestival = async (interaction, setup, festivalData) => {
     const config = interaction.client.configData || await loadConfig(interaction.guild.id);
     
     if (!config.announcementChannelId) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: '⚠️ Aucun salon d\'annonces n\'est configuré.',
             ephemeral: true
         });
@@ -1945,7 +1928,7 @@ const createFinalFestival = async (interaction, setup, festivalData) => {
     const { teamSize, gameMode, bannedMaps } = setup;
     
     // RÉPONDRE IMMÉDIATEMENT À L'INTERACTION
-    await interaction.reply({
+    await safeReply(interaction, {
         content: `⏳ Création du festival "${festivalData.title}" en cours...`,
         ephemeral: true
     });
@@ -1970,7 +1953,7 @@ const createFinalFestival = async (interaction, setup, festivalData) => {
         delete interaction.client.festivalSetup[interaction.user.id];
 
         // METTRE À JOUR la réponse de l'admin après création réussie
-        await interaction.editReply({
+        await safeEdit(interaction, {
             content: `✅ Festival "${festivalData.title}" créé avec succès!\n` +
                     `📊 Configuration: ${teamSize}v${teamSize}, ${getGameModeDisplayName(gameMode)}\n` +
                     `🗓️ Début: <t:${Math.floor(festivalData.startDate.getTime() / 1000)}:F>\n` +
@@ -1980,7 +1963,7 @@ const createFinalFestival = async (interaction, setup, festivalData) => {
 
     } catch (error) {
         console.error('Erreur lors de la création du festival:', error);
-        await interaction.editReply({
+        await safeEdit(interaction, {
             content: `Erreur lors de la création du festival: ${error.message}`
         });
     }
@@ -2001,7 +1984,7 @@ function getGameModeDisplayName(gameMode) {
 const handleMapBanSelection = async (interaction) => {
     const setup = interaction.client.festivalSetup?.[interaction.user.id];
     if (!setup) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: 'Session de configuration expirée.',
             ephemeral: true
         });
@@ -2011,7 +1994,7 @@ const handleMapBanSelection = async (interaction) => {
     
     const bannedMapNames = setup.bannedMaps.map(mapKey => MAPS[mapKey]).join(', ');
     
-    await interaction.update({
+    await safeUpdate(interaction, {
         content: `Maps sélectionnées pour bannissement: ${bannedMapNames || 'Aucune'}`,
         components: interaction.message.components // Garder les boutons
     });
@@ -2020,7 +2003,7 @@ const handleMapBanSelection = async (interaction) => {
 const handleFestivalDuration = async (interaction) => {
     const setup = interaction.client.festivalSetup?.[interaction.user.id];
     if (!setup) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
             ephemeral: true
         });

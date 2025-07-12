@@ -1,5 +1,6 @@
 // src/commands/bot-status.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { safeReply, safeEdit, safeFollowUp } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -53,6 +54,6 @@ module.exports = {
             text: 'Bot configuré pour performance maximale - Simple et fiable' 
         });
 
-        await interaction.editReply({ embeds: [embed] });
+        await safeEdit(interaction, { embeds: [embed] });
     }
 };

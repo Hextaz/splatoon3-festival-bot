@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const DataAdapter = require('../utils/dataAdapter');
-const { safeReply, safeFollowUp, safeDefer } = require('../utils/responseUtils');
+const { safeReply, safeFollowUp, safeDefer, safeEdit } = require('../utils/responseUtils');
 
 // Structure de configuration par défaut
 const defaultConfig = {
@@ -141,7 +141,7 @@ module.exports = {
                     )
                     .setTimestamp();
                 
-                return await interaction.editReply({
+                return await safeEdit(interaction, {
                     embeds: [embed]
                 });
             }
@@ -150,7 +150,7 @@ module.exports = {
             
             // Utiliser la bonne méthode selon l'état de l'interaction
             if (interaction.replied || interaction.deferred) {
-                return await interaction.editReply({
+                return await safeEdit(interaction, {
                     content: `Une erreur s'est produite: ${error.message}`
                 });
             } else {

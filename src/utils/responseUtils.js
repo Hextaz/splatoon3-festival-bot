@@ -127,6 +127,53 @@ async function safeEdit(interaction, options) {
 }
 
 /**
+ * Safely update an interaction (for button/select menu interactions)
+ * @param {ButtonInteraction|SelectMenuInteraction} interaction - The Discord interaction
+ * @param {Object} options - Update options
+ */
+async function safeUpdate(interaction, options) {
+    try {
+        // Convert ephemeral to flags format if needed
+        const updateOptions = { ...options };
+        if (options.ephemeral) {
+            delete updateOptions.ephemeral;
+            updateOptions.flags = MessageFlags.Ephemeral;
+        }
+
+        return await interaction.update(updateOptions);
+    } catch (error) {
+        console.error('Error in safeUpdate:', error);
+        
+        if (error.code === 10062) {
+            console.log('Interaction expired, cannot update');
+            // Try to send a new reply as fallback
+            try {
+                return await safeReply(interaction, {
+                    content: '⚠️ Cette interaction a expiré. Veuillez recommencer.',
+                    ephemeral: true
+                });
+            } catch (fallbackError) {
+                console.log('Fallback reply also failed:', fallbackError.message);
+                return null;
+            }
+        }
+        
+        if (error.code === 40060) {
+            console.log('Interaction already acknowledged, cannot update');
+            return null;
+        }
+        
+        if (error.code === 'InteractionNotReplied') {
+            console.log('Interaction not replied/deferred, cannot update');
+            return null;
+        }
+        
+        // For other errors, re-throw
+        throw error;
+    }
+}
+
+/**
  * Smart response function that automatically chooses the best method
  * @param {CommandInteraction} interaction - The Discord interaction
  * @param {Object} options - Response options
@@ -178,5 +225,6 @@ module.exports = {
     safeDefer,
     safeFollowUp,
     safeEdit,
+    safeUpdate,
     smartReply
 };

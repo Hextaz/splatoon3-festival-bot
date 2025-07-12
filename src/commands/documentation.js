@@ -1,6 +1,7 @@
 // src/commands/documentation.js
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { getCurrentFestival } = require('../utils/festivalManager');
+const { safeReply, safeEdit, safeFollowUp } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -140,7 +141,7 @@ async function showMainMenu(interaction, festival) {
 
     const row = new ActionRowBuilder().addComponents(selectMenu);
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         components: [row],
         ephemeral: true
@@ -187,7 +188,7 @@ async function showCompleteGuide(interaction, festival) {
         )
         .setFooter({ text: 'Conseil : Consultez /my-team régulièrement pour voir l\'état de votre équipe' });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });
@@ -237,7 +238,7 @@ async function showGettingStarted(interaction, festival) {
         inline: false
     });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });
@@ -290,7 +291,7 @@ async function showTeamManagement(interaction, festival) {
             inline: false
         });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });
@@ -340,7 +341,7 @@ async function showMatchSystem(interaction, festival) {
             inline: false
         });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });
@@ -390,7 +391,7 @@ async function showScoreSystem(interaction, festival) {
             inline: false
         });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });
@@ -435,7 +436,7 @@ async function showCommandsList(interaction, festival) {
             inline: false
         });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });
@@ -485,7 +486,7 @@ async function showRules(interaction, festival) {
             inline: false
         });
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         ephemeral: true
     });

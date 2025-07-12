@@ -18,7 +18,7 @@ module.exports = {
             // Vérifier s'il y a un festival en cours
             const festival = getCurrentFestival();
             if (!festival) {
-                return await interaction.editReply({
+                return await safeEdit(interaction, {
                     content: 'Aucun festival n\'est actif actuellement.',
                     ephemeral: true
                 });
@@ -91,7 +91,7 @@ module.exports = {
             }
             
             // Répondre à l'administrateur qui a exécuté la commande
-            await interaction.editReply({
+            await safeEdit(interaction, {
                 content: `Le festival "${festival.title}" a été terminé avec succès. Les équipes seront dissoutes dans 30 secondes.`,
                 ephemeral: true
             });
@@ -102,6 +102,7 @@ module.exports = {
 
                 // S'assurer que le système d'équipes est bien nettoyé
                 const teamManager = require('../utils/teamManager');
+const { safeReply, safeEdit, safeFollowUp } = require('../utils/responseUtils');
                 await teamManager.clearAllTeams();
                 
                 // Supprimer complètement le festival
@@ -112,7 +113,7 @@ module.exports = {
             
         } catch (error) {
             console.error('Erreur lors de la fin du festival:', error);
-            await interaction.editReply({
+            await safeEdit(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });
