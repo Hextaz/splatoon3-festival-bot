@@ -1,0 +1,41 @@
+{
+  "name": "splatoon3-festival-bot",
+  "version": "1.0.0",
+  "description": "A Discord bot for managing Splatoon 3 festival events.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.0.0",
+    "dotenv": "^10.0.0",
+    "mongoose": "^6.13.8",
+    "node-schedule": "^2.1.1",
+    "splatoon3-festival-bot": "file:"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hextaz/splatoon3-festival-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hextaz/splatoon3-festival-bot/issues"
+  },
+  "homepage": "https://github.com/Hextaz/splatoon3-festival-bot#readme",
+  "keywords": [
+    "discord",
+    "bot",
+    "splatoon",
+    "splatoon3",
+    "festival",
+    "matchmaking",
+    "gaming",
+    "tournament",
+    "nintendo"
+  ],
+  "author": "Hextaz",
+  "license": "MIT"
+}
