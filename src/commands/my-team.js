@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { findTeamByMember } = require('../utils/teamManager');
 const { getCurrentFestival } = require('../utils/festivalManager');
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,7 +13,7 @@ module.exports = {
             const team = findTeamByMember(interaction.user.id);
             
             if (!team) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: "Vous n'êtes membre d'aucune équipe.",
                     ephemeral: true
                 });
@@ -90,14 +91,14 @@ module.exports = {
                 });
             }
             
-            await interaction.reply({
+            await safeReply(interaction, {
                 embeds: [embed],
                 ephemeral: true
             });
             
         } catch (error) {
             console.error('Error in my-team command:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: 'Une erreur est survenue lors de l\'affichage des informations de votre équipe.',
                 ephemeral: true
             });

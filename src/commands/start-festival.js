@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { loadConfig } = require('../commands/config');
 const { setCurrentGuildId } = require('../utils/festivalManager');
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,7 +19,7 @@ module.exports = {
             
             // Vérifier si un salon d'annonces est configuré
             if (!config.announcementChannelId) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: '⚠️ Aucun salon d\'annonces n\'a été configuré. Veuillez utiliser `/config channel` pour en définir un avant de créer un festival.',
                     ephemeral: true
                 });
@@ -58,7 +59,7 @@ module.exports = {
                 config: config
             };
 
-            await interaction.reply({
+            await safeReply(interaction, {
                 embeds: [embed],
                 components: [teamSizeRow],
                 ephemeral: true
@@ -66,7 +67,7 @@ module.exports = {
 
         } catch (error) {
             console.error('Erreur lors de la configuration du festival:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });
