@@ -139,13 +139,18 @@ class MatchHistoryManager {
         
         let score = 100; // Score de base
         
-        // Bonus pour les équipes d'un autre camp
-        const allTeams = require('./teamManager').getAllTeams();
-        const team = allTeams.find(t => t.name === teamName);
-        const opponent = allTeams.find(t => t.name === potentialOpponent.name);
-        
-        if (team && opponent && team.camp !== opponent.camp) {
-            score += 50;
+        // Bonus pour les équipes d'un autre camp (avec lazy loading)
+        try {
+            const { getAllTeams } = require('./teamManager');
+            const allTeams = getAllTeams();
+            const team = allTeams.find(t => t.name === teamName);
+            const opponent = allTeams.find(t => t.name === potentialOpponent.name);
+            
+            if (team && opponent && team.camp !== opponent.camp) {
+                score += 50;
+            }
+        } catch (error) {
+            console.warn('Impossible de récupérer les équipes pour le calcul du score adversaire');
         }
         
         // Pénalités basées sur la distance en nombre de matchs

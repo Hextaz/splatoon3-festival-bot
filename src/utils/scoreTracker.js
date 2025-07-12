@@ -1,7 +1,8 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { getAllTeams } = require('./teamManager');
-const { getCurrentFestival } = require('./festivalManager');
+// Remove direct imports to avoid circular dependencies
+// const { getAllTeams } = require('./teamManager');
+// const { getCurrentFestival } = require('./festivalManager');
 const DataAdapter = require('./dataAdapter');
 
 // Chemin vers le fichier de scores
@@ -176,8 +177,16 @@ const scoreTracker = {
             throw new Error("Both teams cannot have the same result. Please enter different results.");
         }
         
-        // Récupérer les équipes directement depuis teamManager
-        const allTeams = getAllTeams();
+        // Récupérer les équipes avec lazy loading pour éviter la dépendance circulaire
+        let allTeams = [];
+        try {
+            const { getAllTeams } = require('./teamManager');
+            allTeams = getAllTeams();
+        } catch (error) {
+            console.error('Impossible de récupérer les équipes:', error);
+            throw new Error("Unable to retrieve teams");
+        }
+        
         const team1 = allTeams.find(t => t.name === camp1Name);
         const team2 = allTeams.find(t => t.name === camp2Name);
         
@@ -243,7 +252,15 @@ const scoreTracker = {
     
     // Vérifier si on est à mi-parcours du festival
     isHalfwayPoint: function() {
-        const festival = getCurrentFestival();
+        let festival = null;
+        try {
+            const { getCurrentFestival } = require('./festivalManager');
+            festival = getCurrentFestival();
+        } catch (error) {
+            console.error('Impossible de récupérer le festival actuel:', error);
+            return false;
+        }
+        
         if (!festival) return false;
         
         const startTime = new Date(festival.startDate).getTime();

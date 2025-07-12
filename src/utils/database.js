@@ -5,6 +5,9 @@ const path = require('path');
 const { guildDataManager } = require('./guildDataManager');
 const config = require('../config');
 
+// Configure mongoose strictQuery to suppress deprecation warning
+mongoose.set('strictQuery', false);
+
 // Connexion MongoDB
 let isConnected = false;
 

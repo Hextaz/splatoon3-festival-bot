@@ -2,7 +2,8 @@ const Team = require('../models/Team');
 const { createTeamChannel, updateTeamChannelPermissions, getOrCreateTeamRole } = require('./channelManager');
 const fs = require('fs').promises;
 const path = require('path');
-const { getCurrentFestival } = require('./festivalManager');
+// Remove direct import to avoid circular dependency
+// const { getCurrentFestival } = require('./festivalManager');
 const DataAdapter = require('./dataAdapter');
 
 const teamsPath = path.join(__dirname, '../../data/teams.json');
@@ -90,10 +91,15 @@ async function saveTeamsJSON() {
     }
 }
 
-// Fonction pour charger les équipes depuis le fichier
 // Fonction pour charger les équipes (hybride JSON/MongoDB)
 async function loadTeams() {
     try {
+        if (!currentGuildId) {
+            console.log('⚠️ Guild ID non défini, chargement différé des équipes');
+            teams = [];
+            return;
+        }
+
         const adapter = getDataAdapter();
         
         if (adapter) {
@@ -101,29 +107,34 @@ async function loadTeams() {
             console.log('📥 Chargement des équipes avec DataAdapter');
             const teamsData = await adapter.getTeams();
             
-            // Convertir les données MongoDB en objets Team
-            teams = Object.values(teamsData).map(data => {
-                const team = new Team(data.name, data.leaderId, data.camp, data.isOpen, data.accessCode);
-                
-                // Rétablir tous les membres (sauf le leader qui est déjà ajouté par le constructeur)
-                data.members.forEach(memberId => {
-                    if (memberId !== data.leaderId && !team.members.includes(memberId)) {
-                        team.addMember(memberId);
-                    }
+            if (teamsData && Object.keys(teamsData).length > 0) {
+                // Convertir les données MongoDB en objets Team
+                teams = Object.values(teamsData).map(data => {
+                    const team = new Team(data.name, data.leaderId, data.camp, data.isOpen, data.accessCode);
+                    
+                    // Rétablir tous les membres (sauf le leader qui est déjà ajouté par le constructeur)
+                    data.members.forEach(memberId => {
+                        if (memberId !== data.leaderId && !team.members.includes(memberId)) {
+                            team.addMember(memberId);
+                        }
+                    });
+                    
+                    // Rétablir les autres propriétés
+                    team.id = data.id;
+                    team.channelId = data.channelId;
+                    team.roleId = data.roleId;
+                    team.busy = data.isSearching || false;
+                    team.lastSearchTime = data.lastSearchTime;
+                    team.searchLockUntil = data.searchLockUntil;
+                    
+                    return team;
                 });
                 
-                // Rétablir les autres propriétés
-                team.id = data.id;
-                team.channelId = data.channelId;
-                team.roleId = data.roleId;
-                team.busy = data.isSearching || false;
-                team.lastSearchTime = data.lastSearchTime;
-                team.searchLockUntil = data.searchLockUntil;
-                
-                return team;
-            });
-            
-            console.log(`✅ Équipes chargées avec DataAdapter. Total: ${teams.length}`);
+                console.log(`✅ Équipes chargées avec DataAdapter. Total: ${teams.length}`);
+            } else {
+                teams = [];
+                console.log('✅ Aucune équipe trouvée dans MongoDB');
+            }
         } else {
             // Fallback JSON
             await loadTeamsJSON();
@@ -261,9 +272,14 @@ function joinTeam(teamName, userId, code = null, guild = null) {
     }
     
     // Vérification selon le format du festival
-    const { getCurrentFestival } = require('./festivalManager');
-    const festival = getCurrentFestival();
-    const maxSize = festival?.teamSize || 4;
+    let maxSize = 4; // Valeur par défaut
+    try {
+        const { getCurrentFestival } = require('./festivalManager');
+        const festival = getCurrentFestival();
+        maxSize = festival?.teamSize || 4;
+    } catch (error) {
+        console.warn('Impossible de récupérer la taille d\'équipe du festival, utilisation de 4 par défaut');
+    }
     const formatDisplay = `${maxSize}v${maxSize}`;
     
     if (team.members.length >= maxSize) {
