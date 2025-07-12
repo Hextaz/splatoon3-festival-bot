@@ -17,7 +17,7 @@ async function loadConfig(guildId = null) {
         }
 
         const adapter = new DataAdapter(guildId);
-        const data = await adapter.loadConfig(guildId);
+        const data = await adapter.getConfig();
         return data || { ...defaultConfig };
     } catch (error) {
         console.error('Erreur lors du chargement de la configuration:', error);
@@ -33,7 +33,7 @@ async function saveConfig(config, guildId) {
         }
 
         const adapter = new DataAdapter(guildId);
-        await adapter.saveConfig(guildId, config);
+        await adapter.saveConfig(config);
         console.log(`✅ Configuration sauvegardée pour le serveur ${guildId}`);
     } catch (error) {
         console.error('Erreur lors de la sauvegarde de la configuration:', error);

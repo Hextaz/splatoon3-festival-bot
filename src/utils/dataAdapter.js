@@ -478,11 +478,45 @@ class DataAdapter {
         }
     }
 
+    // --- CONFIG (instance methods) ---
+    
+    async getConfig() {
+        if (isMongoDBAvailable()) {
+            const config = await GuildConfig.findOne({ guildId: this.guildId });
+            if (config) {
+                return {
+                    announcementChannelId: config.announcementChannelId,
+                    announcementRoleId: config.announcementRoleId
+                };
+            }
+            return null;
+        } else {
+            return this._getJSONData(`guilds/${this.guildId}/config.json`);
+        }
+    }
+
+    async saveConfig(configData) {
+        if (isMongoDBAvailable()) {
+            return await GuildConfig.findOneAndUpdate(
+                { guildId: this.guildId },
+                {
+                    guildId: this.guildId,
+                    announcementChannelId: configData.announcementChannelId,
+                    announcementRoleId: configData.announcementRoleId,
+                    updatedAt: new Date()
+                },
+                { upsert: true, new: true }
+            );
+        } else {
+            return this._saveJSONData(`guilds/${this.guildId}/config.json`, configData);
+        }
+    }
+
     // --- MAP PROBABILITIES (instance methods) ---
     
     async getMapProbabilities() {
         if (isMongoDBAvailable()) {
-            // Pour l'instant, utilisons le fallback JSON
+            // Pour l'instant, utilisons le fallback JSON même avec MongoDB
             return this._getJSONData(`guilds/${this.guildId}/mapProbabilities.json`);
         } else {
             return this._getJSONData(`guilds/${this.guildId}/mapProbabilities.json`);
