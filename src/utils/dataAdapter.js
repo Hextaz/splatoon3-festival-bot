@@ -442,6 +442,61 @@ class DataAdapter {
         }
     }
 
+    // --- MATCH HISTORY (instance methods) ---
+    
+    async getMatchHistory() {
+        if (isMongoDBAvailable()) {
+            // Pour MongoDB, on peut stocker l'historique dans une collection dédiée
+            // Pour l'instant, utilisons le fallback JSON
+            return this._getJSONData(`guilds/${this.guildId}/matchHistory.json`);
+        } else {
+            return this._getJSONData(`guilds/${this.guildId}/matchHistory.json`);
+        }
+    }
+    
+    async saveMatchHistory(historyData) {
+        if (isMongoDBAvailable()) {
+            return this._saveJSONData(`guilds/${this.guildId}/matchHistory.json`, historyData);
+        } else {
+            return this._saveJSONData(`guilds/${this.guildId}/matchHistory.json`, historyData);
+        }
+    }
+    
+    async getMatchCounters() {
+        if (isMongoDBAvailable()) {
+            return this._getJSONData(`guilds/${this.guildId}/matchCounters.json`);
+        } else {
+            return this._getJSONData(`guilds/${this.guildId}/matchCounters.json`);
+        }
+    }
+    
+    async saveMatchCounters(countersData) {
+        if (isMongoDBAvailable()) {
+            return this._saveJSONData(`guilds/${this.guildId}/matchCounters.json`, countersData);
+        } else {
+            return this._saveJSONData(`guilds/${this.guildId}/matchCounters.json`, countersData);
+        }
+    }
+
+    // --- MAP PROBABILITIES (instance methods) ---
+    
+    async getMapProbabilities() {
+        if (isMongoDBAvailable()) {
+            // Pour l'instant, utilisons le fallback JSON
+            return this._getJSONData(`guilds/${this.guildId}/mapProbabilities.json`);
+        } else {
+            return this._getJSONData(`guilds/${this.guildId}/mapProbabilities.json`);
+        }
+    }
+    
+    async saveMapProbabilities(probData) {
+        if (isMongoDBAvailable()) {
+            return this._saveJSONData(`guilds/${this.guildId}/mapProbabilities.json`, probData);
+        } else {
+            return this._saveJSONData(`guilds/${this.guildId}/mapProbabilities.json`, probData);
+        }
+    }
+
     // --- NETTOYAGE ---
 
     async cleanup() {

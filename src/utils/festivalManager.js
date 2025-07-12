@@ -22,7 +22,14 @@ try {
 let currentFestival = null;
 let currentGuildId = null;
 
-// Fonction helper pour obtenir l'adaptateur de données
+// Helper pour obtenir le DataAdapter
+function getDataAdapter(guildId = currentGuildId) {
+    if (!guildId) {
+        console.warn('Aucun guildId défini pour festivalManager, utilisation JSON');
+        return null;
+    }
+    return new DataAdapter(guildId);
+}
 // Fonction pour obtenir le festival actuel (async)
 async function getCurrentFestival(guildId = currentGuildId) {
     if (!guildId) return null;

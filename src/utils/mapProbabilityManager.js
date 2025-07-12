@@ -9,21 +9,24 @@ class MapProbabilityManager {
         this.probabilityDecay = 0.3; // Réduction de proba quand une map est sélectionnée
         this.probabilityIncrease = 0.1; // Augmentation par BO3 sans sélection
         this.currentGuildId = null;
-        this.dataAdapter = new DataAdapter();
+        this.dataAdapter = null; // Will be set when guildId is available
     }
 
     setCurrentGuildId(guildId) {
         this.currentGuildId = guildId;
+        if (guildId) {
+            this.dataAdapter = new DataAdapter(guildId);
+        }
     }
 
     async loadProbabilities() {
         try {
-            if (!this.currentGuildId) {
+            if (!this.currentGuildId || !this.dataAdapter) {
                 console.error('Guild ID not set for map probability manager');
                 return;
             }
 
-            const data = await this.dataAdapter.loadMapProbabilities(this.currentGuildId);
+            const data = await this.dataAdapter.getMapProbabilities();
             if (data) {
                 // Reconstituer les Maps depuis l'objet JSON
                 Object.entries(data).forEach(([teamName, mapProbs]) => {
@@ -43,7 +46,7 @@ class MapProbabilityManager {
 
     async saveProbabilities() {
         try {
-            if (!this.currentGuildId) {
+            if (!this.currentGuildId || !this.dataAdapter) {
                 console.error('Guild ID not set for map probability manager');
                 return;
             }
@@ -54,7 +57,7 @@ class MapProbabilityManager {
                 dataToSave[teamName] = Object.fromEntries(mapProbs);
             }
             
-            await this.dataAdapter.saveMapProbabilities(this.currentGuildId, dataToSave);
+            await this.dataAdapter.saveMapProbabilities(dataToSave);
         } catch (error) {
             console.error('Erreur lors de la sauvegarde des probabilités de maps:', error);
         }

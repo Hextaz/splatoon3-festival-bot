@@ -7,17 +7,20 @@ class MatchHistoryManager {
         this.teamMatchCounters = new Map();
         this.MATCH_HISTORY_LIMIT = 20;
         this.currentGuildId = null;
-        this.dataAdapter = new DataAdapter();
+        this.dataAdapter = null; // Will be set when guildId is available
     }
 
     setCurrentGuildId(guildId) {
         this.currentGuildId = guildId;
+        if (guildId) {
+            this.dataAdapter = new DataAdapter(guildId);
+        }
     }
 
     // Sauvegarder l'historique des matchs
     async saveMatchHistory() {
         try {
-            if (!this.currentGuildId) {
+            if (!this.currentGuildId || !this.dataAdapter) {
                 console.error('Guild ID not set for match history manager');
                 return;
             }
@@ -26,8 +29,8 @@ class MatchHistoryManager {
             const historyObj = Object.fromEntries(this.teamMatchHistory);
             const countersObj = Object.fromEntries(this.teamMatchCounters);
             
-            await this.dataAdapter.saveMatchHistory(this.currentGuildId, historyObj);
-            await this.dataAdapter.saveMatchCounters(this.currentGuildId, countersObj);
+            await this.dataAdapter.saveMatchHistory(historyObj);
+            await this.dataAdapter.saveMatchCounters(countersObj);
             
             console.log('Historique des matchs sauvegardé');
         } catch (error) {
@@ -38,13 +41,13 @@ class MatchHistoryManager {
     // Charger l'historique des matchs
     async loadMatchHistory() {
         try {
-            if (!this.currentGuildId) {
+            if (!this.currentGuildId || !this.dataAdapter) {
                 console.error('Guild ID not set for match history manager');
                 return;
             }
 
             // Charger l'historique
-            const historyObj = await this.dataAdapter.loadMatchHistory(this.currentGuildId);
+            const historyObj = await this.dataAdapter.getMatchHistory();
             if (historyObj) {
                 this.teamMatchHistory = new Map(Object.entries(historyObj));
                 console.log(`Historique des matchs chargé: ${this.teamMatchHistory.size} équipes`);
@@ -54,7 +57,7 @@ class MatchHistoryManager {
             }
 
             // Charger les compteurs
-            const countersObj = await this.dataAdapter.loadMatchCounters(this.currentGuildId);
+            const countersObj = await this.dataAdapter.getMatchCounters();
             if (countersObj) {
                 this.teamMatchCounters = new Map(Object.entries(countersObj).map(([k, v]) => [k, parseInt(v)]));
                 console.log(`Compteurs de matchs chargés: ${this.teamMatchCounters.size} équipes`);
