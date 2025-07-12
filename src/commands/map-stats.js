@@ -2,7 +2,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { findTeamByMember } = require('../utils/teamManager');
 const mapProbabilityManager = require('../utils/mapProbabilityManager');
-const { MAPS } = require('../../data/mapsAndModes');
+const { MAPS } = require('../data/mapsAndModes');
 
 module.exports = {
     data: new SlashCommandBuilder()

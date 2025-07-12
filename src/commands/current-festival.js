@@ -4,7 +4,7 @@ const { getAllTeams } = require('../utils/teamManager');
 const { getVotes } = require('../utils/vote');
 const scoreTracker = require('../utils/scoreTracker');
 
-const { MAPS } = require('../../data/mapsAndModes');
+const { MAPS } = require('../data/mapsAndModes');
 
 function getGameModeDisplay(gameMode) {
     const modes = {

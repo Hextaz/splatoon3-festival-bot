@@ -1,7 +1,7 @@
 // Créer src/utils/mapProbabilityManager.js
 const fs = require('fs').promises;
 const path = require('path');
-const { ALL_MAP_KEYS } = require('../../data/mapsAndModes');
+const { ALL_MAP_KEYS } = require('../data/mapsAndModes');
 
 const MAP_PROBABILITIES_FILE = path.join(__dirname, '../../data/mapProbabilities.json');
 

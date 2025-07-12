@@ -1,5 +1,5 @@
 // Créer src/utils/bo3Generator.js
-const { GAME_MODES, RANKED_MODES, MAPS, ALL_MAP_KEYS } = require('../../data/mapsAndModes');
+const { GAME_MODES, RANKED_MODES, MAPS, ALL_MAP_KEYS } = require('../data/mapsAndModes');
 const mapProbabilityManager = require('./mapProbabilityManager');
 
 class BO3Generator {

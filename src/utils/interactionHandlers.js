@@ -9,7 +9,7 @@ const { startMatchSearch, cleanupSearch } = require('./matchSearch');
 const { loadConfig, saveConfig } = require('../commands/config');
 const fs = require('fs').promises;
 const path = require('path');
-const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../../data/mapsAndModes');
+const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
 
 const PENDING_RESULTS_FILE = path.join(__dirname, '../../data/pendingResults.json');
 
