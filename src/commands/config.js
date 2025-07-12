@@ -151,10 +151,18 @@ module.exports = {
             }
         } catch (error) {
             console.error('Erreur lors de la configuration:', error);
-            return await safeReply(interaction, {
-                content: `Une erreur s'est produite: ${error.message}`,
-                ephemeral: true
-            });
+            
+            // Utiliser la bonne méthode selon l'état de l'interaction
+            if (interaction.replied || interaction.deferred) {
+                return await interaction.editReply({
+                    content: `Une erreur s'est produite: ${error.message}`
+                });
+            } else {
+                return await safeReply(interaction, {
+                    content: `Une erreur s'est produite: ${error.message}`,
+                    ephemeral: true
+                });
+            }
         }
     },
     
