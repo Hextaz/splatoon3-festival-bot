@@ -114,7 +114,27 @@ async function createFestival(title, campNames, startDate, endDate, announcement
     const festival = new Festival(title, campNames, startDate, endDate, announcementChannelId, options);
     
     currentFestival = festival;
-    await saveFestival(festival, guild?.id);
+    
+    // Sauvegarder avec DataAdapter si disponible
+    if (guild?.id) {
+        try {
+            const adapter = getDataAdapter(guild.id);
+            await adapter.saveFestival({
+                title: festival.title,
+                campNames: festival.campNames,
+                startTime: festival.startDate,
+                endTime: festival.endDate,
+                modes: festival.gameMode || options.modes || ['Défense de Zone'],
+                ...options
+            });
+            console.log('✅ Festival sauvegardé avec DataAdapter');
+        } catch (error) {
+            console.warn('⚠️ Erreur DataAdapter, fallback vers JSON:', error.message);
+            await saveFestival(festival, guild.id);
+        }
+    } else {
+        await saveFestival(festival, guild?.id);
+    }
     
     console.log('Festival reconstruit:', {
         teamSize: festival.teamSize,
@@ -924,7 +944,10 @@ function getFestivalStatus(festival) {
 
 // Exporter les fonctions
 module.exports = {
-    getCurrentFestival,
+    // Version sync pour compatibilité (cache local)
+    getCurrentFestival: () => currentFestival,
+    // Version async pour persistence
+    getCurrentFestivalAsync: getCurrentFestival,
     getCurrentFestivalSync: () => currentFestival,
     loadFestival,
     loadFestivalAuto,
