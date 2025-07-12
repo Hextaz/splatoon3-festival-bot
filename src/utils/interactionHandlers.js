@@ -1618,22 +1618,34 @@ const handleFestivalSetup = async (interaction) => {
 
     } else if (interaction.customId.startsWith('gamemode_')) {
         // Étape 2: Mode de jeu sélectionné
-        const gameMode = interaction.customId.split('_')[1];
+        const rawGameMode = interaction.customId.replace('gamemode_', '');
     
-        // Fix the gameMode value if it's truncated
-        let correctedGameMode = gameMode;
-        if (gameMode === 'splat') {
-            correctedGameMode = 'splat_zones'; // ← Fix this
+        // Fix the gameMode value if it's truncated due to button ID limits
+        let correctedGameMode = rawGameMode;
+        if (rawGameMode === 'splat') {
+            correctedGameMode = 'splat_zones';
         }
         
-        setup.gameMode = correctedGameMode; // ← Use corrected value
+        setup.gameMode = correctedGameMode;
         setup.step = 3;
+
+        // Obtenir le nom d'affichage correct
+        let gameModeDisplayName = 'Modes Pro';
+        if (correctedGameMode === 'mixed') {
+            gameModeDisplayName = 'Modes Mixtes';
+        } else if (correctedGameMode === 'turf') {
+            gameModeDisplayName = 'Guerre de Territoire';
+        } else if (correctedGameMode === 'splat_zones') {
+            gameModeDisplayName = 'Défense de Zone';
+        } else if (correctedGameMode === 'ranked') {
+            gameModeDisplayName = 'Modes Pro';
+        }
 
         // Étape 3: Bannissement de maps
         const embed = new EmbedBuilder()
             .setColor('#0099ff')
             .setTitle(`🎮 Configuration du Festival - Étape 3/4`)
-            .setDescription(`Mode "${gameMode === 'mixed' ? 'Modes Mixtes' : GAME_MODES[gameMode] || 'Modes Pro'}" sélectionné.\n\nVoulez-vous bannir certaines maps pour ce festival?`)
+            .setDescription(`Mode "${gameModeDisplayName}" sélectionné.\n\nVoulez-vous bannir certaines maps pour ce festival?`)
             .addFields(
                 { name: '✅ Toutes les maps', value: 'Utiliser toutes les maps disponibles', inline: true },
                 { name: '🚫 Bannir des maps', value: 'Choisir quelles maps exclure', inline: true }
@@ -1995,14 +2007,11 @@ const handleMapBanSelection = async (interaction) => {
         });
     }
 
-    setup.bannedMaps = interaction.values;
+    // Sauvegarder les maps bannies sélectionnées
+    setup.bannedMaps = interaction.values || [];
     
-    const bannedMapNames = setup.bannedMaps.map(mapKey => MAPS[mapKey]).join(', ');
-    
-    await safeUpdate(interaction, {
-        content: `Maps sélectionnées pour bannissement: ${bannedMapNames || 'Aucune'}`,
-        components: interaction.message.components // Garder les boutons
-    });
+    // Pas besoin de répondre ici - l'utilisateur doit cliquer sur "Confirmer la sélection"
+    // pour continuer vers l'étape suivante
 };
 
 const handleFestivalDuration = async (interaction) => {
