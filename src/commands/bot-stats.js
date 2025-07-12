@@ -36,15 +36,8 @@ module.exports = {
             const memoryUsage = process.memoryUsage();
             const memoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
             
-            // Smart Sleep stats (si disponible)
-            let smartSleepInfo = "Non disponible";
-            if (global.smartSleepManager) {
-                const status = global.smartSleepManager.getStatus();
-                smartSleepInfo = `Keep-alive: ${status.isKeepAliveActive ? '🟢 Actif' : '🔴 Inactif'}`;
-                if (status.currentReason) {
-                    smartSleepInfo += `\nRaison: ${status.currentReason}`;
-                }
-            }
+            // Keep-alive permanent
+            const keepAliveInfo = "🟢 Keep-alive permanent actif (24/7)";
             
             // Création de l'embed
             const embed = new EmbedBuilder()
@@ -56,7 +49,7 @@ module.exports = {
                     { name: '👥 Utilisateurs totaux', value: `${totalMembers.toLocaleString()}`, inline: true },
                     { name: '⏱️ Uptime', value: uptimeFormatted, inline: true },
                     { name: '💾 Mémoire utilisée', value: `${memoryMB} MB`, inline: true },
-                    { name: '🛡️ Smart Sleep', value: smartSleepInfo, inline: false }
+                    { name: '🛡️ Keep-Alive', value: keepAliveInfo, inline: false }
                 );
                 
             // Ajouter détails des serveurs si peu nombreux

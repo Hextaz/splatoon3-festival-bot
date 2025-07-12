@@ -9,15 +9,6 @@ const { loadConfig } = require('../commands/config');
 const { getGuildDatabase } = require('./database');
 const DataAdapter = require('./dataAdapter');
 
-// Import du smart sleep manager
-let smartSleepManager;
-try {
-    const { smartSleepManager: sleepManager } = require('./smartSleep');
-    smartSleepManager = sleepManager;
-} catch (error) {
-    console.warn('SmartSleepManager non disponible:', error.message);
-}
-
 // Singleton pour gérer le festival actif
 let currentFestival = null;
 let currentGuildId = null;
@@ -192,11 +183,6 @@ async function createFestival(title, campNames, startDate, endDate, announcement
     if (guild && guild.client) {
         console.log('📅 Programmation de l\'activation automatique...');
         scheduleActivation(festival, guild.client);
-    }
-    
-    // Notification smart sleep pour activation de l'uptime
-    if (smartSleepManager) {
-        smartSleepManager.enableKeepAlive('Festival créé: activation programmée');
     }
     
     // Envoyer l'annonce de préparation (pas de début)
@@ -612,12 +598,6 @@ async function deleteFestival() {
             }
         });
         
-        // 🛡️ Déclencher une vérification immédiate du système de veille intelligente
-        if (global.smartSleepManager) {
-            console.log('🛡️ Déclenchement vérification veille intelligente (suppression festival)...');
-            global.smartSleepManager.checkFestivalState();
-        }
-        
         console.log('Festival supprimé avec succès');
         return true;
     } catch (error) {
@@ -727,12 +707,6 @@ async function activateFestivalNow(festival, client) {
         festival.activate();
         await saveFestival(festival);
         
-        // 🛡️ Déclencher une vérification immédiate du système de veille intelligente
-        if (global.smartSleepManager) {
-            console.log('🛡️ Déclenchement vérification veille intelligente (activation festival)...');
-            global.smartSleepManager.checkFestivalState();
-        }
-        
         // Envoyer l'annonce de début
         if (client.guilds.cache.size > 0) {
             const guild = client.guilds.cache.first();
@@ -770,12 +744,6 @@ async function deactivateFestivalNow(festival, client) {
         // Désactiver le festival
         festival.deactivate();
         await saveFestival(festival);
-        
-        // 🛡️ Déclencher une vérification immédiate du système de veille intelligente
-        if (global.smartSleepManager) {
-            console.log('🛡️ Déclenchement vérification veille intelligente (désactivation festival)...');
-            global.smartSleepManager.checkFestivalState();
-        }
         
         // Envoyer l'annonce de fin
         if (client.guilds.cache.size > 0) {

@@ -1,5 +1,6 @@
 const Team = require('../models/Team');
 const { createTeamChannel, updateTeamChannelPermissions, getOrCreateTeamRole } = require('./channelManager');
+const { EmbedBuilder } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 // Remove direct import to avoid circular dependency

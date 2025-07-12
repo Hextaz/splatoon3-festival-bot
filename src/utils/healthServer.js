@@ -45,18 +45,15 @@ class HealthServer {
     }
 
     handleHealthCheck(req, res) {
-        const { smartSleepManager } = require('./smartSleep');
-        const status = smartSleepManager.getStatus();
-        
         const healthData = {
             status: 'ok',
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             memory: process.memoryUsage(),
-            sleepManager: {
-                isKeepAliveActive: status.isKeepAliveActive,
-                currentReason: status.currentReason,
-                hasFestival: !!status.currentFestival
+            keepAlive: {
+                active: true,
+                type: 'permanent',
+                interval: '10 minutes'
             },
             version: require('../../package.json').version || '1.0.0'
         };
@@ -96,7 +93,7 @@ class HealthServer {
         <div class="status info">
             <strong>⏱️ Uptime:</strong> ${Math.round(process.uptime())} seconds
         </div>
-        <p><em>Bot hébergé sur Render.com avec veille intelligente activée</em></p>
+        <p><em>Bot hébergé sur Render.com avec keep-alive permanent activé</em></p>
     </div>
 </body>
 </html>`;
