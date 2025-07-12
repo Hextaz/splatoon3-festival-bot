@@ -18,6 +18,8 @@ const dataAdapter = new DataAdapter();
 // Set guild ID for this module
 function setCurrentGuildId(guildId) {
     currentGuildId = guildId;
+    // Load pending results after guild ID is set
+    loadPendingResults();
 }
 
 // Fonction pour charger les résultats en attente
@@ -58,8 +60,8 @@ async function savePendingResults() {
     }
 }
 
-// Charger les données au démarrage du module
-loadPendingResults();
+// No automatic loading at module startup - wait for guildId to be set
+// loadPendingResults();
 
 function cleanupExpiredResults() {
     const now = Date.now();

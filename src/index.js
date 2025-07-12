@@ -520,36 +520,47 @@ async function startBot() {
 }
 
 // Fonction pour initialiser les managers avec guildId
-function initializeManagersForGuild(guildId) {
+async function initializeManagersForGuild(guildId) {
     console.log(`🔧 Initialisation des managers pour le serveur: ${guildId}`);
     
-    // Initialiser tous les managers avec le guildId
-    festivalManager.setCurrentGuildId(guildId);
-    teamManager.setCurrentGuildId(guildId);
-    scoreTracker.setCurrentGuildId(guildId);
-    
-    // Initialiser les autres managers si nécessaire
-    const voteManager = require('./utils/vote');
-    if (voteManager.setCurrentGuildId) {
-        voteManager.setCurrentGuildId(guildId);
+    try {
+        // Initialiser tous les managers avec le guildId dans le bon ordre
+        festivalManager.setCurrentGuildId(guildId);
+        teamManager.setCurrentGuildId(guildId);
+        
+        const voteManager = require('./utils/vote');
+        if (voteManager.setCurrentGuildId) {
+            voteManager.setCurrentGuildId(guildId);
+        }
+        
+        scoreTracker.setCurrentGuildId(guildId);
+        
+        const matchHistoryManager = require('./utils/matchHistoryManager');
+        if (matchHistoryManager.setCurrentGuildId) {
+            matchHistoryManager.setCurrentGuildId(guildId);
+        }
+        
+        const mapProbabilityManager = require('./utils/mapProbabilityManager');
+        if (mapProbabilityManager.setCurrentGuildId) {
+            mapProbabilityManager.setCurrentGuildId(guildId);
+        }
+        
+        const interactionHandlers = require('./utils/interactionHandlers');
+        if (interactionHandlers.setCurrentGuildId) {
+            interactionHandlers.setCurrentGuildId(guildId);
+        }
+        
+        // Load data for all managers after guildId is set
+        await teamManager.loadTeams();
+        await voteManager.loadVotes();
+        await scoreTracker.loadScores();
+        await matchHistoryManager.loadMatchHistory();
+        await mapProbabilityManager.loadProbabilities();
+        
+        console.log(`✅ Managers initialisés pour le serveur: ${guildId}`);
+    } catch (error) {
+        console.error(`❌ Erreur lors de l'initialisation des managers pour ${guildId}:`, error);
     }
-    
-    const matchHistoryManager = require('./utils/matchHistoryManager');
-    if (matchHistoryManager.setCurrentGuildId) {
-        matchHistoryManager.setCurrentGuildId(guildId);
-    }
-    
-    const mapProbabilityManager = require('./utils/mapProbabilityManager');
-    if (mapProbabilityManager.setCurrentGuildId) {
-        mapProbabilityManager.setCurrentGuildId(guildId);
-    }
-    
-    const interactionHandlers = require('./utils/interactionHandlers');
-    if (interactionHandlers.setCurrentGuildId) {
-        interactionHandlers.setCurrentGuildId(guildId);
-    }
-    
-    console.log(`✅ Managers initialisés pour le serveur: ${guildId}`);
 }
 
 // Exposer la fonction globalement

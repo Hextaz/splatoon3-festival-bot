@@ -3,14 +3,14 @@ const { Client } = require('discord.js');
 module.exports = {
     name: 'ready',
     once: true,
-    execute(client) {
+    async execute(client) {
         console.log(`Bot is online as ${client.user.tag}`);
         
         // Initialiser les managers pour chaque serveur
-        client.guilds.cache.forEach(guild => {
+        for (const guild of client.guilds.cache.values()) {
             if (global.initializeManagersForGuild) {
-                global.initializeManagersForGuild(guild.id);
+                await global.initializeManagersForGuild(guild.id);
             }
-        });
+        }
     },
 };
