@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const Festival = require('../models/Festival');
-const { teams, leaveTeam } = require('./teamManager');
+// const { teams, leaveTeam } = require('./teamManager'); // Import circulaire - utiliser require() dynamique
 const scoreTracker = require('./scoreTracker');
 const scheduler = require('node-schedule');
 const { ChannelType } = require('discord.js');
@@ -79,17 +79,40 @@ async function ensureDataDirExists() {
 // Charger le festival depuis la base de données spécifique au serveur
 async function loadFestival(guildId = null) {
     try {
-        const db = getGuildDatabase(guildId);
-        const festivalData = await db.load('festivals.json');
-        
-        if (!festivalData) {
+        if (!guildId) {
+            console.log('Aucun guildId fourni pour loadFestival');
             return null;
         }
         
-        console.log('Données du festival chargées:', festivalData); // Debug
+        const adapter = getDataAdapter(guildId);
+        const festivalData = await adapter.getFestival();
         
-        const festival = Festival.fromJSON(festivalData);
+        if (!festivalData) {
+            console.log('Aucun festival trouvé dans la base de données');
+            return null;
+        }
+        
+        console.log('Données du festival chargées:', festivalData);
+        
+        // Si c'est un objet MongoDB, convertir vers le format Festival
+        let festival;
+        if (festivalData._id) {
+            // Format MongoDB - créer un objet Festival compatible
+            festival = new Festival(
+                festivalData.title,
+                festivalData.campNames,
+                festivalData.startTime,
+                festivalData.endTime,
+                null, // announcementChannelId n'est pas dans MongoDB
+                { modes: festivalData.modes }
+            );
+        } else {
+            // Format JSON classique
+            festival = Festival.fromJSON(festivalData);
+        }
+        
         currentFestival = festival;
+        currentGuildId = guildId;
         
         return festival;
     } catch (error) {
@@ -101,8 +124,24 @@ async function loadFestival(guildId = null) {
 // Sauvegarder le festival dans la base de données spécifique au serveur
 async function saveFestival(festival, guildId = null) {
     try {
-        const db = getGuildDatabase(guildId);
-        await db.save('festivals.json', festival.toJSON());
+        if (!guildId) {
+            console.warn('Aucun guildId fourni pour saveFestival');
+            return;
+        }
+        
+        const adapter = getDataAdapter(guildId);
+        
+        // Convertir l'objet Festival vers le format DataAdapter
+        const festivalData = {
+            title: festival.title,
+            campNames: festival.campNames,
+            startTime: festival.startDate,
+            endTime: festival.endDate,
+            modes: festival.gameMode ? [festival.gameMode] : ['Défense de Zone']
+        };
+        
+        await adapter.saveFestival(festivalData);
+        console.log('✅ Festival sauvegardé avec DataAdapter');
     } catch (error) {
         console.error('Erreur lors de la sauvegarde du festival:', error);
         throw error;

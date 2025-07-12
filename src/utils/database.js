@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const fs = require('fs').promises;
 const path = require('path');
 const { guildDataManager } = require('./guildDataManager');
+const config = require('../config');
 
 // Connexion MongoDB
 let isConnected = false;
@@ -23,6 +24,9 @@ async function connectMongoDB() {
             useNewUrlParser: true,
             useUnifiedTopology: true,
         });
+        
+        // Configuration Mongoose
+        mongoose.set('strictQuery', false);
 
         isConnected = true;
         console.log('✅ Connected to MongoDB Atlas');
