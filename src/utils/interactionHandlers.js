@@ -335,7 +335,13 @@ const handleCustomEndDateModal = async (interaction) => {
         }
         
         const [, day, month, year, hours, minutes] = customDateStr.match(dateRegex);
-        const customEndDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+        
+        // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
+        const utcEndDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+        
+        // Ajuster pour le fuseau horaire français : soustraire 2 heures 
+        // car Render.com fonctionne en UTC et nous voulons l'heure française
+        const customEndDate = new Date(utcEndDate.getTime() - (2 * 60 * 60 * 1000));
         
         if (isNaN(customEndDate.getTime())) {
             throw new Error("Date invalide");
@@ -1796,7 +1802,10 @@ const handleFinalFestivalSetup = async (interaction) => {
             }
             
             const [, startDay, startMonth, startYear, startHour, startMinute] = startMatch;
-            startDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute);
+            
+            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
+            const utcStartDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute);
+            startDate = new Date(utcStartDate.getTime() - (2 * 60 * 60 * 1000));
             
             if (isNaN(startDate.getTime())) {
                 throw new Error("Date de début invalide");
@@ -1809,7 +1818,10 @@ const handleFinalFestivalSetup = async (interaction) => {
             }
             
             const [, endDay, endMonth, endYear, endHour, endMinute] = endMatch;
-            endDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute);
+            
+            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
+            const utcEndDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute);
+            endDate = new Date(utcEndDate.getTime() - (2 * 60 * 60 * 1000));
             
             if (isNaN(endDate.getTime())) {
                 throw new Error("Date de fin invalide");
@@ -1853,7 +1865,10 @@ const handleFinalFestivalSetup = async (interaction) => {
             }
             
             const [, day, month, year, hour, minute] = match;
-            startDate = new Date(year, month - 1, day, hour, minute);
+            
+            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
+            const utcDate = new Date(year, month - 1, day, hour, minute);
+            startDate = new Date(utcDate.getTime() - (2 * 60 * 60 * 1000));
             
             if (isNaN(startDate.getTime())) {
                 throw new Error("Date de début invalide");
