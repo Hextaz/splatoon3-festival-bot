@@ -1565,19 +1565,23 @@ const handleRejectButton = async (interaction) => {
 
 const handleFestivalSetup = async (interaction) => {
     try {
+        // IMPORTANT: Defer immédiatement pour éviter l'expiration
+        if (!interaction.deferred && !interaction.replied) {
+            await safeDefer(interaction, true);
+        }
+        
         const setup = interaction.client.festivalSetup?.[interaction.user.id];
         if (!setup) {
-            return await safeReply(interaction, {
-                content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
-                ephemeral: true
+            return await safeEdit(interaction, {
+                content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.'
             });
         }
 
-    if (interaction.customId.startsWith('teamsize_')) {
-        // Étape 1: Taille des équipes sélectionnée
-        const teamSize = parseInt(interaction.customId.split('_')[1]);
-        setup.teamSize = teamSize;
-        setup.step = 2;
+        if (interaction.customId.startsWith('teamsize_')) {
+            // Étape 1: Taille des équipes sélectionnée
+            const teamSize = parseInt(interaction.customId.split('_')[1]);
+            setup.teamSize = teamSize;
+            setup.step = 2;
 
         // Étape 2: Choix du mode de jeu
         const embed = new EmbedBuilder()
@@ -1725,10 +1729,16 @@ const handleFestivalSetup = async (interaction) => {
             delete interaction.client.festivalSetup[interaction.user.id];
         }
         
-        await safeReply(interaction, {
-            content: `Une erreur s'est produite lors de la configuration: ${error.message}\nVeuillez recommencer avec \`/start-festival\`.`,
-            ephemeral: true
-        });
+        if (interaction.deferred || interaction.replied) {
+            await safeEdit(interaction, {
+                content: `Une erreur s'est produite lors de la configuration: ${error.message}\nVeuillez recommencer avec \`/start-festival\`.`
+            });
+        } else {
+            await safeReply(interaction, {
+                content: `Une erreur s'est produite lors de la configuration: ${error.message}\nVeuillez recommencer avec \`/start-festival\`.`,
+                ephemeral: true
+            });
+        }
     }
 };
 
@@ -2015,13 +2025,18 @@ const handleMapBanSelection = async (interaction) => {
 };
 
 const handleFestivalDuration = async (interaction) => {
-    const setup = interaction.client.festivalSetup?.[interaction.user.id];
-    if (!setup) {
-        return await safeReply(interaction, {
-            content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.',
-            ephemeral: true
-        });
-    }
+    try {
+        // IMPORTANT: Defer immédiatement pour éviter l'expiration
+        if (!interaction.deferred && !interaction.replied) {
+            await safeDefer(interaction, true);
+        }
+        
+        const setup = interaction.client.festivalSetup?.[interaction.user.id];
+        if (!setup) {
+            return await safeEdit(interaction, {
+                content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.'
+            });
+        }
 
     if (interaction.customId === 'festivalduration_custom') {
         // Modal avec TOUS les champs y compris les 3 camps
@@ -2124,6 +2139,21 @@ const handleFestivalDuration = async (interaction) => {
         );
 
         return await interaction.showModal(modal);
+    }
+    
+    } catch (error) {
+        console.error('Erreur dans handleFestivalDuration:', error);
+        
+        if (interaction.deferred || interaction.replied) {
+            await safeEdit(interaction, {
+                content: `Une erreur s'est produite: ${error.message}\nVeuillez recommencer avec \`/start-festival\`.`
+            });
+        } else {
+            await safeReply(interaction, {
+                content: `Une erreur s'est produite: ${error.message}\nVeuillez recommencer avec \`/start-festival\`.`,
+                ephemeral: true
+            });
+        }
     }
 };
 
