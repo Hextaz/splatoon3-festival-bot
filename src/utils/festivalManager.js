@@ -148,6 +148,12 @@ async function saveFestival(festival, guildId = null) {
 
 // Créer un nouveau festival
 async function createFestival(title, campNames, startDate, endDate, announcementChannelId, guild = null, options = {}) {
+    // IMPORTANT: Réinitialiser les votes avant de créer le nouveau festival
+    console.log('🧹 Nettoyage des données avant création du nouveau festival...');
+    const { resetVotes } = require('./vote');
+    await resetVotes();
+    console.log('✅ Votes réinitialisés pour le nouveau festival');
+    
     const festival = new Festival(title, campNames, startDate, endDate, announcementChannelId, options);
     
     currentFestival = festival;

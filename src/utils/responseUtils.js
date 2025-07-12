@@ -45,6 +45,31 @@ async function safeReply(interaction, options) {
 }
 
 /**
+ * Check if an interaction is still usable (not expired)
+ * @param {CommandInteraction} interaction - The Discord interaction
+ * @returns {boolean} - Whether the interaction is still usable
+ */
+function isInteractionUsable(interaction) {
+    try {
+        // Check if interaction has expired (3 seconds timeout)
+        const now = Date.now();
+        const interactionTime = interaction.createdTimestamp;
+        const timeDiff = now - interactionTime;
+        
+        // Discord interactions expire after 3 seconds
+        if (timeDiff > 3000) {
+            console.log(`Interaction expired (${timeDiff}ms old)`);
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error checking interaction usability:', error);
+        return false;
+    }
+}
+
+/**
  * Safely defer an interaction reply
  * @param {CommandInteraction} interaction - The Discord interaction
  * @param {boolean} ephemeral - Whether the deferred reply should be ephemeral
@@ -52,22 +77,28 @@ async function safeReply(interaction, options) {
 async function safeDefer(interaction, ephemeral = false) {
     try {
         if (interaction.deferred || interaction.replied) {
-            return;
+            return true; // Already handled
+        }
+
+        if (!isInteractionUsable(interaction)) {
+            console.log('Interaction not usable, skipping defer');
+            return false;
         }
 
         const options = ephemeral ? { flags: MessageFlags.Ephemeral } : {};
-        return await interaction.deferReply(options);
+        await interaction.deferReply(options);
+        return true;
     } catch (error) {
         console.error('Error in safeDefer:', error);
         if (error.code === 10062) {
             console.log('Interaction expired, cannot defer');
-            return null;
+            return false;
         }
         if (error.code === 40060) {
             console.log('Interaction already acknowledged, skipping defer');
-            return null;
+            return true; // Consider as "successful" since it's already handled
         }
-        throw error;
+        return false;
     }
 }
 
