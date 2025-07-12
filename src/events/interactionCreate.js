@@ -31,10 +31,13 @@ const {
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
+        const startTime = Date.now();
+        console.log(`📱 Interaction received: ${interaction.commandName || interaction.customId} at ${startTime}`);
+        
         try {
             // CRITICAL: Immediate defer for critical commands that are known to timeout
             const criticalCommands = ['start-festival'];
-            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_'];
+            const criticalButtons = ['teamsize_', 'gamemode_']; // Reduced to most critical ones
             
             const isCriticalCommand = interaction.type === InteractionType.ApplicationCommand && 
                                      criticalCommands.includes(interaction.commandName);
@@ -43,12 +46,14 @@ module.exports = {
             
             if (isCriticalCommand || isCriticalButton) {
                 // Defer immediately without any checks to prevent timeout
+                const deferStart = Date.now();
                 try {
                     if (!interaction.deferred && !interaction.replied) {
-                        await interaction.deferReply({ ephemeral: true });
+                        await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag
+                        console.log(`⚡ Critical defer completed in ${Date.now() - deferStart}ms`);
                     }
                 } catch (deferError) {
-                    console.error('Critical defer failed:', deferError);
+                    console.error(`❌ Critical defer failed after ${Date.now() - deferStart}ms:`, deferError);
                     return; // Abort if we can't defer critical interactions
                 }
             }
@@ -105,8 +110,11 @@ module.exports = {
                     await handleFestivalDuration(interaction);
                 }
             }
+            
+            console.log(`✅ Interaction ${interaction.commandName || interaction.customId} completed in ${Date.now() - startTime}ms`);
+            
         } catch (error) {
-            console.error('Interaction error:', error);
+            console.error(`❌ Interaction ${interaction.commandName || interaction.customId} failed after ${Date.now() - startTime}ms:`, error);
             
             // Ne pas essayer de répondre si l'interaction est expirée
             if (error.code === 10062) {
