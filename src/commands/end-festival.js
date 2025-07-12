@@ -76,7 +76,7 @@ module.exports = {
             const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
             if (channel) {
                 // Charger la configuration pour obtenir le rôle à mentionner
-                const config = await loadConfig();
+                const config = await loadConfig(interaction.guild.id);
                 
                 const mentionText = config.announcementRoleId ? 
                     `<@&${config.announcementRoleId}> ` : '';

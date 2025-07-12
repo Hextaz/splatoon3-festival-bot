@@ -99,7 +99,7 @@ module.exports = {
                         const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
                         if (channel) {
                             const { loadConfig } = require('./config');
-                            const config = await loadConfig();
+                            const config = await loadConfig(interaction.guild.id);
                             const mentionText = config.announcementRoleId ? 
                                 `<@&${config.announcementRoleId}> ` : '';
                             

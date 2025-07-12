@@ -21,7 +21,7 @@ module.exports = {
             });
             
             // Charger la configuration en arrière-plan
-            const config = await loadConfig();
+            const config = await loadConfig(interaction.guild.id);
             
             // Vérifier si un salon d'annonces est configuré
             if (!config.announcementChannelId) {

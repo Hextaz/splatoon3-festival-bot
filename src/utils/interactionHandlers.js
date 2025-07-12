@@ -130,7 +130,7 @@ const handleFestivalSetupModal = async (interaction) => {
     }
     
     // Récupérer la configuration
-    const config = interaction.client.configData || await loadConfig();
+    const config = interaction.client.configData || await loadConfig(interaction.guild.id);
     
     // Vérifier si un canal d'annonce est configuré
     if (!config.announcementChannelId) {
@@ -217,7 +217,7 @@ const handleCreateFestivalConfirm = async (interaction) => {
             const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
             if (channel) {
                 // Charger la configuration pour obtenir le rôle à mentionner
-                const config = await loadConfig();
+                const config = await loadConfig(interaction.guild.id);
                 const mentionText = config.announcementRoleId ? 
                     `<@&${config.announcementRoleId}> ` : '';
                 
@@ -1915,7 +1915,7 @@ const handleFinalFestivalSetup = async (interaction) => {
 // Fonction commune pour créer le festival
 const createFinalFestival = async (interaction, setup, festivalData) => {
     // Récupérer la configuration
-    const config = interaction.client.configData || await loadConfig();
+    const config = interaction.client.configData || await loadConfig(interaction.guild.id);
     
     if (!config.announcementChannelId) {
         return await interaction.reply({

@@ -713,7 +713,7 @@ async function activateFestivalNow(festival, client) {
             try {
                 const channel = await guild.channels.fetch(festival.announcementChannelId);
                 if (channel) {
-                    const config = await require('../commands/config').loadConfig();
+                    const config = await require('../commands/config').loadConfig(guild.id);
                     const mentionText = config.announcementRoleId ? 
                         `<@&${config.announcementRoleId}> ` : '';
                     
@@ -751,7 +751,7 @@ async function deactivateFestivalNow(festival, client) {
             try {
                 const channel = await guild.channels.fetch(festival.announcementChannelId);
                 if (channel) {
-                    const config = await require('../commands/config').loadConfig();
+                    const config = await require('../commands/config').loadConfig(guild.id);
                     const mentionText = config.announcementRoleId ? 
                         `<@&${config.announcementRoleId}> ` : '';
                     
@@ -854,7 +854,7 @@ async function sendHalfwayAnnouncement(festival, client) {
             const channel = await guild.channels.fetch(festival.announcementChannelId);
             
             if (channel) {
-                const config = await require('../commands/config').loadConfig();
+                const config = await require('../commands/config').loadConfig(guild.id);
                 const mentionText = config.announcementRoleId ? 
                     `<@&${config.announcementRoleId}> ` : '';
                 

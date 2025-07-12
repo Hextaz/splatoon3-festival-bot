@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const DataAdapter = require('../utils/dataAdapter');
-const { safeReply, safeFollowUp } = require('../utils/responseUtils');
+const { safeReply, safeFollowUp, safeDefer } = require('../utils/responseUtils');
 
 // Structure de configuration par défaut
 const defaultConfig = {
@@ -119,7 +119,7 @@ module.exports = {
             } 
             else if (subcommand === 'show') {
                 // Defer la réponse pour avoir plus de temps de traitement
-                await interaction.deferReply({ ephemeral: true });
+                await safeDefer(interaction, true);
                 
                 // Charger et afficher la configuration
                 const config = await loadConfig(guildId);

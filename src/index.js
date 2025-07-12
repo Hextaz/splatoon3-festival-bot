@@ -262,7 +262,7 @@ async function loadAllData() {
                     try {
                         const channel = await guild.channels.fetch(festival.announcementChannelId);
                         if (channel) {
-                            const config = await require('./commands/config').loadConfig();
+                            const config = await require('./commands/config').loadConfig(guild.id);
                             const mentionText = config.announcementRoleId ? 
                                 `<@&${config.announcementRoleId}> ` : '';
                             
@@ -307,7 +307,7 @@ async function loadAllData() {
                         try {
                             const channel = await guild.channels.fetch(festival.announcementChannelId);
                             if (channel) {
-                                const config = await require('./commands/config').loadConfig();
+                                const config = await require('./commands/config').loadConfig(guild.id);
                                 const mentionText = config.announcementRoleId ? 
                                     `<@&${config.announcementRoleId}> ` : '';
                                 
