@@ -89,7 +89,13 @@ const handleFestivalSetupModal = async (interaction) => {
         }
         
         const [, day, month, year, hours, minutes] = startDateStr.match(dateRegex);
-        startDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+        
+        // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
+        const utcDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+        
+        // Ajuster pour le fuseau horaire français : soustraire 2 heures 
+        // car Render.com fonctionne en UTC et nous voulons l'heure française
+        startDate = new Date(utcDate.getTime() - (2 * 60 * 60 * 1000));
         
         if (isNaN(startDate.getTime())) {
             throw new Error("Date invalide");
