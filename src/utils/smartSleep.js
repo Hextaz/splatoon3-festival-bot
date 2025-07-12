@@ -7,6 +7,7 @@ class SmartSleepManager {
         this.isKeepAliveActive = false;
         this.checkInterval = null;
         this.currentReason = '';
+        this.currentKeepAliveType = null;
     }
 
     start() {
@@ -31,6 +32,7 @@ class SmartSleepManager {
         
             let shouldStayAwake = false;
             let reason = '';
+            let keepAliveType = 'minimal'; // 'minimal' ou 'active'
 
             if (festival) {
                 const startDate = new Date(festival.startDate);
@@ -38,12 +40,14 @@ class SmartSleepManager {
                 
                 if (festival.isActive && now >= startDate && now <= endDate) {
                     shouldStayAwake = true;
+                    keepAliveType = 'active';
                     reason = `Festival "${festival.title}" actif`;
                 } else if (now < startDate) {
                     // Festival programmé dans moins de 30 minutes
                     const timeUntilStart = startDate.getTime() - now.getTime();
                     if (timeUntilStart <= 30 * 60 * 1000) { // 30 minutes
                         shouldStayAwake = true;
+                        keepAliveType = 'active';
                         reason = `Festival démarre dans ${Math.round(timeUntilStart / 60000)} minutes`;
                     }
                 } else if (now <= endDate) {
@@ -51,48 +55,66 @@ class SmartSleepManager {
                     const timeAfterEnd = now.getTime() - endDate.getTime();
                     if (timeAfterEnd <= 10 * 60 * 1000) { // 10 minutes après la fin
                         shouldStayAwake = true;
+                        keepAliveType = 'active';
                         reason = `Nettoyage post-festival en cours`;
                     }
                 }
             }
 
+            // Mode keep-alive minimal pour maintenir la connexion Discord
+            if (!shouldStayAwake) {
+                shouldStayAwake = true;
+                keepAliveType = 'minimal';
+                reason = 'Connexion Discord maintenue (keep-alive minimal)';
+            }
+
             // Gérer les transitions
             if (shouldStayAwake && !this.isKeepAliveActive) {
-                this.enableKeepAlive(reason);
-            } else if (!shouldStayAwake && this.isKeepAliveActive) {
+                this.enableKeepAlive(reason, keepAliveType);
+            } else if (shouldStayAwake && this.isKeepAliveActive && this.currentKeepAliveType !== keepAliveType) {
+                // Changer le type de keep-alive
                 this.disableKeepAlive();
+                this.enableKeepAlive(reason, keepAliveType);
             }
         } catch (error) {
             console.error('❌ Erreur lors du chargement des données:', error);
+            // En cas d'erreur, garder au minimum la connexion Discord
+            if (!this.isKeepAliveActive) {
+                this.enableKeepAlive('Connexion Discord maintenue (fallback)', 'minimal');
+            }
         }
     }
 
-    enableKeepAlive(reason) {
+    enableKeepAlive(reason, type = 'active') {
         if (this.isKeepAliveActive) return;
 
-        console.log(`🔄 Activation keep-alive: ${reason}`);
+        console.log(`🔄 Activation keep-alive (${type}): ${reason}`);
         this.currentReason = reason;
+        this.currentKeepAliveType = type;
         
-        // Ping toutes les 10 minutes pour empêcher la veille
+        // Intervalle adapté selon le type
+        const interval = type === 'minimal' ? 
+            12 * 60 * 1000 : // 12 minutes pour minimal (juste sous la limite Render)
+            10 * 60 * 1000;  // 10 minutes pour actif
+
         this.keepAliveInterval = setInterval(() => {
-            console.log(`[KEEP-ALIVE] ${new Date().toISOString()} - ${reason}`);
+            console.log(`[KEEP-ALIVE-${type.toUpperCase()}] ${new Date().toISOString()} - ${reason}`);
             
             // Activité supplémentaire si nécessaire
             this.performKeepAliveActivity();
-        }, 10 * 60 * 1000); // 10 minutes
+        }, interval);
 
         this.isKeepAliveActive = true;
         
         // Log initial immédiat
-        console.log(`[KEEP-ALIVE] Démarrage - ${reason}`);
+        console.log(`[KEEP-ALIVE-${type.toUpperCase()}] Démarrage - ${reason}`);
         this.performKeepAliveActivity();
     }
 
     disableKeepAlive() {
         if (!this.isKeepAliveActive) return;
 
-        console.log('😴 Désactivation keep-alive - Veille autorisée');
-        console.log('💰 Le bot peut maintenant économiser des heures Render');
+        console.log(`😴 Désactivation keep-alive (${this.currentKeepAliveType || 'unknown'})`);
         
         if (this.keepAliveInterval) {
             clearInterval(this.keepAliveInterval);
@@ -101,6 +123,7 @@ class SmartSleepManager {
 
         this.isKeepAliveActive = false;
         this.currentReason = '';
+        this.currentKeepAliveType = null;
     }
 
     performKeepAliveActivity() {
@@ -128,7 +151,7 @@ class SmartSleepManager {
     // Forcer le mode keep-alive (pour événements spéciaux)
     forceKeepAlive(duration, reason) {
         console.log(`⚡ Keep-alive forcé pour ${Math.round(duration/60000)} minutes: ${reason}`);
-        this.enableKeepAlive(`FORCE: ${reason}`);
+        this.enableKeepAlive(`FORCE: ${reason}`, 'active');
         
         setTimeout(() => {
             console.log(`⏰ Fin du keep-alive forcé: ${reason}`);
@@ -146,6 +169,7 @@ class SmartSleepManager {
             return {
                 isKeepAliveActive: this.isKeepAliveActive,
                 currentReason: this.currentReason,
+                keepAliveType: this.currentKeepAliveType,
                 currentFestival: festival ? {
                     title: festival.title,
                     isActive: festival.isActive,
@@ -160,6 +184,7 @@ class SmartSleepManager {
             return {
                 isKeepAliveActive: this.isKeepAliveActive,
                 currentReason: this.currentReason,
+                keepAliveType: this.currentKeepAliveType,
                 currentFestival: null,
                 lastCheck: this.lastFestivalCheck,
                 uptime: Math.round(process.uptime()),

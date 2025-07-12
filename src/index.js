@@ -9,7 +9,7 @@ const readyEvent = require('./events/ready');
 const festivalManager = require('./utils/festivalManager');
 const teamManager = require('./utils/teamManager');
 const scoreTracker = require('./utils/scoreTracker');
-const { SmartSleepManager } = require('./utils/smartSleep');
+const { SimpleKeepAlive } = require('./utils/simpleKeepAlive');
 const { HealthServer } = require('./utils/healthServer');
 const { guildDataManager, connectMongoDB } = require('./utils/database');
 
@@ -25,12 +25,12 @@ const client = new Client({
 
 global.client = client;
 
-// Initialiser le système de veille intelligente et le serveur de santé
-const smartSleepManager = new SmartSleepManager();
+// Initialiser le keep-alive simple et le serveur de santé
+const simpleKeepAlive = new SimpleKeepAlive();
 const healthServer = new HealthServer();
 
-// Rendre les instances disponibles globalement
-global.smartSleepManager = smartSleepManager;
+// Rendre les instances disponibles globalement  
+global.simpleKeepAlive = simpleKeepAlive;
 global.healthServer = healthServer;
 global.guildDataManager = guildDataManager;
 
@@ -419,11 +419,11 @@ async function loadAllData() {
         
         console.log('✅ Toutes les données chargées avec succès');
         
-        // Démarrer le système de veille intelligente
-        console.log('🛡️ Démarrage du système de veille intelligente...');
+        // Démarrer le keep-alive permanent et le serveur de santé
+        console.log('🔄 Démarrage du keep-alive permanent...');
         healthServer.start();
-        smartSleepManager.start();
-        console.log('✅ Système de veille intelligente démarré');
+        simpleKeepAlive.start();
+        console.log('✅ Bot configuré pour rester actif H24 - Réactivité maximale');
         
     } catch (error) {
         console.error('❌ Erreur lors du chargement des données:', error);
@@ -525,8 +525,8 @@ loadAllData();
 // Gestionnaire d'arrêt propre
 process.on('SIGINT', () => {
     console.log('🛑 Arrêt du bot détecté...');
-    if (global.smartSleepManager) {
-        global.smartSleepManager.stop();
+    if (global.simpleKeepAlive) {
+        global.simpleKeepAlive.stop();
     }
     if (global.healthServer) {
         global.healthServer.stop();
@@ -537,8 +537,8 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
     console.log('🛑 Arrêt du bot détecté (SIGTERM)...');
-    if (global.smartSleepManager) {
-        global.smartSleepManager.stop();
+    if (global.simpleKeepAlive) {
+        global.simpleKeepAlive.stop();
     }
     if (global.healthServer) {
         global.healthServer.stop();
