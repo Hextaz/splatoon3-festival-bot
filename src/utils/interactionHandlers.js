@@ -7,38 +7,52 @@ const scoreTracker = require('./scoreTracker');
 const { scheduleMatchChannelDeletion } = require('./channelManager');
 const { startMatchSearch, cleanupSearch } = require('./matchSearch');
 const { loadConfig, saveConfig } = require('../commands/config');
-const fs = require('fs').promises;
-const path = require('path');
+const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
 
-const PENDING_RESULTS_FILE = path.join(__dirname, '../../data/pendingResults.json');
+// Global variables
+const pendingResults = new Map();
+let currentGuildId = null;
+const dataAdapter = new DataAdapter();
+
+// Set guild ID for this module
+function setCurrentGuildId(guildId) {
+    currentGuildId = guildId;
+}
 
 // Fonction pour charger les résultats en attente
 async function loadPendingResults() {
     try {
-        const data = await fs.readFile(PENDING_RESULTS_FILE, 'utf8');
-        const parsed = JSON.parse(data);
-        
-        // Reconstituer la Map depuis l'objet JSON
-        Object.entries(parsed).forEach(([key, value]) => {
-            pendingResults.set(key, value);
-        });
-        
-        console.log(`${pendingResults.size} résultats en attente chargés`);
-    } catch (error) {
-        if (error.code !== 'ENOENT') {
-            console.error('Erreur lors du chargement des résultats en attente:', error);
+        if (!currentGuildId) {
+            console.error('Guild ID not set for interaction handlers');
+            return;
         }
-        // Si le fichier n'existe pas, c'est normal au premier démarrage
+
+        const data = await dataAdapter.loadPendingResults(currentGuildId);
+        if (data) {
+            // Reconstituer la Map depuis l'objet JSON
+            Object.entries(data).forEach(([key, value]) => {
+                pendingResults.set(key, value);
+            });
+            
+            console.log(`${pendingResults.size} résultats en attente chargés`);
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des résultats en attente:', error);
     }
 }
 
 // Fonction pour sauvegarder les résultats en attente
 async function savePendingResults() {
     try {
+        if (!currentGuildId) {
+            console.error('Guild ID not set for interaction handlers');
+            return;
+        }
+
         // Convertir la Map en objet pour la sérialisation JSON
         const dataToSave = Object.fromEntries(pendingResults);
-        await fs.writeFile(PENDING_RESULTS_FILE, JSON.stringify(dataToSave, null, 2), 'utf8');
+        await dataAdapter.savePendingResults(currentGuildId, dataToSave);
     } catch (error) {
         console.error('Erreur lors de la sauvegarde des résultats en attente:', error);
     }
@@ -1124,7 +1138,7 @@ const handleConfigSelect = async (interaction) => {
 };
 
 // Stockage temporaire des résultats en attente de confirmation
-const pendingResults = new Map(); // clé: matchId (team1Name_vs_team2Name), valeur: résultat en attente
+// Using global pendingResults Map declared at top of file
 
 const handleResultButton = async (interaction) => {
     try {
@@ -2130,5 +2144,6 @@ module.exports = {
     handleMapBanSelection,      // ← Ajouter
     handleFinalFestivalSetup,
     handleFestivalDuration,
-    createFinalFestival
+    createFinalFestival,
+    setCurrentGuildId           // ← Add the function
 };

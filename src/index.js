@@ -519,6 +519,42 @@ async function startBot() {
     await client.login(botToken);
 }
 
+// Fonction pour initialiser les managers avec guildId
+function initializeManagersForGuild(guildId) {
+    console.log(`🔧 Initialisation des managers pour le serveur: ${guildId}`);
+    
+    // Initialiser tous les managers avec le guildId
+    festivalManager.setCurrentGuildId(guildId);
+    teamManager.setCurrentGuildId(guildId);
+    scoreTracker.setCurrentGuildId(guildId);
+    
+    // Initialiser les autres managers si nécessaire
+    const voteManager = require('./utils/vote');
+    if (voteManager.setCurrentGuildId) {
+        voteManager.setCurrentGuildId(guildId);
+    }
+    
+    const matchHistoryManager = require('./utils/matchHistoryManager');
+    if (matchHistoryManager.setCurrentGuildId) {
+        matchHistoryManager.setCurrentGuildId(guildId);
+    }
+    
+    const mapProbabilityManager = require('./utils/mapProbabilityManager');
+    if (mapProbabilityManager.setCurrentGuildId) {
+        mapProbabilityManager.setCurrentGuildId(guildId);
+    }
+    
+    const interactionHandlers = require('./utils/interactionHandlers');
+    if (interactionHandlers.setCurrentGuildId) {
+        interactionHandlers.setCurrentGuildId(guildId);
+    }
+    
+    console.log(`✅ Managers initialisés pour le serveur: ${guildId}`);
+}
+
+// Exposer la fonction globalement
+global.initializeManagersForGuild = initializeManagersForGuild;
+
 // Démarrer le bot
 startBot().catch(error => {
     console.error('❌ Erreur lors du démarrage du bot:', error);

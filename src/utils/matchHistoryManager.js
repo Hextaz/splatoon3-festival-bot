@@ -1,26 +1,33 @@
 // src/utils/matchHistoryManager.js
-const fs = require('fs').promises;
-const path = require('path');
-
-const MATCH_HISTORY_FILE = path.join(__dirname, '../../data/matchHistory.json');
-const MATCH_COUNTERS_FILE = path.join(__dirname, '../../data/matchCounters.json');
+const DataAdapter = require('./dataAdapter');
 
 class MatchHistoryManager {
     constructor() {
         this.teamMatchHistory = new Map();
         this.teamMatchCounters = new Map();
         this.MATCH_HISTORY_LIMIT = 20;
+        this.currentGuildId = null;
+        this.dataAdapter = new DataAdapter();
+    }
+
+    setCurrentGuildId(guildId) {
+        this.currentGuildId = guildId;
     }
 
     // Sauvegarder l'historique des matchs
     async saveMatchHistory() {
         try {
-            // Convertir Map en objet pour JSON
+            if (!this.currentGuildId) {
+                console.error('Guild ID not set for match history manager');
+                return;
+            }
+
+            // Convertir Map en objet pour stockage
             const historyObj = Object.fromEntries(this.teamMatchHistory);
             const countersObj = Object.fromEntries(this.teamMatchCounters);
             
-            await fs.writeFile(MATCH_HISTORY_FILE, JSON.stringify(historyObj, null, 2));
-            await fs.writeFile(MATCH_COUNTERS_FILE, JSON.stringify(countersObj, null, 2));
+            await this.dataAdapter.saveMatchHistory(this.currentGuildId, historyObj);
+            await this.dataAdapter.saveMatchCounters(this.currentGuildId, countersObj);
             
             console.log('Historique des matchs sauvegardé');
         } catch (error) {
@@ -31,26 +38,29 @@ class MatchHistoryManager {
     // Charger l'historique des matchs
     async loadMatchHistory() {
         try {
+            if (!this.currentGuildId) {
+                console.error('Guild ID not set for match history manager');
+                return;
+            }
+
             // Charger l'historique
-            try {
-                const historyData = await fs.readFile(MATCH_HISTORY_FILE, 'utf8');
-                const historyObj = JSON.parse(historyData);
+            const historyObj = await this.dataAdapter.loadMatchHistory(this.currentGuildId);
+            if (historyObj) {
                 this.teamMatchHistory = new Map(Object.entries(historyObj));
                 console.log(`Historique des matchs chargé: ${this.teamMatchHistory.size} équipes`);
-            } catch (error) {
+            } else {
                 console.log('Aucun historique de matchs trouvé, démarrage avec historique vide');
                 this.teamMatchHistory = new Map();
             }
 
             // Charger les compteurs
-            try {
-                const countersData = await fs.readFile(MATCH_COUNTERS_FILE, 'utf8');
-                const countersObj = JSON.parse(countersData);
+            const countersObj = await this.dataAdapter.loadMatchCounters(this.currentGuildId);
+            if (countersObj) {
                 this.teamMatchCounters = new Map(Object.entries(countersObj).map(([k, v]) => [k, parseInt(v)]));
                 console.log(`Compteurs de matchs chargés: ${this.teamMatchCounters.size} équipes`);
-            } catch (error) {
-                console.log('Aucun compteur de matchs trouvé, initialisation depuis l\'historique des scores');
-                await this.initializeFromScoreHistory();
+            } else {
+                console.log('Aucun compteur de matchs trouvé, démarrage avec compteurs vides');
+                this.teamMatchCounters = new Map();
             }
         } catch (error) {
             console.error('Erreur lors du chargement de l\'historique:', error);

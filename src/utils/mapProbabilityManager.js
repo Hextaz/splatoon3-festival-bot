@@ -1,9 +1,6 @@
 // Créer src/utils/mapProbabilityManager.js
-const fs = require('fs').promises;
-const path = require('path');
+const DataAdapter = require('./dataAdapter');
 const { ALL_MAP_KEYS } = require('../data/mapsAndModes');
-
-const MAP_PROBABILITIES_FILE = path.join(__dirname, '../../data/mapProbabilities.json');
 
 class MapProbabilityManager {
     constructor() {
@@ -11,40 +8,53 @@ class MapProbabilityManager {
         this.defaultProbability = 1.0;
         this.probabilityDecay = 0.3; // Réduction de proba quand une map est sélectionnée
         this.probabilityIncrease = 0.1; // Augmentation par BO3 sans sélection
+        this.currentGuildId = null;
+        this.dataAdapter = new DataAdapter();
+    }
+
+    setCurrentGuildId(guildId) {
+        this.currentGuildId = guildId;
     }
 
     async loadProbabilities() {
         try {
-            const data = await fs.readFile(MAP_PROBABILITIES_FILE, 'utf8');
-            const parsed = JSON.parse(data);
-            
-            // Reconstituer les Maps depuis l'objet JSON
-            Object.entries(parsed).forEach(([teamName, mapProbs]) => {
-                const teamMap = new Map();
-                Object.entries(mapProbs).forEach(([mapKey, prob]) => {
-                    teamMap.set(mapKey, prob);
-                });
-                this.teamMapProbabilities.set(teamName, teamMap);
-            });
-            
-            console.log(`Probabilités de maps chargées pour ${this.teamMapProbabilities.size} équipes`);
-        } catch (error) {
-            if (error.code !== 'ENOENT') {
-                console.error('Erreur lors du chargement des probabilités de maps:', error);
+            if (!this.currentGuildId) {
+                console.error('Guild ID not set for map probability manager');
+                return;
             }
-            // Fichier inexistant = normal au premier démarrage
+
+            const data = await this.dataAdapter.loadMapProbabilities(this.currentGuildId);
+            if (data) {
+                // Reconstituer les Maps depuis l'objet JSON
+                Object.entries(data).forEach(([teamName, mapProbs]) => {
+                    const teamMap = new Map();
+                    Object.entries(mapProbs).forEach(([mapKey, prob]) => {
+                        teamMap.set(mapKey, prob);
+                    });
+                    this.teamMapProbabilities.set(teamName, teamMap);
+                });
+                
+                console.log(`Probabilités de maps chargées pour ${this.teamMapProbabilities.size} équipes`);
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement des probabilités de maps:', error);
         }
     }
 
     async saveProbabilities() {
         try {
+            if (!this.currentGuildId) {
+                console.error('Guild ID not set for map probability manager');
+                return;
+            }
+
             // Convertir les Maps en objets pour la sérialisation JSON
             const dataToSave = {};
             for (const [teamName, mapProbs] of this.teamMapProbabilities) {
                 dataToSave[teamName] = Object.fromEntries(mapProbs);
             }
             
-            await fs.writeFile(MAP_PROBABILITIES_FILE, JSON.stringify(dataToSave, null, 2), 'utf8');
+            await this.dataAdapter.saveMapProbabilities(this.currentGuildId, dataToSave);
         } catch (error) {
             console.error('Erreur lors de la sauvegarde des probabilités de maps:', error);
         }

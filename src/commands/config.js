@@ -1,9 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const fs = require('fs').promises;
-const path = require('path');
-
-// Chemin vers le fichier de configuration
-const configPath = path.join(__dirname, '../../data/config.json');
+const DataAdapter = require('../utils/dataAdapter');
 
 // Structure de configuration par défaut
 const defaultConfig = {
@@ -11,33 +7,32 @@ const defaultConfig = {
     announcementRoleId: null
 };
 
+const dataAdapter = new DataAdapter();
+
 // Fonction pour charger la configuration
-async function loadConfig() {
+async function loadConfig(guildId = null) {
     try {
-        // Créer le dossier data s'il n'existe pas
-        const dataDir = path.join(__dirname, '../../data');
-        await fs.mkdir(dataDir, { recursive: true });
-        
-        const data = await fs.readFile(configPath, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            // Si le fichier n'existe pas, retourner la config par défaut
+        if (!guildId) {
+            // Si pas de guildId fourni, retourner la config par défaut
             return { ...defaultConfig };
         }
+
+        const data = await dataAdapter.loadConfig(guildId);
+        return data || { ...defaultConfig };
+    } catch (error) {
         console.error('Erreur lors du chargement de la configuration:', error);
-        throw error;
+        return { ...defaultConfig };
     }
 }
 
 // Fonction pour sauvegarder la configuration
-async function saveConfig(config) {
+async function saveConfig(config, guildId) {
     try {
-        // Créer le dossier data s'il n'existe pas
-        const dataDir = path.join(__dirname, '../../data');
-        await fs.mkdir(dataDir, { recursive: true });
-        
-        await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+        if (!guildId) {
+            throw new Error('Guild ID required for saving config');
+        }
+
+        await dataAdapter.saveConfig(guildId, config);
     } catch (error) {
         console.error('Erreur lors de la sauvegarde de la configuration:', error);
         throw error;
@@ -72,14 +67,23 @@ module.exports = {
     
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
+        const guildId = interaction.guild?.id;
+        
+        if (!guildId) {
+            await interaction.reply({
+                content: 'Cette commande doit être utilisée dans un serveur.',
+                ephemeral: true
+            });
+            return;
+        }
         
         try {
-            const config = await loadConfig();
+            const config = await loadConfig(guildId);
             
             if (subcommand === 'channel') {
                 const channel = interaction.options.getChannel('channel');
                 config.announcementChannelId = channel.id;
-                await saveConfig(config);
+                await saveConfig(config, guildId);
                 
                 await interaction.reply({
                     content: `Le salon d'annonces par défaut a été défini sur ${channel}`,
@@ -89,7 +93,7 @@ module.exports = {
             else if (subcommand === 'role') {
                 const role = interaction.options.getRole('role');
                 config.announcementRoleId = role.id;
-                await saveConfig(config);
+                await saveConfig(config, guildId);
                 
                 await interaction.reply({
                     content: `Le rôle à mentionner a été défini sur ${role}`,

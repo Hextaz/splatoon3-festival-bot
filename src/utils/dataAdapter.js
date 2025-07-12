@@ -215,70 +215,151 @@ class DataAdapter {
         }
     }
 
-    // --- SCORES ---
+    // --- MATCH HISTORY ---
 
-    async getScores() {
+    async loadMatchHistory(guildId) {
         if (isMongoDBAvailable()) {
-            const festival = await this.getFestival();
-            if (!festival) return {};
+            // Pour MongoDB, on peut stocker l'historique des matchs dans un document séparé
+            // ou dans une collection dédiée. Pour l'instant, on utilise le fallback JSON
+            return this._getJSONData(`guilds/${guildId}/matchHistory.json`);
+        } else {
+            return this._getJSONData(`guilds/${guildId}/matchHistory.json`);
+        }
+    }
 
-            const scores = await CampScore.find({ 
-                guildId: this.guildId, 
+    async saveMatchHistory(guildId, historyData) {
+        if (isMongoDBAvailable()) {
+            // Pour l'instant, on utilise le fallback JSON
+            return this._saveJSONData(`guilds/${guildId}/matchHistory.json`, historyData);
+        } else {
+            return this._saveJSONData(`guilds/${guildId}/matchHistory.json`, historyData);
+        }
+    }
+
+    async loadMatchCounters(guildId) {
+        if (isMongoDBAvailable()) {
+            return this._getJSONData(`guilds/${guildId}/matchCounters.json`);
+        } else {
+            return this._getJSONData(`guilds/${guildId}/matchCounters.json`);
+        }
+    }
+
+    async saveMatchCounters(guildId, countersData) {
+        if (isMongoDBAvailable()) {
+            return this._saveJSONData(`guilds/${guildId}/matchCounters.json`, countersData);
+        } else {
+            return this._saveJSONData(`guilds/${guildId}/matchCounters.json`, countersData);
+        }
+    }
+
+    // --- MAP PROBABILITIES ---
+
+    async loadMapProbabilities(guildId) {
+        if (isMongoDBAvailable()) {
+            const festival = await Festival.findOne({ guildId, isActive: true });
+            if (!festival) return null;
+            
+            const mapProbs = await MapProbability.find({ 
+                guildId, 
                 festivalId: festival._id 
             });
-
-            const scoresObj = {};
-            scores.forEach(score => {
-                scoresObj[score.camp] = {
-                    totalPoints: score.totalPoints,
-                    matchesWon: score.matchesWon,
-                    matchesLost: score.matchesLost,
-                    teamsCount: score.teamsCount,
-                    votesCount: score.votesCount
-                };
+            
+            // Convertir en format attendu
+            const data = {};
+            mapProbs.forEach(prob => {
+                if (!data[prob.teamName]) {
+                    data[prob.teamName] = {};
+                }
+                data[prob.teamName][prob.mapKey] = prob.probability;
             });
-            return scoresObj;
+            return Object.keys(data).length > 0 ? data : null;
         } else {
-            return this._getJSONData('scores.json') || {};
+            return this._getJSONData(`guilds/${guildId}/mapProbabilities.json`);
         }
     }
 
-    async updateScore(camp, scoreData) {
+    async saveMapProbabilities(guildId, probData) {
         if (isMongoDBAvailable()) {
-            const festival = await this.getFestival();
-            if (!festival) throw new Error('No active festival');
-
-            return await CampScore.findOneAndUpdate(
-                { guildId: this.guildId, festivalId: festival._id, camp },
-                { ...scoreData, lastUpdated: new Date() },
-                { upsert: true, new: true }
-            );
+            const festival = await Festival.findOne({ guildId, isActive: true });
+            if (!festival) return;
+            
+            // Supprimer les anciennes probabilités
+            await MapProbability.deleteMany({ 
+                guildId, 
+                festivalId: festival._id 
+            });
+            
+            // Sauvegarder les nouvelles
+            const probDocs = [];
+            Object.entries(probData).forEach(([teamName, teamProbs]) => {
+                Object.entries(teamProbs).forEach(([mapKey, probability]) => {
+                    probDocs.push({
+                        guildId,
+                        festivalId: festival._id,
+                        teamName,
+                        mapKey,
+                        probability
+                    });
+                });
+            });
+            
+            if (probDocs.length > 0) {
+                await MapProbability.insertMany(probDocs);
+            }
         } else {
-            const scores = await this.getScores();
-            scores[camp] = { ...scores[camp], ...scoreData };
-            return this._saveJSONData('scores.json', scores);
+            return this._saveJSONData(`guilds/${guildId}/mapProbabilities.json`, probData);
         }
     }
 
-    // --- CONFIGURATION ---
+    // --- PENDING RESULTS ---
 
-    async getGuildConfig() {
+    async loadPendingResults(guildId) {
         if (isMongoDBAvailable()) {
-            return await GuildConfig.findOne({ guildId: this.guildId });
+            return this._getJSONData(`guilds/${guildId}/pendingResults.json`);
         } else {
-            return this._getJSONData('config.json') || {};
+            return this._getJSONData(`guilds/${guildId}/pendingResults.json`);
         }
     }
 
-    async saveGuildConfig(configData) {
+    async savePendingResults(guildId, resultsData) {
+        if (isMongoDBAvailable()) {
+            return this._saveJSONData(`guilds/${guildId}/pendingResults.json`, resultsData);
+        } else {
+            return this._saveJSONData(`guilds/${guildId}/pendingResults.json`, resultsData);
+        }
+    }
+
+    // --- CONFIG ---
+
+    async loadConfig(guildId) {
+        if (isMongoDBAvailable()) {
+            const config = await GuildConfig.findOne({ guildId });
+            if (config) {
+                return {
+                    announcementChannelId: config.announcementChannelId,
+                    announcementRoleId: config.announcementRoleId
+                };
+            }
+            return null;
+        } else {
+            return this._getJSONData(`guilds/${guildId}/config.json`);
+        }
+    }
+
+    async saveConfig(guildId, configData) {
         if (isMongoDBAvailable()) {
             return await GuildConfig.findOneAndUpdate(
-                { guildId: this.guildId },
-                { ...configData, updatedAt: new Date() },
+                { guildId },
+                {
+                    guildId,
+                    announcementChannelId: configData.announcementChannelId,
+                    announcementRoleId: configData.announcementRoleId,
+                    updatedAt: new Date()
+                },
                 { upsert: true, new: true }
             );
         } else {
-            return this._saveJSONData('config.json', configData);
+            return this._saveJSONData(`guilds/${guildId}/config.json`, configData);
         }
     }
 
@@ -299,8 +380,9 @@ class DataAdapter {
 
     async _saveJSONData(filename, data) {
         try {
-            await fs.mkdir(this.dataDir, { recursive: true });
             const filePath = path.join(this.dataDir, filename);
+            const dir = path.dirname(filePath);
+            await fs.mkdir(dir, { recursive: true });
             await fs.writeFile(filePath, JSON.stringify(data, null, 2));
             return data;
         } catch (error) {

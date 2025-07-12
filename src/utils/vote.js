@@ -1,15 +1,56 @@
 const fs = require('fs').promises;
 const path = require('path');
 const Vote = require('../models/Vote');
+const DataAdapter = require('./dataAdapter');
 
 // Chemin vers le fichier de données des votes
 const votesPath = path.join(__dirname, '../../data/votes.json');
 
 // Instance unique du modèle Vote pour l'application
 const voteInstance = new Vote();
+let currentGuildId = null;
 
-// Fonction pour sauvegarder les votes dans un fichier
+// Helper pour obtenir le DataAdapter
+function getDataAdapter(guildId = currentGuildId) {
+    if (!guildId) {
+        console.warn('Aucun guildId défini pour vote, utilisation JSON');
+        return null;
+    }
+    return new DataAdapter(guildId);
+}
+
+// Définir le guildId actuel
+function setCurrentGuildId(guildId) {
+    currentGuildId = guildId;
+}
+
+// Fonction pour sauvegarder les votes (hybride JSON/MongoDB)
 async function saveVotes() {
+    try {
+        const adapter = getDataAdapter();
+        
+        if (adapter) {
+            // Sauvegarder chaque vote individuellement dans MongoDB
+            console.log('💾 Sauvegarde des votes avec DataAdapter');
+            const userVotes = Object.fromEntries(voteInstance.getUserVotes());
+            
+            for (const [userId, camp] of Object.entries(userVotes)) {
+                await adapter.saveVote(userId, camp);
+            }
+            console.log('✅ Votes sauvegardés avec DataAdapter');
+        } else {
+            // Fallback JSON
+            await saveVotesJSON();
+        }
+    } catch (error) {
+        console.error('Erreur lors de la sauvegarde des votes:', error);
+        // Fallback vers JSON en cas d'erreur MongoDB
+        await saveVotesJSON();
+    }
+}
+
+// Fonction JSON de sauvegarde (fallback)
+async function saveVotesJSON() {
     try {
         const dataDir = path.join(__dirname, '../../data');
         await fs.mkdir(dataDir, { recursive: true });
@@ -27,8 +68,45 @@ async function saveVotes() {
     }
 }
 
-// Fonction pour charger les votes depuis le fichier
+// Fonction pour charger les votes (hybride JSON/MongoDB)
 async function loadVotes() {
+    try {
+        const adapter = getDataAdapter();
+        
+        if (adapter) {
+            // Charger depuis MongoDB
+            console.log('📥 Chargement des votes avec DataAdapter');
+            const votesData = await adapter.getVotes();
+            
+            // Reconstituer les compteurs par camp
+            const counts = { camp1: 0, camp2: 0, camp3: 0 };
+            const users = {};
+            
+            for (const [userId, camp] of Object.entries(votesData)) {
+                users[userId] = camp;
+                if (counts[camp] !== undefined) {
+                    counts[camp]++;
+                }
+            }
+            
+            // Charger dans l'instance Vote
+            voteInstance.setVotes(counts);
+            voteInstance.setUserVotes(users);
+            
+            console.log('✅ Votes chargés avec DataAdapter');
+        } else {
+            // Fallback JSON
+            await loadVotesJSON();
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des votes:', error);
+        // Fallback vers JSON en cas d'erreur MongoDB
+        await loadVotesJSON();
+    }
+}
+
+// Fonction JSON de chargement (fallback)
+async function loadVotesJSON() {
     try {
         const data = await fs.readFile(votesPath, 'utf8');
         const votesData = JSON.parse(data);
@@ -91,5 +169,6 @@ module.exports = {
     getWinningCamp,
     loadVotes,
     saveVotes,
-    resetVotes
+    resetVotes,
+    setCurrentGuildId
 };
