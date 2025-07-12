@@ -1575,14 +1575,8 @@ const handleRejectButton = async (interaction) => {
 
 const handleFestivalSetup = async (interaction) => {
     try {
-        // CRITICAL: Defer immédiatement selon le type d'interaction
-        if (!interaction.deferred && !interaction.replied) {
-            if (interaction.isButton() || interaction.isStringSelectMenu()) {
-                await safeDefer(interaction, true, true); // true for ephemeral, true for isUpdate
-            } else {
-                await safeDefer(interaction, true);
-            }
-        }
+        // ✅ Le defer est déjà fait dans interactionCreate.js pour les boutons critiques
+        // Pas besoin de re-defer ici
         
         const setup = interaction.client.festivalSetup?.[interaction.user.id];
         
@@ -2069,10 +2063,8 @@ const handleMapBanSelection = async (interaction) => {
 
 const handleFestivalDuration = async (interaction) => {
     try {
-        // IMPORTANT: Defer immédiatement pour éviter l'expiration
-        if (!interaction.deferred && !interaction.replied) {
-            await safeDefer(interaction, true);
-        }
+        // ✅ Le defer est déjà fait dans interactionCreate.js pour les boutons critiques
+        // Pas besoin de re-defer ici
         
         const setup = interaction.client.festivalSetup?.[interaction.user.id];
         if (!setup) {
