@@ -9,7 +9,7 @@ const { startMatchSearch, cleanupSearch } = require('./matchSearch');
 const { loadConfig, saveConfig } = require('../commands/config');
 const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
-const { safeReply, safeDefer, safeFollowUp, safeEdit, safeUpdate } = require('./responseUtils');
+const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
 
 // Global variables
 const pendingResults = new Map();
@@ -344,7 +344,7 @@ const handleDurationButton = async (interaction) => {
             { name: 'Salon d\'annonces', value: `<#${tempFestivalData.announcementChannelId}>` }
         );
     
-    await safeUpdate(interaction, {
+    await safeEdit(interaction, {
         embeds: [embed],
         components: [confirmRow]
     });
@@ -440,7 +440,7 @@ const handleVoteButton = async (interaction) => {
     const festival = getCurrentFestival();
     
     if (!festival) {
-        return await safeUpdate(interaction, {
+        return await safeEdit(interaction, {
             content: 'Le festival n\'est plus disponible. Veuillez réessayer plus tard.',
             embeds: [],
             components: []
@@ -455,7 +455,7 @@ const handleVoteButton = async (interaction) => {
         ).filter(role => role);
         
         if (existingCampRoles.length > 0) {
-            return await safeUpdate(interaction, {
+            return await safeEdit(interaction, {
                 content: `Vous avez déjà rejoint le camp ${existingCampRoles[0].name.replace('Camp ', '')}. Vous ne pouvez pas changer de camp.`,
                 embeds: [],
                 components: []
@@ -504,7 +504,7 @@ const handleVoteButton = async (interaction) => {
             )
             .setFooter({ text: 'Bon festival! Que le meilleur camp gagne!' });
         
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: '',
             embeds: [embed],
             components: []
@@ -512,7 +512,7 @@ const handleVoteButton = async (interaction) => {
         
     } catch (error) {
         console.error('Erreur lors du vote:', error);
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
             embeds: [],
             components: []
@@ -985,7 +985,7 @@ const handleCampSelect = async (interaction) => {
         campDisplayName: campDisplayName
     };
     
-    await safeUpdate(interaction, {
+    await safeEdit(interaction, {
         content: `Creating team "${teamName}". Camp: ${campDisplayName}. Please select if your team is open or closed:`,
         components: interaction.message.components.slice(1) // Garder seulement la rangée des boutons
     });
@@ -999,7 +999,7 @@ const handleTeamTypeButton = async (interaction) => {
     // Récupérer les données temporaires
     const teamData = interaction.client.tempTeamData?.[interaction.user.id];
     if (!teamData) {
-        return await safeUpdate(interaction, {
+        return await safeEdit(interaction, {
             content: 'An error occurred. Please try again.',
             components: []
         });
@@ -1040,13 +1040,13 @@ const handleTeamTypeButton = async (interaction) => {
         // Nettoyer les données temporaires
         delete interaction.client.tempTeamData[interaction.user.id];
         
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: '',
             embeds: [embed],
             components: []
         });
     } catch (error) {
-        await safeUpdate(interaction, { 
+        await safeEdit(interaction, { 
             content: `Error creating team: ${error.message}`, 
             components: []
         });
@@ -1059,7 +1059,7 @@ const handleCancelSearchButton = async (interaction) => {
     // Trouver l'équipe
     const team = findTeamByName(teamName);
     if (!team) {
-        return await safeUpdate(interaction, {
+        return await safeEdit(interaction, {
             content: 'Équipe introuvable. La recherche a peut-être déjà été annulée.',
             embeds: [],
             components: []
@@ -1068,7 +1068,7 @@ const handleCancelSearchButton = async (interaction) => {
     
     // Vérifier si l'utilisateur est membre de cette équipe
     if (!team.isMember(interaction.user.id)) {
-        return await safeUpdate(interaction, {
+        return await safeEdit(interaction, {
             content: 'Vous n\'êtes pas membre de cette équipe.',
             embeds: [],
             components: []
@@ -1079,13 +1079,13 @@ const handleCancelSearchButton = async (interaction) => {
     const cancelled = cleanupSearch(teamName);
     
     if (cancelled) {
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: `La recherche de match pour l'équipe **${teamName}** a été annulée.`,
             embeds: [],
             components: []
         });
     } else {
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: `La recherche de match pour l'équipe **${teamName}** avait déjà été annulée ou l'équipe est déjà en match.`,
             embeds: [],
             components: []
@@ -1096,7 +1096,7 @@ const handleCancelSearchButton = async (interaction) => {
 const handleConfigSelect = async (interaction) => {
     // Vérifier si les données temporaires existent
     if (!interaction.client.tempConfigData || interaction.client.tempConfigData.userId !== interaction.user.id) {
-        return await safeUpdate(interaction, {
+        return await safeEdit(interaction, {
             content: 'Cette session de configuration a expiré. Veuillez relancer la commande `/config`.',
             components: [],
             ephemeral: true
@@ -1113,7 +1113,7 @@ const handleConfigSelect = async (interaction) => {
             await saveConfig(config);
             
             const channel = await interaction.guild.channels.fetch(selectedId);
-            await safeUpdate(interaction, {
+            await safeEdit(interaction, {
                 content: `Le salon d'annonces a été défini sur ${channel}`,
                 components: [],
                 ephemeral: true
@@ -1125,7 +1125,7 @@ const handleConfigSelect = async (interaction) => {
             await saveConfig(config);
             
             const role = await interaction.guild.roles.fetch(selectedId);
-            await safeUpdate(interaction, {
+            await safeEdit(interaction, {
                 content: `Le rôle à mentionner a été défini sur ${role}`,
                 components: [],
                 ephemeral: true
@@ -1136,7 +1136,7 @@ const handleConfigSelect = async (interaction) => {
         delete interaction.client.tempConfigData;
     } catch (error) {
         console.error('Erreur lors de la mise à jour de la configuration:', error);
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
             components: [],
             ephemeral: true
@@ -1225,7 +1225,7 @@ const handleResultButton = async (interaction) => {
             await savePendingResults();
             
             // Mise à jour du message original
-            await safeUpdate(interaction, {
+            await safeEdit(interaction, {
                 content: `${interaction.user} a déclaré une ${userResult === 'V' ? 'victoire' : 'défaite'} pour l'équipe ${userTeam.name}. Attendez la confirmation de l'équipe adverse.`,
                 components: [],
                 ephemeral: false
@@ -1411,7 +1411,7 @@ const handleConfirmButton = async (interaction) => {
         }
         
         // Mettre à jour le message et supprimer les boutons
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: `${resultMessage}\n\n**Confirmé par:** <@${interaction.user.id}>`,
             embeds: [],
             components: []
@@ -1555,7 +1555,7 @@ const handleRejectButton = async (interaction) => {
         await savePendingResults();
         
         // Mettre à jour le message
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             content: `❌ **Résultat contesté** par <@${interaction.user.id}>. Les deux capitaines doivent se mettre d'accord et recommencer la procédure avec \`/results\`.`,
             embeds: [],
             components: []
@@ -1806,7 +1806,7 @@ async function showFinalSetup(interaction, setup) {
         );
 
     try {
-        await safeUpdate(interaction, {
+        await safeEdit(interaction, {
             embeds: [embed],
             components: [durationRow]
         });

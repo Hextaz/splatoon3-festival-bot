@@ -1,5 +1,5 @@
 const { InteractionType } = require('discord.js');
-const { safeReply, safeUpdate } = require('../utils/responseUtils');
+const { safeReply } = require('../utils/responseUtils');
 const { 
     handleModalSubmit, 
     handleLeaveTeam, 
@@ -212,7 +212,8 @@ async function handleDocumentationSelect(interaction) {
             getString: () => section
         },
         reply: async (options) => {
-            await safeUpdate(interaction, {
+            const { safeEdit } = require('../utils/responseUtils');
+            await safeEdit(interaction, {
                 embeds: options.embeds,
                 components: []
             });
