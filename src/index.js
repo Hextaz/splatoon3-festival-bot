@@ -6,9 +6,7 @@ const { botToken } = require('./config');
 const deployCommands = require('./deploy-commands');
 const interactionCreateEvent = require('./events/interactionCreate');
 const readyEvent = require('./events/ready');
-const festivalManager = require('./utils/festivalManager');
-const teamManager = require('./utils/teamManager');
-const scoreTracker = require('./utils/scoreTracker');
+// Managers seront chargés dynamiquement après la configuration du guildId
 const { SimpleKeepAlive } = require('./utils/simpleKeepAlive');
 const { HealthServer } = require('./utils/healthServer');
 const { guildDataManager, connectMongoDB } = require('./utils/database');
@@ -24,6 +22,9 @@ const client = new Client({
 });
 
 global.client = client;
+
+// Variable pour stocker le guild ID actuel
+let currentGuildId = null;
 
 // Initialiser le keep-alive simple et le serveur de santé
 const simpleKeepAlive = new SimpleKeepAlive();
@@ -69,6 +70,11 @@ async function initializeManagersForGuild(guildId) {
     console.log(`🔧 Initialisation des managers pour le serveur: ${guildId}`);
     
     try {
+        // Charger dynamiquement les managers pour éviter les problèmes d'ordre d'initialisation
+        const festivalManager = require('./utils/festivalManager');
+        const teamManager = require('./utils/teamManager');
+        const scoreTracker = require('./utils/scoreTracker');
+        
         // Initialiser tous les managers avec le guildId dans le bon ordre
         festivalManager.setCurrentGuildId(guildId);
         teamManager.setCurrentGuildId(guildId);
@@ -102,7 +108,47 @@ async function initializeManagersForGuild(guildId) {
         await matchHistoryManager.loadMatchHistory();
         await mapProbabilityManager.loadProbabilities();
         
+        // Charger le festival après que tous les autres managers soient prêts
+        const festival = await festivalManager.loadFestival(guildId);
+
+        // Vérification du statut du festival au démarrage
+        if (festival) {
+            const now = new Date();
+            const startDate = new Date(festival.startDate);
+            const endDate = new Date(festival.endDate);
+            
+            console.log('=== VÉRIFICATION STATUT FESTIVAL AU DÉMARRAGE ===');
+            console.log('Festival:', festival.title);
+            console.log('Maintenant:', now.toISOString());
+            console.log('Début:', startDate.toISOString());
+            console.log('Fin:', endDate.toISOString());
+            console.log('Actuellement actif:', festival.isActive);
+            
+            // Déterminer l'état exact
+            let festivalState = '';
+            if (endDate < now) {
+                festivalState = '🏁 TERMINÉ';
+            } else if (now >= startDate && now <= endDate) {
+                festivalState = festival.isActive ? '🎉 ACTIF' : '⏸️ EN COURS MAIS PAS ACTIVÉ';
+            } else if (startDate > now) {
+                festivalState = '📅 FUTUR/PRÉPARATION';
+            }
+            
+            console.log('État:', festivalState);
+            console.log('================================================');
+        }
+        
         console.log(`✅ Managers initialisés pour le serveur: ${guildId}`);
+        
+        // Démarrer le keep-alive permanent et le serveur de santé (une seule fois)
+        if (!global.keepAliveStarted) {
+            console.log('🔄 Démarrage du keep-alive permanent...');
+            healthServer.start();
+            simpleKeepAlive.start();
+            console.log('✅ Bot configuré pour rester actif H24 - Réactivité maximale');
+            global.keepAliveStarted = true;
+        }
+        
     } catch (error) {
         console.error(`❌ Erreur lors de l'initialisation des managers pour ${guildId}:`, error);
     }
@@ -167,11 +213,11 @@ function checkGuildLimits() {
     }
 }
 
-// Chargement des données au démarrage
+// Chargement des données au démarrage (APRÈS configuration du guildId)
 async function loadAllData() {
     try {
-        // Charger les données du festival
-        const festival = await festivalManager.loadFestival();
+        // Charger les données du festival (guildId maintenant configuré)
+        const festival = await festivalManager.loadFestival(currentGuildId);
 
         // NOUVELLE VÉRIFICATION COMPLÈTE DU STATUT DU FESTIVAL
         if (festival) {
@@ -519,8 +565,8 @@ async function syncAllRoles() {
     console.log('✅ Synchronisation des rôles terminée');
 }
 
-// Démarrer le chargement des données
-loadAllData();
+// Le chargement des données se fait maintenant dans initializeManagersForGuild()
+// après que le guildId soit défini dans l'événement 'ready'
 
 // Gestionnaire d'arrêt propre
 process.on('SIGINT', () => {
