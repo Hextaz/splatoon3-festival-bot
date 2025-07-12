@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const DataAdapter = require('../utils/dataAdapter');
-const { safeReply } = require('../utils/responseUtils');
+const { safeReply, safeDefer, safeFollowUp } = require('../utils/responseUtils');
 
 // Structure de configuration par défaut
 const defaultConfig = {
@@ -67,15 +67,17 @@ module.exports = {
                 .setDescription('Afficher la configuration actuelle')),
     
     async execute(interaction) {
+        // Defer immediately to prevent timeout on database operations
+        await safeDefer(interaction, true);
+        
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guild?.id;
         
         if (!guildId) {
-            await interaction.reply({
+            return await safeFollowUp(interaction, {
                 content: 'Cette commande doit être utilisée dans un serveur.',
                 ephemeral: true
             });
-            return;
         }
         
         try {
@@ -86,7 +88,7 @@ module.exports = {
                 config.announcementChannelId = channel.id;
                 await saveConfig(config, guildId);
                 
-                await safeReply(interaction, {
+                return await safeFollowUp(interaction, {
                     content: `Le salon d'annonces par défaut a été défini sur ${channel}`,
                     ephemeral: true
                 });
@@ -96,7 +98,7 @@ module.exports = {
                 config.announcementRoleId = role.id;
                 await saveConfig(config, guildId);
                 
-                await safeReply(interaction, {
+                return await safeFollowUp(interaction, {
                     content: `Le rôle à mentionner a été défini sur ${role}`,
                     ephemeral: true
                 });
@@ -118,14 +120,14 @@ module.exports = {
                     )
                     .setTimestamp();
                 
-                await safeReply(interaction, {
+                return await safeFollowUp(interaction, {
                     embeds: [embed],
                     ephemeral: true
                 });
             }
         } catch (error) {
             console.error('Erreur lors de la configuration:', error);
-            await safeReply(interaction, {
+            return await safeFollowUp(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });

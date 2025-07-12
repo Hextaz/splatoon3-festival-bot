@@ -35,6 +35,11 @@ async function safeReply(interaction, options) {
             console.log('Interaction expired, cannot respond');
             return null;
         }
+        // If the interaction has already been acknowledged, don't throw
+        if (error.code === 40060) {
+            console.log('Interaction already acknowledged, skipping response');
+            return null;
+        }
         throw error;
     }
 }
@@ -56,6 +61,10 @@ async function safeDefer(interaction, ephemeral = false) {
         console.error('Error in safeDefer:', error);
         if (error.code === 10062) {
             console.log('Interaction expired, cannot defer');
+            return null;
+        }
+        if (error.code === 40060) {
+            console.log('Interaction already acknowledged, skipping defer');
             return null;
         }
         throw error;
@@ -83,6 +92,10 @@ async function safeFollowUp(interaction, options) {
             console.log('Interaction expired, cannot follow up');
             return null;
         }
+        if (error.code === 40060) {
+            console.log('Interaction already acknowledged, skipping follow up');
+            return null;
+        }
         throw error;
     }
 }
@@ -99,6 +112,10 @@ async function safeEdit(interaction, options) {
         console.error('Error in safeEdit:', error);
         if (error.code === 10062) {
             console.log('Interaction expired, cannot edit');
+            return null;
+        }
+        if (error.code === 40060) {
+            console.log('Interaction already acknowledged, skipping edit');
             return null;
         }
         throw error;
