@@ -80,10 +80,8 @@ async function safeDefer(interaction, ephemeral = false) {
             return true; // Already handled
         }
 
-        if (!isInteractionUsable(interaction)) {
-            console.log('Interaction not usable, skipping defer');
-            return false;
-        }
+        // Skip usability check for command interactions to avoid any delays
+        // The Discord API will return an appropriate error if the interaction has expired
 
         const options = ephemeral ? { flags: MessageFlags.Ephemeral } : {};
         await interaction.deferReply(options);

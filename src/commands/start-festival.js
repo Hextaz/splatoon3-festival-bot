@@ -10,10 +10,16 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ADMINISTRATOR),
     
     async execute(interaction) {
+        // CRITICAL: Defer as the absolute first operation
+        const deferResult = await safeDefer(interaction, true);
+        
+        // If defer failed (interaction expired), don't attempt any further operations
+        if (!deferResult) {
+            console.log('Failed to defer interaction, aborting start-festival command');
+            return;
+        }
+        
         try {
-            // IMPORTANT: Defer immédiatement pour éviter l'expiration
-            await safeDefer(interaction, true);
-            
             // Définir le serveur actuel pour le gestionnaire de festival
             setCurrentGuildId(interaction.guild.id);
             
@@ -69,15 +75,16 @@ module.exports = {
 
         } catch (error) {
             console.error('Erreur lors de la configuration du festival:', error);
-            if (interaction.deferred || interaction.replied) {
-                await safeEdit(interaction, {
-                    content: `Une erreur s'est produite: ${error.message}`
-                });
-            } else {
-                await safeReply(interaction, {
-                    content: `Une erreur s'est produite: ${error.message}`,
-                    ephemeral: true
-                });
+            
+            // Only attempt to respond if the interaction was successfully deferred
+            if (interaction.deferred) {
+                try {
+                    await safeEdit(interaction, {
+                        content: `❌ Une erreur s'est produite: ${error.message}`
+                    });
+                } catch (editError) {
+                    console.error('Failed to send error message:', editError);
+                }
             }
         }
     }
