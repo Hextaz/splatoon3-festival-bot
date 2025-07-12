@@ -33,48 +33,84 @@ module.exports = {
     async execute(interaction) {
         const startTime = Date.now();
         
-        // Protection contre les doublons d'interaction avec détection robuste
+        // Protection contre les doublons d'interaction avec détection triple couche
         if (!interaction.client._processedInteractions) {
             interaction.client._processedInteractions = new Map();
         }
+        if (!interaction.client._lastUserActions) {
+            interaction.client._lastUserActions = new Map();
+        }
+        if (!interaction.client._recentInteractions) {
+            interaction.client._recentInteractions = new Map();
+        }
         
-        // Utiliser l'ID unique de l'interaction Discord lui-même comme clé principale
+        // Couche 1: Vérifier l'ID unique de l'interaction Discord
         const interactionKey = interaction.id;
-        
         if (interaction.client._processedInteractions.has(interactionKey)) {
             const previousTime = interaction.client._processedInteractions.get(interactionKey);
             console.log(`🔄 Interaction duplicate ignorée (ID: ${interaction.id}): ${interaction.commandName || interaction.customId} (${startTime - previousTime}ms d'écart)`);
             return;
         }
         
-        // Marquer l'interaction comme en cours de traitement avec son ID unique
-        interaction.client._processedInteractions.set(interactionKey, startTime);
-        setTimeout(() => {
-            interaction.client._processedInteractions.delete(interactionKey);
-        }, 10000); // 10 secondes pour être sûr
-        
-        // Protection additionnelle contre les clics rapides du même utilisateur/bouton
+        // Couche 2: Protection contre les actions utilisateur trop rapides (même action)
         const userActionKey = `${interaction.user.id}_${interaction.commandName || interaction.customId}`;
-        const lastUserAction = interaction.client._lastUserActions?.get(userActionKey) || 0;
+        const lastUserAction = interaction.client._lastUserActions.get(userActionKey) || 0;
         
-        if (!interaction.client._lastUserActions) {
-            interaction.client._lastUserActions = new Map();
-        }
-        
-        if (startTime - lastUserAction < 500) { // Moins de 500ms = probablement un double-clic
+        if (startTime - lastUserAction < 1000) { // Augmenté à 1 seconde pour être plus agressif
             console.log(`⚡ Action trop rapide ignorée: ${interaction.commandName || interaction.customId} (${startTime - lastUserAction}ms depuis la dernière)`);
             return;
         }
         
+        // Couche 3: Protection contre les interactions très similaires dans une fenêtre de temps courte
+        const recentKey = `${interaction.user.id}_${interaction.type}_${Math.floor(startTime / 2000)}`; // Fenêtre de 2 secondes
+        if (interaction.client._recentInteractions.has(recentKey)) {
+            const recentInteractions = interaction.client._recentInteractions.get(recentKey);
+            const similarAction = recentInteractions.find(recent => 
+                recent.commandName === (interaction.commandName || interaction.customId) ||
+                (recent.customId && interaction.customId && recent.customId.startsWith(interaction.customId.split('_')[0]))
+            );
+            
+            if (similarAction && startTime - similarAction.timestamp < 2000) {
+                console.log(`🚫 Interaction similaire récente ignorée: ${interaction.commandName || interaction.customId} (${startTime - similarAction.timestamp}ms d'écart)`);
+                return;
+            }
+        }
+        
+        // Marquer toutes les couches de protection
+        interaction.client._processedInteractions.set(interactionKey, startTime);
         interaction.client._lastUserActions.set(userActionKey, startTime);
         
-        // Nettoyer les anciennes actions utilisateur (toutes les 30 secondes)
+        // Ajouter à la liste des interactions récentes
+        if (!interaction.client._recentInteractions.has(recentKey)) {
+            interaction.client._recentInteractions.set(recentKey, []);
+        }
+        interaction.client._recentInteractions.get(recentKey).push({
+            id: interaction.id,
+            commandName: interaction.commandName,
+            customId: interaction.customId,
+            timestamp: startTime
+        });
+        
+        // Nettoyage automatique
+        setTimeout(() => {
+            interaction.client._processedInteractions.delete(interactionKey);
+        }, 10000);
+        
         if (!interaction.client._lastCleanup || startTime - interaction.client._lastCleanup > 30000) {
             interaction.client._lastCleanup = startTime;
-            // Supprimer les actions plus anciennes que 10 secondes
+            // Nettoyer les anciennes actions (plus de 10 secondes)
             for (const [key, timestamp] of interaction.client._lastUserActions.entries()) {
                 if (startTime - timestamp > 10000) {
                     interaction.client._lastUserActions.delete(key);
+                }
+            }
+            // Nettoyer les interactions récentes (plus de 5 secondes)
+            for (const [key, interactions] of interaction.client._recentInteractions.entries()) {
+                const filtered = interactions.filter(i => startTime - i.timestamp <= 5000);
+                if (filtered.length === 0) {
+                    interaction.client._recentInteractions.delete(key);
+                } else {
+                    interaction.client._recentInteractions.set(key, filtered);
                 }
             }
         }
@@ -82,6 +118,12 @@ module.exports = {
         console.log(`📱 Interaction received: ${interaction.commandName || interaction.customId} at ${startTime}`);
         
         try {
+            // CRITICAL: Final safety check before processing
+            if (interaction.replied || interaction.deferred) {
+                console.log(`⚠️ Interaction already handled: ${interaction.commandName || interaction.customId}`);
+                return;
+            }
+            
             // CRITICAL: Immediate defer for critical commands that are known to timeout
             const criticalCommands = ['start-festival'];
             const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_'];
@@ -97,7 +139,12 @@ module.exports = {
             if (isCriticalCommand || isCriticalButton || isCriticalModal) {
                 const deferStart = Date.now();
                 try {
-                    if (!interaction.deferred && !interaction.replied) {
+                    // Double-check interaction state right before defer
+                    if (interaction.replied) {
+                        console.log(`⚠️ Interaction already replied, skipping defer: ${interaction.commandName || interaction.customId}`);
+                    } else if (interaction.deferred) {
+                        console.log(`⚠️ Interaction already deferred, skipping defer: ${interaction.commandName || interaction.customId}`);
+                    } else {
                         if (interaction.isButton() || interaction.isStringSelectMenu()) {
                             console.log(`🔘 Using deferUpdate for button/select: ${interaction.customId}`);
                             await interaction.deferUpdate({ flags: 64 });
@@ -109,7 +156,16 @@ module.exports = {
                     }
                 } catch (deferError) {
                     console.error(`❌ Critical defer failed after ${Date.now() - deferStart}ms:`, deferError);
-                    return;
+                    
+                    // Spécialiser la gestion d'erreur selon le code
+                    if (deferError.code === 10062) {
+                        console.log(`🚫 Interaction expired before defer (${interaction.id})`);
+                    } else if (deferError.code === 40060) {
+                        console.log(`🚫 Interaction already acknowledged (${interaction.id})`);
+                    } else {
+                        console.log(`🚫 Unknown defer error (${interaction.id}):`, deferError.message);
+                    }
+                    return; // Don't continue processing if defer failed
                 }
             }
 
