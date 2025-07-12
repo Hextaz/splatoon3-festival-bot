@@ -2,7 +2,8 @@ const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRow
 const scoreTracker = require('../utils/scoreTracker');
 const { findTeamByMember, getAllTeams, saveTeams } = require('../utils/teamManager');
 const { scheduleMatchChannelDeletion } = require('../utils/channelManager');
-const { pendingResults } = require('../utils/interactionHandlers'); 
+const { pendingResults } = require('../utils/interactionHandlers');
+const { safeReply } = require('../utils/responseUtils'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,7 +15,7 @@ module.exports = {
             // Vérifier si l'utilisateur est membre d'une équipe
             const userTeam = findTeamByMember(interaction.user.id);
             if (!userTeam) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: "Vous n'êtes membre d'aucune équipe.",
                     ephemeral: true
                 });
@@ -22,7 +23,7 @@ module.exports = {
             
             // Vérifier si l'utilisateur est capitaine de son équipe
             if (!userTeam.isLeader(interaction.user.id)) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: "Seul le capitaine de l'équipe peut déclarer les résultats d'un match.",
                     ephemeral: true
                 });
@@ -30,7 +31,7 @@ module.exports = {
             
             // Vérifier si l'équipe est en match
             if (!userTeam.currentOpponent) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: "Votre équipe n'est pas actuellement en match.",
                     ephemeral: true
                 });
@@ -39,7 +40,7 @@ module.exports = {
             // Récupérer l'équipe adverse
             const opponentTeam = getAllTeams().find(t => t.name === userTeam.currentOpponent);
             if (!opponentTeam) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: "Équipe adverse introuvable. Veuillez contacter un administrateur.",
                     ephemeral: true
                 });
@@ -56,13 +57,13 @@ module.exports = {
                 // Si c'est l'autre équipe qui a déjà déclaré
                 if (pendingResult.declaringTeam !== userTeam.name) {
                     // On ne montre pas les boutons, mais un message pour dire que l'autre équipe a déjà déclaré
-                    return await interaction.reply({
+                    return await safeReply(interaction, {
                         content: `L'équipe adverse a déjà déclaré un résultat. Veuillez attendre leur message de confirmation dans le salon de match.`,
                         ephemeral: true
                     });
                 } else {
                     // Si c'est cette équipe qui a déjà déclaré, montrer son résultat actuel
-                    return await interaction.reply({
+                    return await safeReply(interaction, {
                         content: `Vous avez déjà déclaré que votre équipe a ${pendingResult.result === 'V' ? 'gagné' : 'perdu'}. Attendez la confirmation de l'équipe adverse.`,
                         ephemeral: true
                     });
@@ -84,7 +85,7 @@ module.exports = {
                 .addComponents(winButton, loseButton);
                 
             // Envoyer le message avec les boutons
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Capitaine ${interaction.user}, veuillez déclarer le résultat de votre match contre l'équipe **${opponentTeam.name}**:`,
                 components: [row],
                 ephemeral: false
@@ -92,7 +93,7 @@ module.exports = {
             
         } catch (error) {
             console.error('Erreur dans la commande results:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });
