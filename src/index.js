@@ -11,6 +11,7 @@ const teamManager = require('./utils/teamManager');
 const scoreTracker = require('./utils/scoreTracker');
 const { SmartSleepManager } = require('./utils/smartSleep');
 const { HealthServer } = require('./utils/healthServer');
+const { guildDataManager } = require('./utils/database');
 
 const client = new Client({
     intents: [
@@ -31,6 +32,7 @@ const healthServer = new HealthServer();
 // Rendre les instances disponibles globalement
 global.smartSleepManager = smartSleepManager;
 global.healthServer = healthServer;
+global.guildDataManager = guildDataManager;
 
 // Créer une collection pour les commandes
 client.commands = new Collection();

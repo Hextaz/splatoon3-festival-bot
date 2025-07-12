@@ -1,5 +1,4 @@
 // src/utils/smartSleep.js
-const { getCurrentFestival } = require('./festivalManager');
 
 class SmartSleepManager {
     constructor() {
@@ -23,42 +22,48 @@ class SmartSleepManager {
     }
 
     checkFestivalState() {
-        const festival = getCurrentFestival();
-        const now = new Date();
-        this.lastFestivalCheck = now;
+        try {
+            // Import dynamique pour éviter la dépendance circulaire
+            const { getCurrentFestival } = require('./festivalManager');
+            const festival = getCurrentFestival();
+            const now = new Date();
+            this.lastFestivalCheck = now;
         
-        let shouldStayAwake = false;
-        let reason = '';
+            let shouldStayAwake = false;
+            let reason = '';
 
-        if (festival) {
-            const startDate = new Date(festival.startDate);
-            const endDate = new Date(festival.endDate);
-            
-            if (festival.isActive && now >= startDate && now <= endDate) {
-                shouldStayAwake = true;
-                reason = `Festival "${festival.title}" actif`;
-            } else if (now < startDate) {
-                // Festival programmé dans moins de 30 minutes
-                const timeUntilStart = startDate.getTime() - now.getTime();
-                if (timeUntilStart <= 30 * 60 * 1000) { // 30 minutes
+            if (festival) {
+                const startDate = new Date(festival.startDate);
+                const endDate = new Date(festival.endDate);
+                
+                if (festival.isActive && now >= startDate && now <= endDate) {
                     shouldStayAwake = true;
-                    reason = `Festival démarre dans ${Math.round(timeUntilStart / 60000)} minutes`;
-                }
-            } else if (now <= endDate) {
-                // Festival terminé mais nettoyage en cours
-                const timeAfterEnd = now.getTime() - endDate.getTime();
-                if (timeAfterEnd <= 10 * 60 * 1000) { // 10 minutes après la fin
-                    shouldStayAwake = true;
-                    reason = `Nettoyage post-festival en cours`;
+                    reason = `Festival "${festival.title}" actif`;
+                } else if (now < startDate) {
+                    // Festival programmé dans moins de 30 minutes
+                    const timeUntilStart = startDate.getTime() - now.getTime();
+                    if (timeUntilStart <= 30 * 60 * 1000) { // 30 minutes
+                        shouldStayAwake = true;
+                        reason = `Festival démarre dans ${Math.round(timeUntilStart / 60000)} minutes`;
+                    }
+                } else if (now <= endDate) {
+                    // Festival terminé mais nettoyage en cours
+                    const timeAfterEnd = now.getTime() - endDate.getTime();
+                    if (timeAfterEnd <= 10 * 60 * 1000) { // 10 minutes après la fin
+                        shouldStayAwake = true;
+                        reason = `Nettoyage post-festival en cours`;
+                    }
                 }
             }
-        }
 
-        // Gérer les transitions
-        if (shouldStayAwake && !this.isKeepAliveActive) {
-            this.enableKeepAlive(reason);
-        } else if (!shouldStayAwake && this.isKeepAliveActive) {
-            this.disableKeepAlive();
+            // Gérer les transitions
+            if (shouldStayAwake && !this.isKeepAliveActive) {
+                this.enableKeepAlive(reason);
+            } else if (!shouldStayAwake && this.isKeepAliveActive) {
+                this.disableKeepAlive();
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors du chargement des données:', error);
         }
     }
 

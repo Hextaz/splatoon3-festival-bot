@@ -1,6 +1,8 @@
 // filepath: c:\Users\Hextaz\Documents\splatoon-festival-bot\splatoon3-festival-bot\src\utils\database.js
 const mongoose = require('mongoose');
 const { MongoClient } = require('mongodb');
+const { guildDataManager } = require('./guildDataManager');
+const config = require('../config');
 
 const uri = process.env.MONGODB_URI; // Connection string from .env
 let db;
@@ -23,7 +25,60 @@ const getDB = () => {
     return db;
 };
 
+// Gestionnaire de données avec support multi-serveur
+const getGuildDatabase = (guildId) => {
+    if (config.multiServerEnabled && guildId) {
+        return {
+            async load(fileName, defaultValue = null) {
+                return await guildDataManager.loadGuildData(guildId, fileName, defaultValue);
+            },
+            async save(fileName, data) {
+                return await guildDataManager.saveGuildData(guildId, fileName, data);
+            },
+            async delete(fileName) {
+                return await guildDataManager.deleteGuildData(guildId, fileName);
+            }
+        };
+    }
+    
+    // Mode compatible avec l'ancien système (fichiers globaux)
+    const fs = require('fs').promises;
+    const path = require('path');
+    const dataPath = path.join(__dirname, '../../data');
+    
+    return {
+        async load(fileName, defaultValue = null) {
+            try {
+                const filePath = path.join(dataPath, fileName);
+                const data = await fs.readFile(filePath, 'utf8');
+                return JSON.parse(data);
+            } catch (error) {
+                if (error.code === 'ENOENT') {
+                    return defaultValue;
+                }
+                throw error;
+            }
+        },
+        async save(fileName, data) {
+            const filePath = path.join(dataPath, fileName);
+            await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+        },
+        async delete(fileName) {
+            try {
+                const filePath = path.join(dataPath, fileName);
+                await fs.unlink(filePath);
+            } catch (error) {
+                if (error.code !== 'ENOENT') {
+                    throw error;
+                }
+            }
+        }
+    };
+};
+
 module.exports = {
     connectDB,
     getDB,
+    getGuildDatabase,
+    guildDataManager
 };

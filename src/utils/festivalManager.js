@@ -6,13 +6,34 @@ const scoreTracker = require('./scoreTracker');
 const scheduler = require('node-schedule');
 const { ChannelType } = require('discord.js');
 const { loadConfig } = require('../commands/config');
+const { getGuildDatabase } = require('./database');
 
-// Chemin vers le fichier où les données du festival sont stockées
-const festivalsPath = path.join(__dirname, '../../data/festivals.json');
+// Import du smart sleep manager
+let smartSleepManager;
+try {
+    smartSleepManager = require('./smartSleep');
+} catch (error) {
+    console.warn('SmartSleepManager non disponible:', error.message);
+}
 
 // Singleton pour gérer le festival actif
 let currentFestival = null;
+let currentGuildId = null; // Stocker l'ID du serveur actuel
 let scheduledJobs = {};
+
+// Fonctions helpers pour gérer le guildId automatiquement
+const getCurrentGuildId = () => currentGuildId;
+const setCurrentGuildId = (guildId) => { currentGuildId = guildId; };
+
+// Wrapper pour saveFestival avec guildId automatique
+const saveFestivalAuto = async (festival, guildId = null) => {
+    return await saveFestival(festival, guildId || currentGuildId);
+};
+
+// Wrapper pour loadFestival avec guildId automatique  
+const loadFestivalAuto = async (guildId = null) => {
+    return await loadFestival(guildId || currentGuildId);
+};
 
 // Créer le dossier data s'il n'existe pas
 async function ensureDataDirExists() {
@@ -26,32 +47,33 @@ async function ensureDataDirExists() {
     }
 }
 
-// Charger le festival depuis le fichier
-async function loadFestival() {
+// Charger le festival depuis la base de données spécifique au serveur
+async function loadFestival(guildId = null) {
     try {
-        const data = await fs.readFile(festivalsPath, 'utf8');
-        const festivalData = JSON.parse(data);
+        const db = getGuildDatabase(guildId);
+        const festivalData = await db.load('festivals.json');
         
-        console.log('Données du festival chargées depuis le fichier:', festivalData); // Debug
+        if (!festivalData) {
+            return null;
+        }
+        
+        console.log('Données du festival chargées:', festivalData); // Debug
         
         const festival = Festival.fromJSON(festivalData);
         currentFestival = festival;
         
         return festival;
     } catch (error) {
-        if (error.code !== 'ENOENT') {
-            console.error('Erreur lors du chargement du festival:', error);
-        }
+        console.error('Erreur lors du chargement du festival:', error);
         return null;
     }
 }
 
-// Sauvegarder le festival dans le fichier
-async function saveFestival(festival) {
+// Sauvegarder le festival dans la base de données spécifique au serveur
+async function saveFestival(festival, guildId = null) {
     try {
-        const jsonData = JSON.stringify(festival.toJSON(), null, 2);
-        
-        await fs.writeFile(festivalsPath, jsonData, 'utf8');
+        const db = getGuildDatabase(guildId);
+        await db.save('festivals.json', festival.toJSON());
     } catch (error) {
         console.error('Erreur lors de la sauvegarde du festival:', error);
         throw error;
@@ -63,7 +85,7 @@ async function createFestival(title, campNames, startDate, endDate, announcement
     const festival = new Festival(title, campNames, startDate, endDate, announcementChannelId, options);
     
     currentFestival = festival;
-    await saveFestival(festival);
+    await saveFestival(festival, guild?.id);
     
     console.log('Festival reconstruit:', {
         teamSize: festival.teamSize,
@@ -75,6 +97,11 @@ async function createFestival(title, campNames, startDate, endDate, announcement
     if (guild && guild.client) {
         console.log('📅 Programmation de l\'activation automatique...');
         scheduleActivation(festival, guild.client);
+    }
+    
+    // Notification smart sleep pour activation de l'uptime
+    if (smartSleepManager) {
+        smartSleepManager.keepAwake('Festival créé: activation programmée');
     }
     
     // Envoyer l'annonce de préparation (pas de début)
@@ -114,13 +141,13 @@ async function verifyFestivalStatus() {
     if (now >= startDate && now <= endDate && !festival.isActive) {
         console.log('Festival devrait être actif, activation...');
         festival.activate();
-        await saveFestival(festival);
+        await saveFestivalAuto(festival);
     }
     
     // Si le festival est actif mais devrait être terminé
     if (now > endDate && festival.isActive) {
         festival.deactivate();
-        await saveFestival(festival);
+        await saveFestivalAuto(festival);
     }
 }
 
@@ -870,9 +897,11 @@ function getFestivalStatus(festival) {
 module.exports = {
     getCurrentFestival: () => currentFestival,
     loadFestival,
+    loadFestivalAuto,
     createFestival,
     resetFestivalData,
     saveFestival,
+    saveFestivalAuto,
     deleteFestival,
     createStartEmbed,
     createEndEmbed,
@@ -881,5 +910,7 @@ module.exports = {
     activateFestivalNow,
     deactivateFestivalNow,
     sendHalfwayAnnouncement,
-    getFestivalStatus  // ← AJOUTER
+    getFestivalStatus,
+    getCurrentGuildId,
+    setCurrentGuildId
 };

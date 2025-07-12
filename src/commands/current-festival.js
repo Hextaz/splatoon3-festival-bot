@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { getCurrentFestival, saveFestival } = require('../utils/festivalManager');
+const { getCurrentFestival, saveFestival, setCurrentGuildId, loadFestivalAuto } = require('../utils/festivalManager');
 const { getAllTeams } = require('../utils/teamManager');
 const { getVotes } = require('../utils/vote');
 const scoreTracker = require('../utils/scoreTracker');
@@ -22,7 +22,13 @@ module.exports = {
         .setDescription('Affiche les informations sur le festival actuel'),
     
     async execute(interaction) {
-    try {      
+    try {
+        // Définir le serveur actuel
+        setCurrentGuildId(interaction.guild.id);
+        
+        // Charger le festival pour ce serveur
+        await loadFestivalAuto();
+        
         // Récupérer le festival actuel (potentiellement mis à jour)
         const festival = getCurrentFestival();
             
