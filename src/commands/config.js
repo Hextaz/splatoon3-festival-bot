@@ -12,13 +12,18 @@ const defaultConfig = {
 async function loadConfig(guildId = null) {
     try {
         if (!guildId) {
-            // Si pas de guildId fourni, retourner la config par défaut
+            console.log('🔍 loadConfig: Aucun guildId fourni, retour config par défaut');
             return { ...defaultConfig };
         }
 
+        console.log(`🔍 loadConfig: Chargement pour guildId ${guildId}`);
         const adapter = new DataAdapter(guildId);
         const data = await adapter.getConfig();
-        return data || { ...defaultConfig };
+        console.log('🔍 loadConfig: Données reçues du DataAdapter:', JSON.stringify(data, null, 2));
+        
+        const result = data || { ...defaultConfig };
+        console.log('🔍 loadConfig: Configuration finale:', JSON.stringify(result, null, 2));
+        return result;
     } catch (error) {
         console.error('Erreur lors du chargement de la configuration:', error);
         return { ...defaultConfig };
@@ -32,6 +37,9 @@ async function saveConfig(config, guildId) {
             throw new Error('Guild ID required for saving config');
         }
 
+        console.log(`🔍 saveConfig: Sauvegarde pour guildId ${guildId}`);
+        console.log('🔍 saveConfig: Données à sauvegarder:', JSON.stringify(config, null, 2));
+        
         const adapter = new DataAdapter(guildId);
         await adapter.saveConfig(config);
         console.log(`✅ Configuration sauvegardée pour le serveur ${guildId}`);
@@ -77,31 +85,42 @@ module.exports = {
                 ephemeral: true
             });
         }
-        
+
         try {
-            const config = await loadConfig(guildId);
-            
             if (subcommand === 'channel') {
                 const channel = interaction.options.getChannel('channel');
-                config.announcementChannelId = channel.id;
-                await saveConfig(config, guildId);
                 
-                return await safeReply(interaction, {
+                // Répondre immédiatement
+                await safeReply(interaction, {
                     content: `Le salon d'annonces par défaut a été défini sur ${channel}`,
                     ephemeral: true
                 });
+                
+                // Puis sauvegarder en arrière-plan
+                const config = await loadConfig(guildId);
+                config.announcementChannelId = channel.id;
+                await saveConfig(config, guildId);
+                
             } 
             else if (subcommand === 'role') {
                 const role = interaction.options.getRole('role');
-                config.announcementRoleId = role.id;
-                await saveConfig(config, guildId);
                 
-                return await safeReply(interaction, {
+                // Répondre immédiatement
+                await safeReply(interaction, {
                     content: `Le rôle à mentionner a été défini sur ${role}`,
                     ephemeral: true
                 });
+                
+                // Puis sauvegarder en arrière-plan
+                const config = await loadConfig(guildId);
+                config.announcementRoleId = role.id;
+                await saveConfig(config, guildId);
+                
             } 
             else if (subcommand === 'show') {
+                const config = await loadConfig(guildId);
+                console.log('🔍 Configuration chargée pour show:', JSON.stringify(config, null, 2));
+                
                 const embed = new EmbedBuilder()
                     .setColor('#0099ff')
                     .setTitle('Configuration actuelle')
