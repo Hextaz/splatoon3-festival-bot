@@ -8,8 +8,6 @@ const defaultConfig = {
     announcementRoleId: null
 };
 
-const dataAdapter = new DataAdapter();
-
 // Fonction pour charger la configuration
 async function loadConfig(guildId = null) {
     try {
@@ -18,7 +16,8 @@ async function loadConfig(guildId = null) {
             return { ...defaultConfig };
         }
 
-        const data = await dataAdapter.loadConfig(guildId);
+        const adapter = new DataAdapter(guildId);
+        const data = await adapter.loadConfig(guildId);
         return data || { ...defaultConfig };
     } catch (error) {
         console.error('Erreur lors du chargement de la configuration:', error);
@@ -33,7 +32,9 @@ async function saveConfig(config, guildId) {
             throw new Error('Guild ID required for saving config');
         }
 
-        await dataAdapter.saveConfig(guildId, config);
+        const adapter = new DataAdapter(guildId);
+        await adapter.saveConfig(guildId, config);
+        console.log(`✅ Configuration sauvegardée pour le serveur ${guildId}`);
     } catch (error) {
         console.error('Erreur lors de la sauvegarde de la configuration:', error);
         throw error;
