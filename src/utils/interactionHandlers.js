@@ -1585,7 +1585,23 @@ const handleFestivalSetup = async (interaction) => {
         }
         
         const setup = interaction.client.festivalSetup?.[interaction.user.id];
+        
+        // DEBUG: Logs détaillés pour comprendre le problème de session
+        console.log(`🔍 Festival Setup Debug:`);
+        console.log(`  - User ID: ${interaction.user.id}`);
+        console.log(`  - Setup exists: ${!!setup}`);
+        console.log(`  - Client has festivalSetup: ${!!interaction.client.festivalSetup}`);
+        if (interaction.client.festivalSetup) {
+            console.log(`  - Active sessions: ${Object.keys(interaction.client.festivalSetup).length}`);
+            console.log(`  - Session keys: ${Object.keys(interaction.client.festivalSetup).join(', ')}`);
+        }
+        if (setup) {
+            console.log(`  - Setup step: ${setup.step}`);
+            console.log(`  - Setup data:`, JSON.stringify(setup, null, 2));
+        }
+        
         if (!setup) {
+            console.log(`❌ Session de configuration manquante pour ${interaction.user.id}`);
             if (interaction.deferred) {
                 return await safeEdit(interaction, {
                     content: 'Session de configuration expirée. Veuillez recommencer avec `/start-festival`.'
@@ -1603,6 +1619,8 @@ const handleFestivalSetup = async (interaction) => {
             const teamSize = parseInt(interaction.customId.split('_')[1]);
             setup.teamSize = teamSize;
             setup.step = 2;
+            
+            console.log(`✅ Teamsize ${teamSize} sélectionné, passage à l'étape 2`);
 
             // Étape 2: Choix du mode de jeu
             const embed = new EmbedBuilder()
@@ -1641,6 +1659,9 @@ const handleFestivalSetup = async (interaction) => {
                 embeds: [embed],
                 components: [gameModeRow]
             });
+            
+            // Sauvegarder la session après modification
+            console.log(`💾 Session sauvegardée après teamsize, step maintenant: ${setup.step}`);
 
         } else if (interaction.customId.startsWith('gamemode_')) {
         // Étape 2: Mode de jeu sélectionné

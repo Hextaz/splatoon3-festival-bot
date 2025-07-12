@@ -12,8 +12,8 @@ module.exports = {
     async execute(interaction) {
         // Check if interaction was already deferred by the event handler
         let deferResult = true;
-        if (!interaction._preDeferredByEventHandler && !interaction.deferred && !interaction.replied) {
-            // Only defer if not already deferred by the event handler
+        if (!interaction.deferred && !interaction.replied) {
+            // Only defer if not already deferred
             deferResult = await safeDefer(interaction, true);
         }
         
@@ -70,6 +70,10 @@ module.exports = {
                 step: 1,
                 config: config
             };
+            
+            // DEBUG: Vérifier que la session est bien créée
+            console.log(`✅ Festival setup session créée pour ${interaction.user.id}`);
+            console.log(`📋 Session data:`, JSON.stringify(interaction.client.festivalSetup[interaction.user.id], null, 2));
 
             await safeEdit(interaction, {
                 content: null, // Effacer le message de chargement
