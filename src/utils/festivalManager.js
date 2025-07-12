@@ -101,7 +101,7 @@ async function createFestival(title, campNames, startDate, endDate, announcement
     
     // Notification smart sleep pour activation de l'uptime
     if (smartSleepManager) {
-        smartSleepManager.keepAwake('Festival créé: activation programmée');
+        smartSleepManager.enableKeepAlive('Festival créé: activation programmée');
     }
     
     // Envoyer l'annonce de préparation (pas de début)
