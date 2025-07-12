@@ -32,7 +32,11 @@ class HealthServer {
         
         this.server.listen(this.port, () => {
             console.log(`🏥 Health server running on port ${this.port}`);
-            console.log(`🔗 Health endpoint: http://localhost:${this.port}/health`);
+            if (process.env.RENDER_EXTERNAL_URL) {
+                console.log(`🔗 Health endpoint: ${process.env.RENDER_EXTERNAL_URL}/health`);
+            } else {
+                console.log(`🔗 Health endpoint: http://localhost:${this.port}/health`);
+            }
         });
 
         this.server.on('error', (err) => {

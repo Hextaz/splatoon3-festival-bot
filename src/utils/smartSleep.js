@@ -138,20 +138,35 @@ class SmartSleepManager {
 
     // Status pour debugging
     getStatus() {
-        const festival = getCurrentFestival();
-        return {
-            isKeepAliveActive: this.isKeepAliveActive,
-            currentReason: this.currentReason,
-            currentFestival: festival ? {
-                title: festival.title,
-                isActive: festival.isActive,
-                startDate: festival.startDate,
-                endDate: festival.endDate
-            } : null,
-            lastCheck: this.lastFestivalCheck,
-            uptime: Math.round(process.uptime()),
-            memoryUsage: process.memoryUsage()
-        };
+        try {
+            // Import dynamique pour éviter la dépendance circulaire
+            const { getCurrentFestival } = require('./festivalManager');
+            const festival = getCurrentFestival();
+            
+            return {
+                isKeepAliveActive: this.isKeepAliveActive,
+                currentReason: this.currentReason,
+                currentFestival: festival ? {
+                    title: festival.title,
+                    isActive: festival.isActive,
+                    startDate: festival.startDate,
+                    endDate: festival.endDate
+                } : null,
+                lastCheck: this.lastFestivalCheck,
+                uptime: Math.round(process.uptime()),
+                memoryUsage: process.memoryUsage()
+            };
+        } catch (error) {
+            return {
+                isKeepAliveActive: this.isKeepAliveActive,
+                currentReason: this.currentReason,
+                currentFestival: null,
+                lastCheck: this.lastFestivalCheck,
+                uptime: Math.round(process.uptime()),
+                memoryUsage: process.memoryUsage(),
+                error: error.message
+            };
+        }
     }
 
     stop() {
