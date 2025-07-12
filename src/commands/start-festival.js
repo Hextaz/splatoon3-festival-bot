@@ -14,14 +14,19 @@ module.exports = {
             // Définir le serveur actuel pour le gestionnaire de festival
             setCurrentGuildId(interaction.guild.id);
             
-            // Charger la configuration
+            // Répondre immédiatement avec un message de démarrage
+            await safeReply(interaction, {
+                content: '🔧 Configuration du festival en cours...',
+                ephemeral: true
+            });
+            
+            // Charger la configuration en arrière-plan
             const config = await loadConfig();
             
             // Vérifier si un salon d'annonces est configuré
             if (!config.announcementChannelId) {
-                return await safeReply(interaction, {
-                    content: '⚠️ Aucun salon d\'annonces n\'a été configuré. Veuillez utiliser `/config channel` pour en définir un avant de créer un festival.',
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: '⚠️ Aucun salon d\'annonces n\'a été configuré. Veuillez utiliser `/config channel` pour en définir un avant de créer un festival.'
                 });
             }
 
@@ -59,18 +64,24 @@ module.exports = {
                 config: config
             };
 
-            await safeReply(interaction, {
+            await interaction.editReply({
+                content: null, // Effacer le message de chargement
                 embeds: [embed],
-                components: [teamSizeRow],
-                ephemeral: true
+                components: [teamSizeRow]
             });
 
         } catch (error) {
             console.error('Erreur lors de la configuration du festival:', error);
-            await safeReply(interaction, {
-                content: `Une erreur s'est produite: ${error.message}`,
-                ephemeral: true
-            });
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({
+                    content: `Une erreur s'est produite: ${error.message}`
+                });
+            } else {
+                await safeReply(interaction, {
+                    content: `Une erreur s'est produite: ${error.message}`,
+                    ephemeral: true
+                });
+            }
         }
     }
 };
