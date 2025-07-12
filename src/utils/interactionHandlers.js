@@ -123,7 +123,7 @@ const handleFestivalSetupModal = async (interaction) => {
             throw new Error("La date de début du festival doit être dans le futur. Veuillez choisir une date et heure ultérieure à maintenant.");
         }
     } catch (error) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: `Erreur de format de date: ${error.message}`,
             ephemeral: true
         });
@@ -134,7 +134,7 @@ const handleFestivalSetupModal = async (interaction) => {
     
     // Vérifier si un canal d'annonce est configuré
     if (!config.announcementChannelId) {
-        return await interaction.reply({
+        return await safeReply(interaction, {
             content: '⚠️ Aucun salon d\'annonces n\'est configuré. Veuillez utiliser `/config channel` pour en définir un.',
             ephemeral: true
         });
@@ -188,7 +188,7 @@ const handleFestivalSetupModal = async (interaction) => {
 
     const durationRow = new ActionRowBuilder().addComponents(oneWeekButton, twoWeeksButton, oneMonthButton, customDateButton);
 
-    await interaction.reply({
+    await safeReply(interaction, {
         embeds: [embed],
         components: [durationRow],
         ephemeral: true
@@ -544,9 +544,9 @@ const handleCreateTeamModal = async (interaction) => {
         // Créer un rôle pour l'équipe
         await createTeamRole(interaction, team);
         
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await safeReply(interaction, { embeds: [embed], ephemeral: true });
     } catch (error) {
-        await interaction.reply({ 
+        await safeReply(interaction, { 
             content: `Error creating team: ${error.message}`, 
             ephemeral: true 
         });
@@ -651,24 +651,18 @@ const handleJoinTeamModal = async (interaction) => {
             }
         }
         
-        await interaction.reply({ 
+        await safeReply(interaction, { 
             embeds: [embed], 
             ephemeral: true 
         });
     } catch (error) {
         console.error('Error in handleJoinTeamModal:', error);
         
-        // Utiliser editReply si l'interaction a déjà été répondue
-        const errorMessage = { 
+        // Utiliser safeReply qui gère automatiquement l'état de l'interaction
+        await safeReply(interaction, { 
             content: `Erreur: ${error.message}`, 
             ephemeral: true 
-        };
-        
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp(errorMessage);
-        } else {
-            await interaction.reply(errorMessage);
-        }
+        });
     }
 };
 
