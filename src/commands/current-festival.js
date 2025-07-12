@@ -100,7 +100,9 @@ module.exports = {
                         if (!festival.announcementChannelId) {
                             const { loadConfig } = require('./config');
                             const config = await loadConfig(interaction.guild.id);
-                            festival.announcementChannelId = config.announcementChannelId;
+                            if (config && config.announcementChannelId) {
+                                festival.announcementChannelId = config.announcementChannelId;
+                            }
                         }
                         
                         if (festival.announcementChannelId) {
@@ -120,9 +122,11 @@ module.exports = {
                                 });
                                 
                                 console.log('✅ Annonce de début du festival envoyée');
+                            } else {
+                                console.error(`Canal d'annonce non trouvé: ${festival.announcementChannelId}`);
                             }
                         } else {
-                            console.warn('⚠️ Aucun canal d\'annonce configuré pour le festival');
+                            console.error('Aucun canal d\'annonce configuré - impossible d\'envoyer l\'annonce de début');
                         }
                     } catch (error) {
                         console.error('Erreur lors de l\'envoi de l\'annonce de début:', error);
