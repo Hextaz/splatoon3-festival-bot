@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getCurrentFestival } = require('../utils/festivalManager');
 const { createTeam } = require('../utils/teamManager'); // Assurez-vous d'importer la fonction createTeam
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()

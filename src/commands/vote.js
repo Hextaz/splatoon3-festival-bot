@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getCurrentFestival } = require('../utils/festivalManager');
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,7 +11,7 @@ module.exports = {
         // Vérifier si un festival existe
         const festival = getCurrentFestival();
         if (!festival) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: 'Aucun festival actif actuellement. Veuillez attendre la création d\'un festival.',
                 ephemeral: true
             });
@@ -28,7 +29,7 @@ module.exports = {
         
         if (campRoles.some(role => role)) {
             const existingRole = campRoles.find(role => role);
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: `Vous avez déjà rejoint le camp ${existingRole.name.replace('Camp ', '')}. Vous ne pouvez pas changer de camp pendant le festival.`,
                 ephemeral: true
             });
@@ -64,7 +65,7 @@ module.exports = {
                     .setStyle(ButtonStyle.Primary)
             );
         
-        await interaction.reply({
+        await safeReply(interaction, {
             embeds: [embed],
             components: [buttonRow],
             ephemeral: true

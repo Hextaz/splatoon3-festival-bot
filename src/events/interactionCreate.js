@@ -1,4 +1,5 @@
 const { InteractionType } = require('discord.js');
+const { safeReply } = require('../utils/responseUtils');
 const { 
     handleModalSubmit, 
     handleLeaveTeam, 
@@ -93,18 +94,10 @@ module.exports = {
             }
             
             try {
-                const reply = { content: 'Une erreur est survenue lors de l\'exécution de cette commande.', ephemeral: true };
-                
-                // Vérifier si l'interaction est toujours valide avant de répondre
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply(reply).catch(e => {
-                        console.error('Impossible d\'envoyer le message d\'erreur:', e);
-                    });
-                } else {
-                    await interaction.followUp(reply).catch(e => {
-                        console.error('Impossible d\'envoyer le message d\'erreur en followUp:', e);
-                    });
-                }
+                await safeReply(interaction, {
+                    content: 'Une erreur est survenue lors de l\'exécution de cette commande.',
+                    ephemeral: true
+                });
             } catch (replyError) {
                 console.error('La gestion d\'erreur a échoué:', replyError);
             }
@@ -137,8 +130,7 @@ async function handleDocumentationSelect(interaction) {
         reply: async (options) => {
             await interaction.update({
                 embeds: options.embeds,
-                components: [],
-                ephemeral: true
+                components: []
             });
         }
     };
