@@ -5,19 +5,19 @@ class SimpleKeepAlive {
     }
 
     start() {
-        console.log('🔄 Démarrage du keep-alive discret');
+        console.log('🔄 Démarrage du keep-alive permanent');
         
-        // Ping plus espacé (25 minutes) pour éviter la détection
+        // Ping toutes les 10 minutes pour éviter le sleep Render (15min)
         this.keepAliveInterval = setInterval(() => {
             this.performKeepAlive();
-        }, 25 * 60 * 1000); // 25 minutes (sous la limite de 30min de Render)
+        }, 10 * 60 * 1000); // 10 minutes (bien sous la limite de 15min de Render)
 
-        // Ping initial après 5 minutes pour éviter le spam au démarrage
+        // Ping initial après 2 minutes
         setTimeout(() => {
             this.performKeepAlive();
-        }, 5 * 60 * 1000);
+        }, 2 * 60 * 1000);
         
-        console.log('✅ Keep-alive discret activé - Intervalle de 25 minutes');
+        console.log('✅ Keep-alive permanent activé - Bot restera actif H24');
     }
 
     performKeepAlive() {
@@ -27,21 +27,21 @@ class SimpleKeepAlive {
             
             const protocol = process.env.RENDER_EXTERNAL_URL.startsWith('https') ? https : http;
             
-            // Requête plus discrète avec timeout
+            // Requête keep-alive avec timeout
             const req = protocol.get(`${process.env.RENDER_EXTERNAL_URL}/health`, {
-                timeout: 5000
+                timeout: 10000
             }, (res) => {
-                // Log moins verbeux
                 if (res.statusCode === 200) {
-                    console.log(`[HEALTH] ${new Date().toISOString().substring(11, 19)} - Service actif`);
+                    console.log(`[KEEP-ALIVE] ${new Date().toISOString()} - Bot maintenu actif (${res.statusCode})`);
                 }
             });
             
-            req.on('error', () => {
-                // Ignore silencieusement les erreurs
+            req.on('error', (err) => {
+                console.warn(`[KEEP-ALIVE] Erreur: ${err.message}`);
             });
             
             req.on('timeout', () => {
+                console.warn('[KEEP-ALIVE] Timeout de la requête');
                 req.destroy();
             });
         }
@@ -51,7 +51,7 @@ class SimpleKeepAlive {
         if (this.keepAliveInterval) {
             clearInterval(this.keepAliveInterval);
             this.keepAliveInterval = null;
-            console.log('🛑 Keep-alive discret arrêté');
+            console.log('🛑 Keep-alive permanent arrêté');
         }
     }
 }
