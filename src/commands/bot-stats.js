@@ -2,6 +2,7 @@
 // Commande pour voir les statistiques du bot
 
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -77,11 +78,11 @@ module.exports = {
                 text: `Version ${packageJson.version || '1.0.0'} | Node.js ${process.version}` 
             });
             
-            await interaction.reply({ embeds: [embed], ephemeral: true });
+            await safeReply(interaction, { embeds: [embed], ephemeral: true });
             
         } catch (error) {
             console.error('Erreur bot-stats:', error);
-            await interaction.reply({ 
+            await safeReply(interaction, { 
                 content: '❌ Erreur lors de la récupération des statistiques.', 
                 ephemeral: true 
             });

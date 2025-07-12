@@ -3,6 +3,7 @@ const { getCurrentFestival, saveFestival, setCurrentGuildId, loadFestivalAuto } 
 const { getAllTeams } = require('../utils/teamManager');
 const { getVotes } = require('../utils/vote');
 const scoreTracker = require('../utils/scoreTracker');
+const { safeReply } = require('../utils/responseUtils');
 
 const { MAPS } = require('../data/mapsAndModes');
 
@@ -33,7 +34,7 @@ module.exports = {
         const festival = getCurrentFestival();
             
             if (!festival) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: 'Aucun festival n\'est actuellement programmé. Utilisez `/start-festival` pour en créer un nouveau.',
                     ephemeral: true
                 });
@@ -80,10 +81,10 @@ module.exports = {
                         });
                     }
                     
-                    return await interaction.reply({ embeds: [embed] });
+                    return await safeReply(interaction, { embeds: [embed] });
                 } else if (endDate < now) {
                     // Festival réellement terminé
-                    return await interaction.reply({
+                    return await safeReply(interaction, {
                         content: `Le festival "${festival.title}" est terminé. Il sera complètement supprimé sous peu.`,
                         ephemeral: true
                     });
@@ -182,13 +183,13 @@ module.exports = {
                 });
             }
             
-            await interaction.reply({
+            await safeReply(interaction, {
                 embeds: [embed]
             });
             
         } catch (error) {
             console.error('Erreur dans la commande current-festival:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });

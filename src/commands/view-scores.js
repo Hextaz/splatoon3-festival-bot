@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const scoreTracker = require('../utils/scoreTracker');
 const { getCurrentFestival } = require('../utils/festivalManager');
 const { loadConfig } = require('./config');
+const { safeReply, safeFollowUp } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,7 +18,7 @@ module.exports = {
         try {
             const festival = getCurrentFestival();
             if (!festival) {
-                return await interaction.reply({
+                return await safeReply(interaction, {
                     content: 'Aucun festival actif actuellement.',
                     ephemeral: true
                 });
@@ -76,7 +77,7 @@ module.exports = {
             }
             
             // Répondre à l'interaction
-            await interaction.reply({
+            await safeReply(interaction, {
                 embeds: [embed],
                 ephemeral: !shouldAnnounce
             });
@@ -99,14 +100,14 @@ module.exports = {
                             embeds: [publicEmbed]
                         });
                         
-                        await interaction.followUp({
+                        await safeFollowUp(interaction, {
                             content: `Les scores ont été annoncés avec succès dans <#${festival.announcementChannelId}>`,
                             ephemeral: true
                         });
                     }
                 } catch (error) {
                     console.error('Erreur lors de l\'annonce des scores:', error);
-                    await interaction.followUp({
+                    await safeFollowUp(interaction, {
                         content: `Erreur lors de l'annonce des scores: ${error.message}`,
                         ephemeral: true
                     });
@@ -114,7 +115,7 @@ module.exports = {
             }
         } catch (error) {
             console.error('Erreur dans la commande view-scores:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
             });

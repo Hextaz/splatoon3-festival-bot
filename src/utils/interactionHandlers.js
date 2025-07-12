@@ -9,6 +9,7 @@ const { startMatchSearch, cleanupSearch } = require('./matchSearch');
 const { loadConfig, saveConfig } = require('../commands/config');
 const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
+const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
 
 // Global variables
 const pendingResults = new Map();
