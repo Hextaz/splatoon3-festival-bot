@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const DataAdapter = require('../utils/dataAdapter');
-const { safeReply, safeDefer, safeFollowUp } = require('../utils/responseUtils');
+const { safeDefer, smartReply } = require('../utils/responseUtils');
 
 // Structure de configuration par défaut
 const defaultConfig = {
@@ -67,17 +67,20 @@ module.exports = {
                 .setDescription('Afficher la configuration actuelle')),
     
     async execute(interaction) {
-        // Defer immediately to prevent timeout on database operations
-        await safeDefer(interaction, true);
+        // Try to defer immediately to prevent timeout on database operations
+        const deferSuccess = await safeDefer(interaction, true);
         
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guild?.id;
         
+        // Only prefer followUp if deferral actually succeeded
+        const preferFollowUp = deferSuccess !== null && (interaction.deferred || interaction.replied);
+        
         if (!guildId) {
-            return await safeFollowUp(interaction, {
+            return await smartReply(interaction, {
                 content: 'Cette commande doit être utilisée dans un serveur.',
                 ephemeral: true
-            });
+            }, preferFollowUp);
         }
         
         try {
@@ -88,20 +91,20 @@ module.exports = {
                 config.announcementChannelId = channel.id;
                 await saveConfig(config, guildId);
                 
-                return await safeFollowUp(interaction, {
+                return await smartReply(interaction, {
                     content: `Le salon d'annonces par défaut a été défini sur ${channel}`,
                     ephemeral: true
-                });
+                }, preferFollowUp);
             } 
             else if (subcommand === 'role') {
                 const role = interaction.options.getRole('role');
                 config.announcementRoleId = role.id;
                 await saveConfig(config, guildId);
                 
-                return await safeFollowUp(interaction, {
+                return await smartReply(interaction, {
                     content: `Le rôle à mentionner a été défini sur ${role}`,
                     ephemeral: true
-                });
+                }, preferFollowUp);
             } 
             else if (subcommand === 'show') {
                 const embed = new EmbedBuilder()
@@ -120,17 +123,17 @@ module.exports = {
                     )
                     .setTimestamp();
                 
-                return await safeFollowUp(interaction, {
+                return await smartReply(interaction, {
                     embeds: [embed],
                     ephemeral: true
-                });
+                }, preferFollowUp);
             }
         } catch (error) {
             console.error('Erreur lors de la configuration:', error);
-            return await safeFollowUp(interaction, {
+            return await smartReply(interaction, {
                 content: `Une erreur s'est produite: ${error.message}`,
                 ephemeral: true
-            });
+            }, preferFollowUp);
         }
     },
     

@@ -17,7 +17,7 @@ module.exports = {
         // Récupérer le festival
         const festival = getCurrentFestival();
         if (!festival) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: 'Aucun festival n\'a été créé. Veuillez attendre que les administrateurs créent un festival.',
                 ephemeral: true
             });
@@ -45,7 +45,7 @@ module.exports = {
         }
         
         if (!playerCamp) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: 'Vous devez d\'abord choisir un camp avec la commande `/vote` avant de pouvoir créer une équipe.',
                 ephemeral: true
             });
@@ -77,7 +77,7 @@ module.exports = {
             const team = createTeam(teamName, interaction.user.id, playerCamp, true, null, interaction.guild);
             
             // Message de succès adapté au format
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `✅ Équipe **${teamName}** créée avec succès pour le camp **${playerCampName}** !\n\n` +
                         `📊 **Format du festival** : ${formatDisplay}\n` +
                         `👥 **Membres actuels** : 1/${teamSize}\n` +
@@ -87,7 +87,7 @@ module.exports = {
             });
             
         } catch (error) {
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Erreur lors de la création de l'équipe: ${error.message}`,
                 ephemeral: true
             });

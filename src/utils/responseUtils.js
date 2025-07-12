@@ -96,6 +96,10 @@ async function safeFollowUp(interaction, options) {
             console.log('Interaction already acknowledged, skipping follow up');
             return null;
         }
+        if (error.code === 'InteractionNotReplied') {
+            console.log('Interaction not replied/deferred, cannot follow up');
+            return null;
+        }
         throw error;
     }
 }
@@ -122,9 +126,57 @@ async function safeEdit(interaction, options) {
     }
 }
 
+/**
+ * Smart response function that automatically chooses the best method
+ * @param {CommandInteraction} interaction - The Discord interaction
+ * @param {Object} options - Response options
+ * @param {boolean} preferFollowUp - Whether to prefer followUp over reply
+ */
+async function smartReply(interaction, options, preferFollowUp = false) {
+    try {
+        // Check the actual state of the interaction
+        const canUseFollowUp = interaction.replied || interaction.deferred;
+        const canUseReply = !interaction.replied;
+        
+        if (preferFollowUp && canUseFollowUp) {
+            // Try followUp first if preferred and interaction is in the right state
+            const result = await safeFollowUp(interaction, options);
+            if (result !== null) return result;
+        }
+        
+        // Fall back to safeReply if we can use it
+        if (canUseReply) {
+            return await safeReply(interaction, options);
+        }
+        
+        // If we can't use reply, try followUp as last resort
+        if (canUseFollowUp) {
+            return await safeFollowUp(interaction, options);
+        }
+        
+        // If we get here, the interaction is in an invalid state
+        console.warn('Interaction is in invalid state for response');
+        return null;
+    } catch (error) {
+        console.error('Error in smartReply:', error);
+        // Last resort: try the other method
+        try {
+            if (preferFollowUp && !interaction.replied) {
+                return await safeReply(interaction, options);
+            } else if (interaction.replied || interaction.deferred) {
+                return await safeFollowUp(interaction, options);
+            }
+        } catch (fallbackError) {
+            console.error('Fallback method also failed:', fallbackError);
+            return null;
+        }
+    }
+}
+
 module.exports = {
     safeReply,
     safeDefer,
     safeFollowUp,
-    safeEdit
+    safeEdit,
+    smartReply
 };
