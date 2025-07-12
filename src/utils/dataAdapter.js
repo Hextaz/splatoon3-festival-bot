@@ -215,6 +215,57 @@ class DataAdapter {
         }
     }
 
+    // --- SCORES ---
+
+    async getScores() {
+        if (isMongoDBAvailable()) {
+            const festival = await this.getFestival();
+            if (!festival) return {};
+
+            const scores = await CampScore.find({ 
+                guildId: this.guildId, 
+                festivalId: festival._id 
+            });
+            
+            // Convertir en format attendu
+            const scoresObj = {};
+            scores.forEach(score => {
+                scoresObj[score.camp] = score.points;
+            });
+            return scoresObj;
+        } else {
+            return this._getJSONData('scores.json') || {};
+        }
+    }
+
+    async saveScores(scoresData) {
+        if (isMongoDBAvailable()) {
+            const festival = await this.getFestival();
+            if (!festival) throw new Error('No active festival');
+
+            // Supprimer les anciens scores
+            await CampScore.deleteMany({ 
+                guildId: this.guildId, 
+                festivalId: festival._id 
+            });
+
+            // Sauvegarder les nouveaux scores
+            const scoresDocs = Object.entries(scoresData).map(([camp, points]) => ({
+                guildId: this.guildId,
+                festivalId: festival._id,
+                camp,
+                points
+            }));
+
+            if (scoresDocs.length > 0) {
+                await CampScore.insertMany(scoresDocs);
+            }
+            return scoresData;
+        } else {
+            return this._saveJSONData('scores.json', scoresData);
+        }
+    }
+
     // --- MATCH HISTORY ---
 
     async loadMatchHistory(guildId) {

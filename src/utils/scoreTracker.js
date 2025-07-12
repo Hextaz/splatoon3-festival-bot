@@ -41,13 +41,7 @@ const scoreTracker = {
             if (adapter) {
                 // Sauvegarder dans MongoDB
                 console.log('💾 Sauvegarde des scores avec DataAdapter');
-                for (const [camp, score] of Object.entries(this.scores)) {
-                    await adapter.updateScore(camp, {
-                        totalPoints: score,
-                        matchesWon: this.getMatchesWonByCamp(camp),
-                        matchesLost: this.getMatchesLostByCamp(camp)
-                    });
-                }
+                await adapter.saveScores(this.scores);
                 console.log('✅ Scores sauvegardés avec DataAdapter');
             } else {
                 // Fallback JSON
@@ -61,7 +55,7 @@ const scoreTracker = {
     },
 
     // Fonction JSON de sauvegarde (fallback)
-    async saveScoresJSON() {
+    saveScoresJSON: async function() {
         try {
             // Créer le dossier data s'il n'existe pas
             const dataDir = path.join(__dirname, '../../data');
@@ -105,14 +99,14 @@ const scoreTracker = {
                 
                 if (scoresData && Object.keys(scoresData).length > 0) {
                     this.scores = {
-                        camp1: scoresData.camp1?.totalPoints || 0,
-                        camp2: scoresData.camp2?.totalPoints || 0,
-                        camp3: scoresData.camp3?.totalPoints || 0
+                        camp1: scoresData.camp1 || 0,
+                        camp2: scoresData.camp2 || 0,
+                        camp3: scoresData.camp3 || 0
                     };
-                    console.log('✅ Scores chargés avec DataAdapter');
+                    console.log(`✅ Scores chargés avec DataAdapter:`, this.scores);
                 } else {
-                    // Initialiser si pas de données
                     this.scores = { camp1: 0, camp2: 0, camp3: 0 };
+                    console.log('✅ Aucun score trouvé dans MongoDB');
                 }
                 
                 // Charger l'historique des matchs
@@ -130,7 +124,7 @@ const scoreTracker = {
     },
 
     // Fonction JSON de chargement (fallback)
-    async loadScoresJSON() {
+    loadScoresJSON: async function() {
         try {
             const data = await fs.readFile(scoresPath, 'utf8');
             const scoresData = JSON.parse(data);

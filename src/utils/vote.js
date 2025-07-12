@@ -82,10 +82,12 @@ async function loadVotes() {
             const counts = { camp1: 0, camp2: 0, camp3: 0 };
             const users = {};
             
-            for (const [userId, camp] of Object.entries(votesData)) {
-                users[userId] = camp;
-                if (counts[camp] !== undefined) {
-                    counts[camp]++;
+            if (votesData && typeof votesData === 'object') {
+                for (const [userId, camp] of Object.entries(votesData)) {
+                    users[userId] = camp;
+                    if (counts[camp] !== undefined) {
+                        counts[camp]++;
+                    }
                 }
             }
             
