@@ -32,6 +32,24 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
         const startTime = Date.now();
+        const interactionId = `${interaction.id}_${interaction.user.id}`;
+        
+        // Protection contre les doublons d'interaction
+        if (!interaction.client._processedInteractions) {
+            interaction.client._processedInteractions = new Map();
+        }
+        
+        if (interaction.client._processedInteractions.has(interactionId)) {
+            console.log(`🔄 Interaction duplicate ignorée: ${interaction.commandName || interaction.customId}`);
+            return;
+        }
+        
+        // Marquer l'interaction comme en cours de traitement (expire après 10 secondes)
+        interaction.client._processedInteractions.set(interactionId, Date.now());
+        setTimeout(() => {
+            interaction.client._processedInteractions.delete(interactionId);
+        }, 10000);
+        
         console.log(`📱 Interaction received: ${interaction.commandName || interaction.customId} at ${startTime}`);
         
         try {
@@ -52,9 +70,18 @@ module.exports = {
                 const deferStart = Date.now();
                 try {
                     if (!interaction.deferred && !interaction.replied) {
+                        // Vérifier si l'interaction est encore valide avant de defer
+                        const timeSinceCreation = Date.now() - interaction.createdTimestamp;
+                        if (timeSinceCreation > 2500) { // Si plus de 2.5 secondes, probablement trop tard
+                            console.warn(`⚠️ Interaction trop ancienne (${timeSinceCreation}ms), abandon du defer`);
+                            return;
+                        }
+                        
                         if (interaction.isButton() || interaction.isStringSelectMenu()) {
+                            console.log(`🔘 Using deferUpdate for button/select: ${interaction.customId}`);
                             await interaction.deferUpdate({ flags: 64 }); // 64 = ephemeral flag for updates
                         } else {
+                            console.log(`💬 Using deferReply for command/modal: ${interaction.commandName || interaction.customId}`);
                             await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag for replies
                         }
                         console.log(`⚡ Critical defer completed in ${Date.now() - deferStart}ms`);
