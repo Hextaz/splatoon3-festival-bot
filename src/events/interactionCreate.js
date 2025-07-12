@@ -126,17 +126,21 @@ module.exports = {
             
             // CRITICAL: Immediate defer for critical commands that are known to timeout
             const criticalCommands = ['start-festival'];
-            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_'];
+            // Remove festivalduration_ from criticalButtons to avoid defer before modal
+            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_'];
             const criticalModals = ['festivalSetupModal'];
-            
+
             const isCriticalCommand = interaction.type === InteractionType.ApplicationCommand && 
                                      criticalCommands.includes(interaction.commandName);
             const isCriticalButton = interaction.isButton() && 
                                     criticalButtons.some(prefix => interaction.customId.startsWith(prefix));
             const isCriticalModal = interaction.type === InteractionType.ModalSubmit &&
                                    criticalModals.includes(interaction.customId);
-            
-            if (isCriticalCommand || isCriticalButton || isCriticalModal) {
+
+            // Special case: festivalduration_ buttons should NOT be deferred before modal
+            if (interaction.isButton() && interaction.customId.startsWith('festivalduration_')) {
+                // Skip defer, will showModal directly in handler
+            } else if (isCriticalCommand || isCriticalButton || isCriticalModal) {
                 const deferStart = Date.now();
                 try {
                     // Double-check interaction state right before defer
