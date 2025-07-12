@@ -488,8 +488,8 @@ class DataAdapter {
             
             if (config) {
                 const result = {
-                    announcementChannelId: config.announcementChannelId,
-                    announcementRoleId: config.announcementRoleId
+                    announcementChannelId: config.announceChannelId,
+                    announcementRoleId: config.adminRoleId
                 };
                 console.log('🔍 DataAdapter.getConfig: Retour:', JSON.stringify(result, null, 2));
                 return result;
@@ -510,8 +510,8 @@ class DataAdapter {
                 { guildId: this.guildId },
                 {
                     guildId: this.guildId,
-                    announcementChannelId: configData.announcementChannelId,
-                    announcementRoleId: configData.announcementRoleId,
+                    announceChannelId: configData.announcementChannelId,
+                    adminRoleId: configData.announcementRoleId,
                     updatedAt: new Date()
                 },
                 { upsert: true, new: true }
