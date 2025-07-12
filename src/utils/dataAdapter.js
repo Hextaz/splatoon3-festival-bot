@@ -482,13 +482,19 @@ class DataAdapter {
     
     async getConfig() {
         if (isMongoDBAvailable()) {
+            console.log(`🔍 DataAdapter.getConfig: Recherche config pour guildId ${this.guildId}`);
             const config = await GuildConfig.findOne({ guildId: this.guildId });
+            console.log('🔍 DataAdapter.getConfig: Config trouvée:', config ? JSON.stringify(config, null, 2) : 'null');
+            
             if (config) {
-                return {
+                const result = {
                     announcementChannelId: config.announcementChannelId,
                     announcementRoleId: config.announcementRoleId
                 };
+                console.log('🔍 DataAdapter.getConfig: Retour:', JSON.stringify(result, null, 2));
+                return result;
             }
+            console.log('🔍 DataAdapter.getConfig: Aucune config trouvée, retour null');
             return null;
         } else {
             return this._getJSONData(`guilds/${this.guildId}/config.json`);
@@ -497,7 +503,10 @@ class DataAdapter {
 
     async saveConfig(configData) {
         if (isMongoDBAvailable()) {
-            return await GuildConfig.findOneAndUpdate(
+            console.log(`🔍 DataAdapter.saveConfig: Sauvegarde pour guildId ${this.guildId}`);
+            console.log('🔍 DataAdapter.saveConfig: Données à sauvegarder:', JSON.stringify(configData, null, 2));
+            
+            const result = await GuildConfig.findOneAndUpdate(
                 { guildId: this.guildId },
                 {
                     guildId: this.guildId,
@@ -507,6 +516,9 @@ class DataAdapter {
                 },
                 { upsert: true, new: true }
             );
+            
+            console.log('🔍 DataAdapter.saveConfig: Résultat sauvegarde:', result ? JSON.stringify(result, null, 2) : 'null');
+            return result;
         } else {
             return this._saveJSONData(`guilds/${this.guildId}/config.json`, configData);
         }
