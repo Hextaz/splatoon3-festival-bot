@@ -1,4 +1,4 @@
-# 🎮 Splatoon 3 Festival Bot
+# 🎮 Splat Festival Bot
 
 Un bot Discord avancé pour organiser et gérer des festivals Splatoon 3 avec système de matchmaking intelligent, gestion d'équipes automatisée et génération de BO3 pondérée.
 
