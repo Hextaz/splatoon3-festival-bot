@@ -11,7 +11,8 @@ const { getGuildDatabase } = require('./database');
 // Import du smart sleep manager
 let smartSleepManager;
 try {
-    smartSleepManager = require('./smartSleep');
+    const { smartSleepManager: sleepManager } = require('./smartSleep');
+    smartSleepManager = sleepManager;
 } catch (error) {
     console.warn('SmartSleepManager non disponible:', error.message);
 }
