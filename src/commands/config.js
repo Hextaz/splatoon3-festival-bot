@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const DataAdapter = require('../utils/dataAdapter');
-const { safeReply } = require('../utils/responseUtils');
+const { safeReply, safeFollowUp } = require('../utils/responseUtils');
 
 // Structure de configuration par défaut
 const defaultConfig = {
@@ -118,6 +118,13 @@ module.exports = {
                 
             } 
             else if (subcommand === 'show') {
+                // Répondre immédiatement avec un message de chargement
+                await safeReply(interaction, {
+                    content: '🔄 Chargement de la configuration...',
+                    ephemeral: true
+                });
+                
+                // Puis charger et afficher la vraie configuration
                 const config = await loadConfig(guildId);
                 console.log('🔍 Configuration chargée pour show:', JSON.stringify(config, null, 2));
                 
@@ -137,7 +144,7 @@ module.exports = {
                     )
                     .setTimestamp();
                 
-                return await safeReply(interaction, {
+                return await safeFollowUp(interaction, {
                     embeds: [embed],
                     ephemeral: true
                 });

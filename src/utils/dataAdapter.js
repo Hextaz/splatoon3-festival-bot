@@ -488,9 +488,17 @@ class DataAdapter {
             
             if (config) {
                 const result = {
-                    announcementChannelId: config.announceChannelId,
-                    announcementRoleId: config.adminRoleId
+                    announcementChannelId: config.announceChannelId || undefined,
+                    announcementRoleId: config.adminRoleId || undefined
                 };
+                
+                // Nettoyer les undefined
+                Object.keys(result).forEach(key => {
+                    if (result[key] === undefined) {
+                        delete result[key];
+                    }
+                });
+                
                 console.log('🔍 DataAdapter.getConfig: Retour:', JSON.stringify(result, null, 2));
                 return result;
             }
