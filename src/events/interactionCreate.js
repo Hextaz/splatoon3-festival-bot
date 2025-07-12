@@ -32,35 +32,60 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
         const startTime = Date.now();
-        const interactionId = `${interaction.id}_${interaction.user.id}`;
         
-        // Protection contre les doublons d'interaction avec détection améliorée
+        // Protection contre les doublons d'interaction avec détection robuste
         if (!interaction.client._processedInteractions) {
             interaction.client._processedInteractions = new Map();
         }
         
-        // Créer une clé unique basée sur l'utilisateur, le type et le timestamp arrondi
-        const roundedTimestamp = Math.floor(startTime / 1000) * 1000; // Arrondir à la seconde
-        const interactionKey = `${interaction.user.id}_${interaction.type}_${interaction.commandName || interaction.customId}_${roundedTimestamp}`;
+        // Utiliser l'ID unique de l'interaction Discord lui-même comme clé principale
+        const interactionKey = interaction.id;
         
         if (interaction.client._processedInteractions.has(interactionKey)) {
-            console.log(`🔄 Interaction duplicate ignorée: ${interaction.commandName || interaction.customId} (${startTime - interaction.client._processedInteractions.get(interactionKey)}ms d'écart)`);
+            const previousTime = interaction.client._processedInteractions.get(interactionKey);
+            console.log(`🔄 Interaction duplicate ignorée (ID: ${interaction.id}): ${interaction.commandName || interaction.customId} (${startTime - previousTime}ms d'écart)`);
             return;
         }
         
-        // Marquer l'interaction comme en cours de traitement
+        // Marquer l'interaction comme en cours de traitement avec son ID unique
         interaction.client._processedInteractions.set(interactionKey, startTime);
         setTimeout(() => {
             interaction.client._processedInteractions.delete(interactionKey);
-        }, 5000); // Réduction à 5 secondes pour être plus agressif
+        }, 10000); // 10 secondes pour être sûr
+        
+        // Protection additionnelle contre les clics rapides du même utilisateur/bouton
+        const userActionKey = `${interaction.user.id}_${interaction.commandName || interaction.customId}`;
+        const lastUserAction = interaction.client._lastUserActions?.get(userActionKey) || 0;
+        
+        if (!interaction.client._lastUserActions) {
+            interaction.client._lastUserActions = new Map();
+        }
+        
+        if (startTime - lastUserAction < 500) { // Moins de 500ms = probablement un double-clic
+            console.log(`⚡ Action trop rapide ignorée: ${interaction.commandName || interaction.customId} (${startTime - lastUserAction}ms depuis la dernière)`);
+            return;
+        }
+        
+        interaction.client._lastUserActions.set(userActionKey, startTime);
+        
+        // Nettoyer les anciennes actions utilisateur (toutes les 30 secondes)
+        if (!interaction.client._lastCleanup || startTime - interaction.client._lastCleanup > 30000) {
+            interaction.client._lastCleanup = startTime;
+            // Supprimer les actions plus anciennes que 10 secondes
+            for (const [key, timestamp] of interaction.client._lastUserActions.entries()) {
+                if (startTime - timestamp > 10000) {
+                    interaction.client._lastUserActions.delete(key);
+                }
+            }
+        }
         
         console.log(`📱 Interaction received: ${interaction.commandName || interaction.customId} at ${startTime}`);
         
         try {
             // CRITICAL: Immediate defer for critical commands that are known to timeout
             const criticalCommands = ['start-festival'];
-            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_']; // Extended critical buttons
-            const criticalModals = ['festivalSetupModal']; // Add modal handling
+            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'festivalduration_'];
+            const criticalModals = ['festivalSetupModal'];
             
             const isCriticalCommand = interaction.type === InteractionType.ApplicationCommand && 
                                      criticalCommands.includes(interaction.commandName);
@@ -70,35 +95,21 @@ module.exports = {
                                    criticalModals.includes(interaction.customId);
             
             if (isCriticalCommand || isCriticalButton || isCriticalModal) {
-                // Defer immediately without any checks to prevent timeout
                 const deferStart = Date.now();
                 try {
                     if (!interaction.deferred && !interaction.replied) {
-                        // Vérifier si l'interaction est encore valide avant de defer
-                        const timeSinceCreation = Date.now() - interaction.createdTimestamp;
-                        if (timeSinceCreation > 2000) { // Réduction à 2 secondes
-                            console.warn(`⚠️ Interaction trop ancienne (${timeSinceCreation}ms), abandon du defer`);
-                            return;
-                        }
-                        
-                        // Vérification supplémentaire : ignorer si l'interaction arrive trop tôt après la création
-                        if (timeSinceCreation < 50) {
-                            console.warn(`⚠️ Interaction trop récente (${timeSinceCreation}ms), possible double-clic`);
-                            return;
-                        }
-                        
                         if (interaction.isButton() || interaction.isStringSelectMenu()) {
                             console.log(`🔘 Using deferUpdate for button/select: ${interaction.customId}`);
-                            await interaction.deferUpdate({ flags: 64 }); // 64 = ephemeral flag for updates
+                            await interaction.deferUpdate({ flags: 64 });
                         } else {
                             console.log(`💬 Using deferReply for command/modal: ${interaction.commandName || interaction.customId}`);
-                            await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag for replies
+                            await interaction.deferReply({ flags: 64 });
                         }
                         console.log(`⚡ Critical defer completed in ${Date.now() - deferStart}ms`);
                     }
                 } catch (deferError) {
                     console.error(`❌ Critical defer failed after ${Date.now() - deferStart}ms:`, deferError);
-                    return; // Abort if we can't defer critical interactions
+                    return;
                 }
             }
 
