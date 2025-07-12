@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getCurrentFestival } = require('../utils/festivalManager');
 const { castVote } = require('../utils/vote');
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -28,7 +29,7 @@ module.exports = {
         
         const festival = getCurrentFestival();
         if (!festival) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: 'Aucun festival actif.',
                 ephemeral: true
             });
@@ -79,7 +80,7 @@ module.exports = {
                 teamWarning = `\n⚠️ **ATTENTION**: ${targetUser.username} était dans l'équipe "${userTeam.name}" du camp ${userTeam.camp}, mais est maintenant dans le ${newCampId}. Vous devrez peut-être gérer cette incohérence.`;
             }
             
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `✅ **Changement de camp effectué avec succès !**\n\n` +
                         `👤 **Utilisateur**: ${targetUser.username}\n` +
                         `🏕️ **Ancien camp**: ${oldCampRoles.length > 0 ? oldCampRoles[0].role.name : 'Aucun'}\n` +
@@ -90,7 +91,7 @@ module.exports = {
             
         } catch (error) {
             console.error('Erreur lors du changement forcé de camp:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: `Erreur: ${error.message}`,
                 ephemeral: true
             });

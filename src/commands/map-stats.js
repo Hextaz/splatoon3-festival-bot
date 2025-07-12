@@ -3,6 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { findTeamByMember } = require('../utils/teamManager');
 const mapProbabilityManager = require('../utils/mapProbabilityManager');
 const { MAPS } = require('../data/mapsAndModes');
+const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -13,7 +14,7 @@ module.exports = {
         const userTeam = findTeamByMember(interaction.user.id);
         
         if (!userTeam) {
-            return await interaction.reply({
+            return await safeReply(interaction, {
                 content: "Vous n'êtes membre d'aucune équipe.",
                 ephemeral: true
             });
@@ -44,11 +45,11 @@ module.exports = {
                 { name: '📝 Note', value: 'Les probabilités évoluent après chaque BO3 joué.' }
             );
             
-            await interaction.reply({ embeds: [embed], ephemeral: true });
+            await safeReply(interaction, { embeds: [embed], ephemeral: true });
             
         } catch (error) {
             console.error('Erreur lors de la récupération des stats de maps:', error);
-            await interaction.reply({
+            await safeReply(interaction, {
                 content: 'Erreur lors de la récupération des statistiques de maps.',
                 ephemeral: true
             });
