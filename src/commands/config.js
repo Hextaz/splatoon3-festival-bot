@@ -118,13 +118,10 @@ module.exports = {
                 
             } 
             else if (subcommand === 'show') {
-                // Répondre immédiatement avec un message de chargement
-                await safeReply(interaction, {
-                    content: '🔄 Chargement de la configuration...',
-                    ephemeral: true
-                });
+                // Defer la réponse pour avoir plus de temps de traitement
+                await interaction.deferReply({ ephemeral: true });
                 
-                // Puis charger et afficher la vraie configuration
+                // Charger et afficher la configuration
                 const config = await loadConfig(guildId);
                 console.log('🔍 Configuration chargée pour show:', JSON.stringify(config, null, 2));
                 
@@ -144,9 +141,8 @@ module.exports = {
                     )
                     .setTimestamp();
                 
-                return await safeFollowUp(interaction, {
-                    embeds: [embed],
-                    ephemeral: true
+                return await interaction.editReply({
+                    embeds: [embed]
                 });
             }
         } catch (error) {
