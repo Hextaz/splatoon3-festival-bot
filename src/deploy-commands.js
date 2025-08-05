@@ -14,6 +14,10 @@ for (const file of commandFiles) {
     
     // Vérifier si la commande est celle qu'on souhaite ignorer (matchup)
     if (file !== 'matchup.js') {
+        if (!command || !command.data) {
+            console.warn(`⚠️ Commande ignorée - ${file}: command.data manquant`);
+            continue;
+        }
         commands.push(command.data.toJSON());
     }
 }
