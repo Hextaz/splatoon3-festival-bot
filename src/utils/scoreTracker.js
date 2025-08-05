@@ -33,43 +33,22 @@ const scoreTracker = {
     // Pour stocker les matchs et leurs multiplicateurs
     matchHistory: [],
 
-    // Sauvegarder les scores (hybride JSON/MongoDB)
+    // Sauvegarder les scores (MongoDB uniquement)
     async saveScores() {
         try {
             const adapter = getDataAdapter();
             
-            if (adapter) {
-                // Sauvegarder dans MongoDB
-                console.log('💾 Sauvegarde des scores avec DataAdapter');
-                await adapter.saveScores(this.scores);
-                console.log('✅ Scores sauvegardés avec DataAdapter');
-            } else {
-                // Fallback JSON
-                await this.saveScoresJSON();
+            if (!adapter) {
+                throw new Error('DataAdapter non disponible - Guild ID manquant');
             }
-        } catch (error) {
-            console.error('Erreur lors de la sauvegarde des scores:', error);
-            // Fallback vers JSON en cas d'erreur MongoDB
-            await this.saveScoresJSON();
-        }
-    },
 
-    // Fonction JSON de sauvegarde (fallback)
-    saveScoresJSON: async function() {
-        try {
-            // Créer le dossier data s'il n'existe pas
-            const dataDir = path.join(__dirname, '../../data');
-            await fs.mkdir(dataDir, { recursive: true });
-            
-            const dataToSave = {
-                scores: this.scores,
-                matchHistory: this.matchHistory || []
-            };
-            
-            await fs.writeFile(scoresPath, JSON.stringify(dataToSave, null, 2));
-            console.log('Scores et historique des matchs sauvegardés avec succès');
+            // Sauvegarder dans MongoDB
+            console.log('💾 Sauvegarde des scores avec DataAdapter');
+            await adapter.saveScores(this.scores);
+            console.log('✅ Scores sauvegardés avec DataAdapter');
         } catch (error) {
-            console.error('Erreur lors de la sauvegarde des scores:', error);
+            console.error('❌ ERREUR CRITIQUE lors de la sauvegarde des scores:', error);
+            throw error; // Propager l'erreur au lieu de faire un fallback
         }
     },
 
@@ -87,73 +66,39 @@ const scoreTracker = {
         ).length;
     },
 
-    // Charger les scores (hybride JSON/MongoDB)
+        // Charger les scores (MongoDB uniquement)
     async loadScores() {
         try {
             const adapter = getDataAdapter();
             
-            if (adapter) {
-                // Charger depuis MongoDB
-                console.log('📥 Chargement des scores avec DataAdapter');
-                const scoresData = await adapter.getScores();
-                
-                if (scoresData && Object.keys(scoresData).length > 0) {
-                    this.scores = {
-                        camp1: scoresData.camp1 || 0,
-                        camp2: scoresData.camp2 || 0,
-                        camp3: scoresData.camp3 || 0
-                    };
-                    console.log(`✅ Scores chargés avec DataAdapter:`, this.scores);
-                } else {
-                    this.scores = { camp1: 0, camp2: 0, camp3: 0 };
-                    console.log('✅ Aucun score trouvé dans MongoDB');
-                }
-                
-                // Charger l'historique des matchs
-                const matches = await adapter.getMatches();
-                this.matchHistory = matches || [];
-            } else {
-                // Fallback JSON
-                await this.loadScoresJSON();
+            if (!adapter) {
+                throw new Error('DataAdapter non disponible - Guild ID manquant');
             }
-        } catch (error) {
-            console.error('Erreur lors du chargement des scores:', error);
-            // Fallback vers JSON en cas d'erreur MongoDB
-            await this.loadScoresJSON();
-        }
-    },
 
-    // Fonction JSON de chargement (fallback)
-    loadScoresJSON: async function() {
-        try {
-            const data = await fs.readFile(scoresPath, 'utf8');
-            const scoresData = JSON.parse(data);
+            // Charger depuis MongoDB
+            console.log('📥 Chargement des scores avec DataAdapter');
+            const scoresData = await adapter.getScores();
             
-            // Compatibilité avec l'ancien format
-            if (typeof scoresData === 'object' && !scoresData.scores) {
+            if (scoresData) {
                 this.scores = {
                     camp1: scoresData.camp1 || 0,
                     camp2: scoresData.camp2 || 0,
                     camp3: scoresData.camp3 || 0
                 };
-                this.matchHistory = [];
+                console.log(`✅ Scores chargés avec DataAdapter:`, this.scores);
             } else {
-                // Nouveau format
-                this.scores = scoresData.scores || {
-                    camp1: 0,
-                    camp2: 0,
-                    camp3: 0
-                };
-                this.matchHistory = scoresData.matchHistory || [];
+                this.scores = { camp1: 0, camp2: 0, camp3: 0 };
+                console.log('✅ Aucun score trouvé dans MongoDB');
             }
             
-            console.log('Scores chargés avec succès');
+            // Charger l'historique des matchs
+            const matches = await adapter.getMatches();
+            this.matchHistory = matches || [];
         } catch (error) {
-            if (error.code === 'ENOENT') {
-                console.log('Aucun fichier de scores trouvé. Utilisation des valeurs par défaut.');
-            } else {
-                console.error('Erreur lors du chargement des scores:', error);
-            }
+            console.error('❌ ERREUR CRITIQUE lors du chargement des scores:', error);
+            this.scores = { camp1: 0, camp2: 0, camp3: 0 };
+            this.matchHistory = [];
+            throw error; // Propager l'erreur au lieu de faire un fallback
         }
     },
 

@@ -1,139 +1,219 @@
 // src/utils/guildDataManager.js
-// Gestionnaire de données séparées par serveur Discord
+// Gestionnaire de données séparées par serveur Discord (MongoDB uniquement)
 
-const fs = require('fs').promises;
-const path = require('path');
+const DataAdapter = require('./dataAdapter');
+const { isMongoDBAvailable } = require('./database');
 
 class GuildDataManager {
     constructor() {
-        this.dataPath = path.join(__dirname, '../../data');
-        this.ensureDataDir();
+        // Plus besoin de dossiers locaux, tout va dans MongoDB
     }
 
-    async ensureDataDir() {
-        try {
-            await fs.mkdir(this.dataPath, { recursive: true });
-        } catch (error) {
-            if (error.code !== 'EEXIST') {
-                throw error;
-            }
+    // Obtenir le DataAdapter pour un serveur
+    getDataAdapter(guildId) {
+        if (!guildId) {
+            throw new Error('Guild ID requis pour GuildDataManager');
         }
-    }
-
-    // Créer le chemin du fichier spécifique à un serveur
-    getGuildFilePath(guildId, fileName) {
-        const guildDir = path.join(this.dataPath, 'guilds', guildId);
-        return path.join(guildDir, fileName);
-    }
-
-    // Créer le dossier pour un serveur spécifique
-    async ensureGuildDir(guildId) {
-        const guildDir = path.join(this.dataPath, 'guilds', guildId);
-        try {
-            await fs.mkdir(guildDir, { recursive: true });
-        } catch (error) {
-            if (error.code !== 'EEXIST') {
-                throw error;
-            }
-        }
+        return new DataAdapter(guildId);
     }
 
     // Charger des données spécifiques à un serveur
-    async loadGuildData(guildId, fileName, defaultValue = null) {
+    async loadGuildData(guildId, dataType, defaultValue = null) {
         try {
-            const filePath = this.getGuildFilePath(guildId, fileName);
-            const data = await fs.readFile(filePath, 'utf8');
-            return JSON.parse(data);
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                return defaultValue;
+            if (!isMongoDBAvailable()) {
+                throw new Error('MongoDB non disponible');
             }
-            throw error;
+
+            const adapter = this.getDataAdapter(guildId);
+            
+            // Mapper les types de données vers les méthodes DataAdapter
+            switch (dataType) {
+                case 'config.json':
+                case 'config':
+                    return await adapter.getConfig() || defaultValue;
+                    
+                case 'teams.json':
+                case 'teams':
+                    return await adapter.getTeams() || defaultValue;
+                    
+                case 'votes.json':
+                case 'votes':
+                    return await adapter.getVotes() || defaultValue;
+                    
+                case 'scores.json':
+                case 'scores':
+                    return await adapter.getScores() || defaultValue;
+                    
+                case 'festivals.json':
+                case 'festival':
+                    return await adapter.getFestival() || defaultValue;
+                    
+                case 'mapProbabilities.json':
+                case 'mapProbabilities':
+                    return await adapter.getMapProbabilities() || defaultValue;
+                    
+                case 'matchHistory.json':
+                case 'matchHistory':
+                    return await adapter.getMatchHistory() || defaultValue;
+                    
+                case 'matchCounters.json':
+                case 'matchCounters':
+                    return await adapter.getMatchCounters() || defaultValue;
+                    
+                default:
+                    console.warn(`Type de données non supporté: ${dataType}`);
+                    return defaultValue;
+            }
+        } catch (error) {
+            console.error(`Erreur chargement données ${dataType} pour serveur ${guildId}:`, error);
+            return defaultValue;
         }
     }
 
     // Sauvegarder des données spécifiques à un serveur
-    async saveGuildData(guildId, fileName, data) {
-        await this.ensureGuildDir(guildId);
-        const filePath = this.getGuildFilePath(guildId, fileName);
-        await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+    async saveGuildData(guildId, dataType, data) {
+        try {
+            if (!isMongoDBAvailable()) {
+                throw new Error('MongoDB non disponible');
+            }
+
+            const adapter = this.getDataAdapter(guildId);
+            
+            // Mapper les types de données vers les méthodes DataAdapter
+            switch (dataType) {
+                case 'config.json':
+                case 'config':
+                    return await adapter.saveConfig(data);
+                    
+                case 'teams.json':
+                case 'teams':
+                    // Pour les équipes, on doit sauvegarder individuellement
+                    if (Array.isArray(data)) {
+                        for (const team of data) {
+                            await adapter.saveTeam(team);
+                        }
+                    } else {
+                        await adapter.saveTeam(data);
+                    }
+                    break;
+                    
+                case 'votes.json':
+                case 'votes':
+                    // Pour les votes, sauvegarder chaque vote individuellement
+                    if (typeof data === 'object') {
+                        for (const [userId, camp] of Object.entries(data)) {
+                            await adapter.saveVote(userId, camp);
+                        }
+                    }
+                    break;
+                    
+                case 'scores.json':
+                case 'scores':
+                    return await adapter.saveScores(data);
+                    
+                case 'festivals.json':
+                case 'festival':
+                    return await adapter.saveFestival(data);
+                    
+                case 'mapProbabilities.json':
+                case 'mapProbabilities':
+                    return await adapter.saveMapProbabilities(data);
+                    
+                case 'matchHistory.json':
+                case 'matchHistory':
+                    return await adapter.saveMatchHistory(data);
+                    
+                case 'matchCounters.json':
+                case 'matchCounters':
+                    return await adapter.saveMatchCounters(data);
+                    
+                default:
+                    console.warn(`Type de données non supporté pour sauvegarde: ${dataType}`);
+                    break;
+            }
+            
+            console.log(`✅ Données ${dataType} sauvegardées pour serveur ${guildId}`);
+        } catch (error) {
+            console.error(`❌ Erreur sauvegarde données ${dataType} pour serveur ${guildId}:`, error);
+            throw error;
+        }
     }
 
     // Supprimer des données spécifiques à un serveur
-    async deleteGuildData(guildId, fileName) {
+    async deleteGuildData(guildId, dataType) {
         try {
-            const filePath = this.getGuildFilePath(guildId, fileName);
-            await fs.unlink(filePath);
-        } catch (error) {
-            if (error.code !== 'ENOENT') {
-                throw error;
+            if (!isMongoDBAvailable()) {
+                throw new Error('MongoDB non disponible');
             }
+
+            const adapter = this.getDataAdapter(guildId);
+            
+            // Utiliser la méthode cleanup pour tout supprimer d'un coup
+            await adapter.cleanup();
+            console.log(`✅ Toutes les données supprimées pour serveur ${guildId}`);
+        } catch (error) {
+            console.error(`❌ Erreur suppression données pour serveur ${guildId}:`, error);
+            throw error;
         }
     }
 
     // Lister tous les serveurs avec des données
     async listGuildsWithData() {
         try {
-            const guildsDir = path.join(this.dataPath, 'guilds');
-            const guildIds = await fs.readdir(guildsDir);
-            return guildIds.filter(id => id.match(/^\d+$/)); // Filtrer les IDs valides
-        } catch (error) {
-            if (error.code === 'ENOENT') {
+            if (!isMongoDBAvailable()) {
+                console.warn('MongoDB non disponible - impossible de lister les serveurs');
                 return [];
             }
-            throw error;
+
+            // Obtenir tous les guildIds depuis MongoDB
+            const { Festival } = require('../models/mongodb');
+            const festivals = await Festival.find({}, { guildId: 1 }).distinct('guildId');
+            
+            return festivals.filter(id => id && id.match(/^\d+$/)); // Filtrer les IDs valides
+        } catch (error) {
+            console.error('Erreur lors du listage des serveurs:', error);
+            return [];
         }
     }
 
     // Nettoyer les données d'un serveur
     async cleanupGuildData(guildId) {
         try {
-            const guildDir = path.join(this.dataPath, 'guilds', guildId);
-            await fs.rmdir(guildDir, { recursive: true });
-            console.log(`🧹 Données du serveur ${guildId} supprimées`);
+            await this.deleteGuildData(guildId, 'all');
+            console.log(`🧹 Données du serveur ${guildId} supprimées de MongoDB`);
         } catch (error) {
-            if (error.code !== 'ENOENT') {
-                console.error(`❌ Erreur suppression données serveur ${guildId}:`, error);
-            }
+            console.error(`❌ Erreur suppression données serveur ${guildId}:`, error);
+            throw error;
         }
     }
 
-    // Migrer les anciennes données globales vers un serveur spécifique
+    // Migration des données globales vers un serveur spécifique
     async migrateGlobalDataToGuild(guildId) {
+        console.log(`🔄 Migration non nécessaire - toutes les données sont déjà dans MongoDB pour le serveur ${guildId}`);
+        
+        // Si besoin de migration depuis les anciens fichiers JSON, décommenter :
+        /*
         const filesToMigrate = [
             'festivals.json',
             'teams.json',
-            'scores.json',
             'votes.json',
-            'config.json',
-            'matchHistory.json',
-            'matchCounters.json',
+            'scores.json',
             'pendingResults.json'
         ];
 
-        console.log(`🔄 Migration des données globales vers le serveur ${guildId}...`);
-
         for (const fileName of filesToMigrate) {
             try {
-                const globalPath = path.join(this.dataPath, fileName);
-                const data = await fs.readFile(globalPath, 'utf8');
-                
-                // Sauvegarder dans le dossier du serveur
-                await this.saveGuildData(guildId, fileName, JSON.parse(data));
-                
-                // Renommer le fichier global pour éviter les conflits
-                const backupPath = path.join(this.dataPath, `${fileName}.backup`);
-                await fs.rename(globalPath, backupPath);
-                
-                console.log(`✅ ${fileName} migré et sauvegardé`);
-            } catch (error) {
-                if (error.code !== 'ENOENT') {
-                    console.error(`❌ Erreur migration ${fileName}:`, error);
+                // Charger depuis JSON et sauvegarder vers MongoDB
+                const data = await this.loadGuildDataFromJSON(guildId, fileName);
+                if (data) {
+                    await this.saveGuildData(guildId, fileName, data);
+                    console.log(`✅ ${fileName} migré vers MongoDB`);
                 }
+            } catch (error) {
+                console.error(`❌ Erreur migration ${fileName}:`, error);
             }
         }
-
-        console.log('✅ Migration terminée');
+        */
     }
 }
 

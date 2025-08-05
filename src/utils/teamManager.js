@@ -25,74 +25,41 @@ function setCurrentGuildId(guildId) {
     currentGuildId = guildId;
 }
 
-// Fonction pour sauvegarder les équipes (hybride JSON/MongoDB)
+// Fonction pour sauvegarder les équipes (MongoDB uniquement)
 async function saveTeams() {
     try {
         const adapter = getDataAdapter();
         
-        if (adapter) {
-            // Sauvegarder chaque équipe individuellement dans MongoDB
-            console.log(`💾 Sauvegarde de ${teams.length} équipes avec DataAdapter`);
-            for (const team of teams) {
-                await adapter.saveTeam({
-                    id: team.id,
-                    name: team.name,
-                    leaderId: team.leader,
-                    members: team.members,
-                    camp: team.camp,
-                    isOpen: team.isOpen,
-                    accessCode: team.code,
-                    channelId: team.channelId,
-                    roleId: team.roleId,
-                    isSearching: team.busy || false,
-                    lastSearchTime: team.lastSearchTime,
-                    searchLockUntil: team.searchLockUntil
-                });
-            }
-            console.log('✅ Équipes sauvegardées avec DataAdapter');
-        } else {
-            // Fallback JSON
-            await saveTeamsJSON();
+        if (!adapter) {
+            throw new Error('DataAdapter non disponible - Guild ID manquant');
         }
+
+        // Sauvegarder chaque équipe individuellement dans MongoDB
+        console.log(`💾 Sauvegarde de ${teams.length} équipes avec DataAdapter`);
+        for (const team of teams) {
+            await adapter.saveTeam({
+                id: team.id,
+                name: team.name,
+                leaderId: team.leader,
+                members: team.members,
+                camp: team.camp,
+                isOpen: team.isOpen,
+                accessCode: team.code,
+                channelId: team.channelId,
+                roleId: team.roleId,
+                isSearching: team.busy || false,
+                lastSearchTime: team.lastSearchTime,
+                searchLockUntil: team.searchLockUntil
+            });
+        }
+        console.log('✅ Équipes sauvegardées avec DataAdapter');
     } catch (error) {
-        console.error('Erreur lors de la sauvegarde des équipes:', error);
-        // Fallback vers JSON en cas d'erreur MongoDB
-        await saveTeamsJSON();
+        console.error('❌ ERREUR CRITIQUE lors de la sauvegarde des équipes:', error);
+        throw error; // Propager l'erreur au lieu de faire un fallback
     }
 }
 
-// Fonction JSON de sauvegarde (fallback)
-async function saveTeamsJSON() {
-    try {
-        // Créer le dossier data s'il n'existe pas
-        const dataDir = path.join(__dirname, '../../data');
-        await fs.mkdir(dataDir, { recursive: true });
-        
-        // Convertir les objets Team en format JSON simple
-        const teamsData = teams.map(team => ({
-            name: team.name,
-            leader: team.leader,
-            members: team.members,
-            camp: team.camp,
-            campDisplayName: team.campDisplayName,
-            isOpen: team.isOpen,
-            code: team.code,
-            busy: team.busy,
-            currentOpponent: team.currentOpponent,
-            channelId: team.channelId,
-            matchChannelId: team.matchChannelId,
-            roleId: team.roleId,
-            currentBO3: team.currentBO3 // Ajouter cette ligne
-        }));
-        
-        await fs.writeFile(teamsPath, JSON.stringify(teamsData, null, 2));
-        console.log(`Équipes sauvegardées avec succès. Total: ${teams.length}`);
-    } catch (error) {
-        console.error('Erreur lors de la sauvegarde des équipes:', error);
-    }
-}
-
-// Fonction pour charger les équipes (hybride JSON/MongoDB)
+// Fonction pour charger les équipes (MongoDB uniquement)
 async function loadTeams() {
     try {
         if (!currentGuildId) {
@@ -103,87 +70,46 @@ async function loadTeams() {
 
         const adapter = getDataAdapter();
         
-        if (adapter) {
-            // Charger depuis MongoDB
-            console.log('📥 Chargement des équipes avec DataAdapter');
-            const teamsData = await adapter.getTeams();
-            
-            if (teamsData && Object.keys(teamsData).length > 0) {
-                // Convertir les données MongoDB en objets Team
-                teams = Object.values(teamsData).map(data => {
-                    const team = new Team(data.name, data.leaderId, data.camp, data.isOpen, data.accessCode);
-                    
-                    // Rétablir tous les membres (sauf le leader qui est déjà ajouté par le constructeur)
-                    data.members.forEach(memberId => {
-                        if (memberId !== data.leaderId && !team.members.includes(memberId)) {
-                            team.addMember(memberId);
-                        }
-                    });
-                    
-                    // Rétablir les autres propriétés
-                    team.id = data.id;
-                    team.channelId = data.channelId;
-                    team.roleId = data.roleId;
-                    team.busy = data.isSearching || false;
-                    team.lastSearchTime = data.lastSearchTime;
-                    team.searchLockUntil = data.searchLockUntil;
-                    
-                    return team;
+        if (!adapter) {
+            throw new Error('DataAdapter non disponible - Guild ID manquant');
+        }
+
+        // Charger depuis MongoDB
+        console.log('📥 Chargement des équipes avec DataAdapter');
+        const teamsData = await adapter.getTeams();
+        
+        if (teamsData && Object.keys(teamsData).length > 0) {
+            // Convertir les données MongoDB en objets Team
+            teams = Object.values(teamsData).map(data => {
+                const team = new Team(data.name, data.leaderId, data.camp, data.isOpen, data.accessCode);
+                
+                // Rétablir tous les membres (sauf le leader qui est déjà ajouté par le constructeur)
+                data.members.forEach(memberId => {
+                    if (memberId !== data.leaderId && !team.members.includes(memberId)) {
+                        team.addMember(memberId);
+                    }
                 });
                 
-                console.log(`✅ Équipes chargées avec DataAdapter. Total: ${teams.length}`);
-            } else {
-                teams = [];
-                console.log('✅ Aucune équipe trouvée dans MongoDB');
-            }
-        } else {
-            // Fallback JSON
-            await loadTeamsJSON();
-        }
-    } catch (error) {
-        console.error('Erreur lors du chargement des équipes:', error);
-        // Fallback vers JSON en cas d'erreur MongoDB
-        await loadTeamsJSON();
-    }
-}
-
-// Fonction JSON de chargement (fallback)
-async function loadTeamsJSON() {
-    try {
-        const data = await fs.readFile(teamsPath, 'utf8');
-        const teamsData = JSON.parse(data);
-        
-        // Convertir les données JSON en objets Team
-        teams = teamsData.map(data => {
-            const team = new Team(data.name, data.leader, data.camp, data.isOpen, data.code);
-            
-            // Rétablir tous les membres (sauf le leader qui est déjà ajouté par le constructeur)
-            data.members.forEach(memberId => {
-                if (memberId !== data.leader) {
-                    team.addMember(memberId);
-                }
+                // Rétablir les autres propriétés
+                team.id = data.id;
+                team.channelId = data.channelId;
+                team.roleId = data.roleId;
+                team.busy = data.isSearching || false;
+                team.lastSearchTime = data.lastSearchTime;
+                team.searchLockUntil = data.searchLockUntil;
+                
+                return team;
             });
             
-            // Rétablir les autres propriétés
-            team.campDisplayName = data.campDisplayName;
-            team.busy = data.busy;
-            team.currentOpponent = data.currentOpponent;
-            team.channelId = data.channelId;
-            team.matchChannelId = data.matchChannelId;
-            team.roleId = data.roleId;
-            team.currentBO3 = data.currentBO3;
-            
-            return team;
-        });
-        
-        console.log(`Équipes chargées avec succès. Total: ${teams.length}`);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            console.log('Aucun fichier d\'équipes trouvé. Utilisation d\'un tableau vide.');
-            teams = [];
+            console.log(`✅ Équipes chargées avec DataAdapter. Total: ${teams.length}`);
         } else {
-            console.error('Erreur lors du chargement des équipes:', error);
+            teams = [];
+            console.log('✅ Aucune équipe trouvée dans MongoDB');
         }
+    } catch (error) {
+        console.error('❌ ERREUR CRITIQUE lors du chargement des équipes:', error);
+        teams = []; // Initialiser vide en cas d'erreur
+        throw error; // Propager l'erreur au lieu de faire un fallback
     }
 }
 

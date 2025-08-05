@@ -15,11 +15,31 @@ module.exports = {
         try {
             console.log('=== DÉBUT RÉINITIALISATION COMPLÈTE DU SYSTÈME ===');
             
-            // Chemin vers les fichiers de données
+            // 1. NETTOYER MONGODB via DataAdapter
+            const DataAdapter = require('../utils/dataAdapter');
+            const adapter = new DataAdapter(interaction.guild.id);
+            await adapter.cleanup();
+            console.log('✅ MongoDB nettoyé (festivals, équipes, votes, scores, matchs, probabilités)');
+            
+            // 2. Nettoyage COMPLET MongoDB (même les données orphelines)
+            const { Festival, Team, Vote, Match, CampScore, MapProbability } = require('../models/mongodb');
+            const { isMongoDBAvailable } = require('../utils/database');
+            
+            if (isMongoDBAvailable()) {
+                // Supprimer TOUTES les données de ce serveur, même orphelines
+                await Festival.deleteMany({ guildId: interaction.guild.id });
+                await Team.deleteMany({ guildId: interaction.guild.id });
+                await Vote.deleteMany({ guildId: interaction.guild.id });
+                await Match.deleteMany({ guildId: interaction.guild.id });
+                await CampScore.deleteMany({ guildId: interaction.guild.id });
+                await MapProbability.deleteMany({ guildId: interaction.guild.id });
+                console.log('✅ Nettoyage COMPLET MongoDB - toutes données orphelines supprimées');
+            }
+            
+            // 3. Nettoyer les fichiers JSON locaux (fallback/sécurité)
             const dataPath = path.join(__dirname, '../../data');
             const files = ['festivals.json', 'teams.json', 'votes.json', 'scores.json', 'pendingResults.json'];
             
-            // Supprimer tous les fichiers de données
             for (const file of files) {
                 const filePath = path.join(dataPath, file);
                 try {
@@ -28,71 +48,61 @@ module.exports = {
                 } catch (error) {
                     if (error.code !== 'ENOENT') {
                         console.error(`Erreur lors de la suppression de ${file}:`, error);
-                    } else {
-                        console.log(`Le fichier ${file} n'existait pas`);
                     }
                 }
             }
             
-            // Supprimer les rôles et canaux
+            // 4. Supprimer SEULEMENT les rôles créés par le bot
             const guild = interaction.guild;
             
-            // 1. Suppression des rôles
             const rolesToDelete = guild.roles.cache.filter(role => 
-                role.name.startsWith('Team ') || role.name.startsWith('Camp ')
+                role.name.startsWith('Team ') || 
+                role.name.startsWith('Camp ') || 
+                role.name === 'Team Leader'
             );
             
-            console.log(`${rolesToDelete.size} rôles à supprimer`);
+            console.log(`${rolesToDelete.size} rôles du bot à supprimer`);
             
             for (const [id, role] of rolesToDelete) {
                 try {
-                    await role.delete('Réinitialisation complète du système');
+                    await role.delete('Réinitialisation système bot');
                     console.log(`Rôle ${role.name} supprimé`);
                 } catch (error) {
                     console.error(`Erreur lors de la suppression du rôle ${role.name}:`, error);
                 }
-                // Pause pour éviter les limites de rate
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
             
-            // 2. Suppression des canaux
-            const category = guild.channels.cache.find(
-                channel => channel.type === 4 && channel.name === 'Festival'
+            // 5. Supprimer SEULEMENT les salons d'équipes et de matchs (PAS la catégorie)
+            const teamChannels = guild.channels.cache.filter(channel => 
+                channel.name && (
+                    channel.name.startsWith('team-') || 
+                    channel.name.startsWith('match-') ||
+                    channel.name.includes('equipe-')
+                )
             );
             
-            if (category) {
-                // Supprimer d'abord les canaux dans la catégorie
-                const channelsInCategory = guild.channels.cache.filter(
-                    channel => channel.parentId === category.id
-                );
-                
-                console.log(`${channelsInCategory.size} canaux dans la catégorie à supprimer`);
-                
-                for (const [id, channel] of channelsInCategory) {
-                    try {
-                        await channel.delete('Réinitialisation complète du système');
-                        console.log(`Canal ${channel.name} supprimé`);
-                    } catch (error) {
-                        console.error(`Erreur lors de la suppression du canal ${channel.name}:`, error);
-                    }
-                    // Pause pour éviter les limites de rate
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-                
-                // Puis supprimer la catégorie
+            console.log(`${teamChannels.size} salons d'équipes/matchs à supprimer`);
+            
+            for (const [id, channel] of teamChannels) {
                 try {
-                    await category.delete('Réinitialisation complète du système');
-                    console.log('Catégorie Festival supprimée');
+                    await channel.delete('Réinitialisation système bot');
+                    console.log(`Salon ${channel.name} supprimé`);
                 } catch (error) {
-                    console.error('Erreur lors de la suppression de la catégorie Festival:', error);
+                    console.error(`Erreur lors de la suppression du salon ${channel.name}:`, error);
                 }
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
             
             console.log('=== FIN RÉINITIALISATION COMPLÈTE DU SYSTÈME ===');
             
             // Réponse à l'utilisateur
             await safeEdit(interaction, {
-                content: '✅ Système entièrement réinitialisé. Vous pouvez maintenant redémarrer le bot pour un démarrage propre.',
+                content: `✅ **Système COMPLÈTEMENT nettoyé !**\n\n` +
+                        `�️ **MongoDB:** TOUTES les données supprimées (festivals, équipes, votes, scores, matchs)\n` +
+                        `🎭 **Rôles:** ${rolesToDelete.size} rôles du bot supprimés\n` +
+                        `💬 **Salons:** ${teamChannels.size} salons d'équipes/matchs supprimés\n\n` +
+                        `🔄 **Le système est maintenant 100% propre pour un nouveau festival.**`,
                 ephemeral: true
             });
             
