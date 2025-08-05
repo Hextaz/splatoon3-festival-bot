@@ -1575,8 +1575,10 @@ const handleRejectButton = async (interaction) => {
 
 const handleFestivalSetup = async (interaction) => {
     try {
-        // ✅ Le defer est déjà fait dans interactionCreate.js pour les boutons critiques
-        // Pas besoin de re-defer ici
+        // Defer l'interaction si ce n'est pas déjà fait
+        if (!interaction.deferred && !interaction.replied) {
+            await safeDefer(interaction, false, true); // true pour isUpdate car c'est un bouton
+        }
         
         const setup = interaction.client.festivalSetup?.[interaction.user.id];
         

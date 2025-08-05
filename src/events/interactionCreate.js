@@ -56,14 +56,24 @@ module.exports = {
         const userActionKey = `${interaction.user.id}_${interaction.commandName || interaction.customId}`;
         const lastUserAction = interaction.client._lastUserActions.get(userActionKey) || 0;
         
-        if (startTime - lastUserAction < 1000) { // Augmenté à 1 seconde pour être plus agressif
+        // Exception pour les interactions de festival setup qui doivent être rapides
+        const isFestivalSetupFlow = (interaction.commandName === 'start-festival') || 
+                                   (interaction.customId && (
+                                       interaction.customId.startsWith('teamsize_') ||
+                                       interaction.customId.startsWith('teamtype_') ||
+                                       interaction.customId.startsWith('festivalduration_') ||
+                                       interaction.customId.startsWith('confirm_festival') ||
+                                       interaction.customId.startsWith('cancel_festival')
+                                   ));
+        
+        if (!isFestivalSetupFlow && startTime - lastUserAction < 1000) {
             console.log(`⚡ Action trop rapide ignorée: ${interaction.commandName || interaction.customId} (${startTime - lastUserAction}ms depuis la dernière)`);
             return;
         }
         
         // Couche 3: Protection contre les interactions très similaires dans une fenêtre de temps courte
         const recentKey = `${interaction.user.id}_${interaction.type}_${Math.floor(startTime / 2000)}`; // Fenêtre de 2 secondes
-        if (interaction.client._recentInteractions.has(recentKey)) {
+        if (!isFestivalSetupFlow && interaction.client._recentInteractions.has(recentKey)) {
             const recentInteractions = interaction.client._recentInteractions.get(recentKey);
             const similarAction = recentInteractions.find(recent => 
                 recent.commandName === (interaction.commandName || interaction.customId) ||
@@ -137,9 +147,17 @@ module.exports = {
             const isCriticalModal = interaction.type === InteractionType.ModalSubmit &&
                                    criticalModals.includes(interaction.customId);
 
-            // Special case: festivalduration_ buttons should NOT be deferred before modal
-            if (interaction.isButton() && interaction.customId.startsWith('festivalduration_')) {
-                // Skip defer, will showModal directly in handler
+            // Special cases: buttons that should NOT be deferred here
+            const shouldNotDefer = interaction.isButton() && (
+                interaction.customId.startsWith('festivalduration_') ||
+                interaction.customId.startsWith('teamsize_') ||
+                interaction.customId.startsWith('gamemode_') ||
+                interaction.customId.startsWith('confirm_festival') ||
+                interaction.customId.startsWith('cancel_festival')
+            );
+            
+            if (shouldNotDefer) {
+                // Skip defer, will be handled by specific handlers
             } else if (isCriticalCommand || isCriticalButton || isCriticalModal) {
                 const deferStart = Date.now();
                 try {
