@@ -1028,6 +1028,7 @@ module.exports = {
     createEndEmbed,
     createPrepEmbed,
     scheduleActivation,
+    verifyFestivalStatus,
     activateFestivalNow,
     deactivateFestivalNow,
     sendHalfwayAnnouncement,

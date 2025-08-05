@@ -136,6 +136,22 @@ async function initializeManagersForGuild(guildId) {
             
             console.log('État:', festivalState);
             console.log('================================================');
+            
+            // ACTIVATION ET REPROGRAMMATION AUTOMATIQUE
+            if (endDate < now) {
+                // Festival terminé, ne rien faire
+            } else if (now >= startDate && now <= endDate && !festival.isActive) {
+                // Festival devrait être actif mais ne l'est pas - Activer immédiatement
+                console.log('🎉 ACTIVATION IMMÉDIATE DU FESTIVAL AU REDÉMARRAGE...');
+                await festivalManager.verifyFestivalStatus();
+            } else if (startDate > now || (now >= startDate && now <= endDate)) {
+                // Festival futur ou en cours - Reprogrammer les timeouts
+                console.log('📅 REPROGRAMMATION DES TIMEOUTS D\'ACTIVATION...');
+                const guild = client.guilds.cache.get(guildId);
+                if (guild) {
+                    festivalManager.scheduleActivation(festival, client);
+                }
+            }
         }
         
         console.log(`✅ Managers initialisés pour le serveur: ${guildId}`);
