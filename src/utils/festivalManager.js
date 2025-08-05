@@ -363,8 +363,9 @@ async function resetFestivalData(guild = null) {
     };
     // Réinitialiser également l'historique des matchs
     scoreTracker.matchHistory = [];
-    await scoreTracker.saveScores();
-    console.log('Scores et historique des matchs réinitialisés et sauvegardés');
+    // NE PAS sauvegarder ici car il n'y a plus de festival actif
+    // Les scores seront sauvegardés lors de la création du nouveau festival
+    console.log('Scores et historique des matchs réinitialisés en mémoire');
 
     // Réinitialiser les votes
     const { resetVotes } = require('./vote');

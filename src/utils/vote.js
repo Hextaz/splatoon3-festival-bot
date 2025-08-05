@@ -113,9 +113,9 @@ async function resetVotes() {
     };
     voteInstance.userVotes = new Map();
     
-    // Sauvegarder l'état réinitialisé
-    await saveVotes();
-    console.log('Votes réinitialisés avec succès');
+    // NE PAS sauvegarder ici car il n'y a plus de festival actif
+    // Les votes seront sauvegardés lors de la création du nouveau festival
+    console.log('Votes réinitialisés en mémoire avec succès');
 }
 
 module.exports = {
