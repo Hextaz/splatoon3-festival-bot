@@ -26,11 +26,9 @@ class DataAdapter {
 
     async saveFestival(festivalData) {
         if (isMongoDBAvailable()) {
-            // Désactiver les anciens festivals
-            await Festival.updateMany(
-                { guildId: this.guildId, isActive: true },
-                { isActive: false }
-            );
+            // Supprimer complètement tous les anciens festivals pour un reset complet
+            await Festival.deleteMany({ guildId: this.guildId });
+            console.log('Anciens festivals supprimés pour reset complet');
             
             // Créer le nouveau festival
             const festival = new Festival({
