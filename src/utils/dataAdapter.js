@@ -565,9 +565,13 @@ class DataAdapter {
                 await MapProbability.deleteMany({ guildId: this.guildId, festivalId: festival._id });
                 await Festival.findByIdAndDelete(festival._id);
             }
+            
+            // Supprimer aussi la configuration du serveur
+            await GuildConfig.deleteMany({ guildId: this.guildId });
+            console.log('✅ Configuration du serveur supprimée');
         } else {
             // Nettoyage JSON
-            const files = ['festivals.json', 'teams.json', 'votes.json', 'matchHistory.json', 'scores.json'];
+            const files = ['festivals.json', 'teams.json', 'votes.json', 'matchHistory.json', 'scores.json', 'config.json'];
             for (const file of files) {
                 try {
                     const filePath = path.join(this.dataDir, file);

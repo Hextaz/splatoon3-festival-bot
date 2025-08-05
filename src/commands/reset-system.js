@@ -22,7 +22,7 @@ module.exports = {
             console.log('✅ MongoDB nettoyé (festivals, équipes, votes, scores, matchs, probabilités)');
             
             // 2. Nettoyage COMPLET MongoDB (même les données orphelines)
-            const { Festival, Team, Vote, Match, CampScore, MapProbability } = require('../models/mongodb');
+            const { Festival, Team, Vote, Match, CampScore, MapProbability, GuildConfig } = require('../models/mongodb');
             const { isMongoDBAvailable } = require('../utils/database');
             
             if (isMongoDBAvailable()) {
@@ -33,7 +33,8 @@ module.exports = {
                 await Match.deleteMany({ guildId: interaction.guild.id });
                 await CampScore.deleteMany({ guildId: interaction.guild.id });
                 await MapProbability.deleteMany({ guildId: interaction.guild.id });
-                console.log('✅ Nettoyage COMPLET MongoDB - toutes données orphelines supprimées');
+                await GuildConfig.deleteMany({ guildId: interaction.guild.id });
+                console.log('✅ Nettoyage COMPLET MongoDB - toutes données orphelines supprimées (config incluse)');
             }
             
             // 3. Nettoyer les fichiers JSON locaux (fallback/sécurité)
