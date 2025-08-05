@@ -180,6 +180,32 @@ async function createFestival(title, campNames, startDate, endDate, announcement
                 modes: festival.gameMode || options.modes || ['Défense de Zone'],
                 ...options
             });
+            
+            // Mettre à jour la configuration pour correspondre à la taille d'équipe
+            const teamSize = options.teamSize || festival.teamSize || 4;
+            console.log(`🔧 Mise à jour maxMembersPerTeam à ${teamSize} pour correspondre au festival`);
+            
+            // Charger la config actuelle
+            const currentConfig = await adapter.getConfig();
+            if (currentConfig) {
+                // Mettre à jour maxMembersPerTeam
+                const updatedConfig = {
+                    ...currentConfig,
+                    // Note: on ne peut pas mettre les settings directement, il faut les mettre dans la base de données MongoDB
+                };
+                
+                // Utiliser MongoDB directement pour mettre à jour les settings
+                const { GuildConfig } = require('../models/mongodb');
+                await GuildConfig.findOneAndUpdate(
+                    { guildId: guild.id },
+                    { 
+                        'settings.maxMembersPerTeam': teamSize 
+                    },
+                    { upsert: true }
+                );
+                console.log(`✅ Configuration mise à jour: maxMembersPerTeam = ${teamSize}`);
+            }
+            
             console.log('✅ Festival sauvegardé avec DataAdapter');
         } catch (error) {
             console.warn('⚠️ Erreur DataAdapter, fallback vers JSON:', error.message);

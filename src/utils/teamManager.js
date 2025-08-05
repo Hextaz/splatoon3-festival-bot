@@ -172,10 +172,10 @@ function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = nu
                 console.error(`Erreur lors de la configuration complète de l'équipe ${name}:`, error);
             }
         })();
+    } else {
+        // Sauvegarder seulement si pas de guild (pas de configuration async)
+        saveTeams();
     }
-    
-    // Sauvegarder les changements de base
-    saveTeams();
     
     return team;
 }

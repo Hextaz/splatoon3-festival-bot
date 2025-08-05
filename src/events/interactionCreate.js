@@ -298,6 +298,12 @@ async function handleDebugButton(interaction) {
 }
 
 async function handleDocumentationSelect(interaction) {
+    // Defer l'interaction si ce n'est pas déjà fait
+    const { safeDefer } = require('../utils/responseUtils');
+    if (!interaction.deferred && !interaction.replied) {
+        await safeDefer(interaction, false, true); // true pour isUpdate car c'est un StringSelectMenu
+    }
+    
     const section = interaction.values[0];
     const { getCurrentFestival } = require('../utils/festivalManager');
     const festival = getCurrentFestival();
