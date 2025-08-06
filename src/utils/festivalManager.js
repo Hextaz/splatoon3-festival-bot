@@ -199,6 +199,34 @@ async function saveFestival(festival, guildId = null) {
 
 // Créer un nouveau festival
 async function createFestival(title, campNames, startDate, endDate, announcementChannelId, guild = null, options = {}) {
+    console.log('🏗️ ===== CRÉATION D\'UN NOUVEAU FESTIVAL =====');
+    console.log(`🔍 Guild: ${guild ? guild.name : 'NON FOURNIE'} (${guild ? guild.id : 'N/A'})`);
+    
+    // CRUCIAL: Initialiser tous les managers avec le bon guildId AVANT le reset
+    if (guild) {
+        console.log('🔧 Initialisation des managers avec le guildId...');
+        
+        // TeamManager
+        const { setCurrentGuildId: setTeamGuildId } = require('./teamManager');
+        setTeamGuildId(guild.id);
+        
+        // Autres managers
+        const scoreTracker = require('./scoreTracker');
+        const matchHistoryManager = require('./matchHistoryManager');
+        const voteManager = require('./vote');
+        const mapProbabilityManager = require('./mapProbabilityManager');
+        
+        if (scoreTracker.setCurrentGuildId) scoreTracker.setCurrentGuildId(guild.id);
+        if (matchHistoryManager.setCurrentGuildId) matchHistoryManager.setCurrentGuildId(guild.id);
+        if (voteManager.setCurrentGuildId) voteManager.setCurrentGuildId(guild.id);
+        if (mapProbabilityManager.setCurrentGuildId) mapProbabilityManager.setCurrentGuildId(guild.id);
+        
+        // FestivalManager
+        setCurrentGuildId(guild.id);
+        
+        console.log('✅ Tous les managers initialisés');
+    }
+    
     // IMPORTANT: Nettoyage complet de toutes les données avant création du nouveau festival
     console.log('🧹 Nettoyage complet des données avant création du nouveau festival...');
     await resetFestivalData(guild);
@@ -316,6 +344,9 @@ async function verifyFestivalStatus(guildId = null) {
 
 // Réinitialiser les données (équipes, scores, etc.)
 async function resetFestivalData(guild = null) {
+    console.log('🧹 ===== DÉBUT DU RESET FESTIVAL DATA =====');
+    console.log(`🔍 Guild fournie: ${guild ? guild.name : 'NON'}`);
+    console.log(`🔍 CurrentGuildId: ${currentGuildId}`);
     
     // Vérifier si la guild est fournie
     if (!guild) {
@@ -325,7 +356,10 @@ async function resetFestivalData(guild = null) {
     const { teams, saveTeams } = require('./teamManager');
     const scoreTracker = require('./scoreTracker');
 
+    console.log(`🔍 Nombre d'équipes en mémoire avant reset: ${teams.length}`);
+
     // Réinitialiser l'historique des matchs
+    console.log('🗑️ Reset de l\'historique des matchs...');
     const matchHistoryManager = require('./matchHistoryManager');
     await matchHistoryManager.resetHistory();
     console.log('Historique des matchs réinitialisé');

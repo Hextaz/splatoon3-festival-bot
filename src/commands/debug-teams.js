@@ -44,9 +44,21 @@ module.exports = {
                     break;
                     
                 case 'clear':
+                    console.log(`🔍 DEBUG: Tentative de suppression des équipes pour guildId: ${guildId}`);
                     const adapter = new DataAdapter(guildId);
+                    
+                    // Compter avant suppression
+                    const countBefore = await Team.countDocuments({ guildId });
+                    console.log(`🔍 DEBUG: ${countBefore} équipes trouvées avant suppression`);
+                    
                     const result = await adapter.clearAllTeams();
-                    await interaction.editReply(`🗑️ **${result.deletedCount}** équipes supprimées de la base de données`);
+                    console.log(`🔍 DEBUG: Résultat de clearAllTeams:`, result);
+                    
+                    // Compter après suppression
+                    const countAfter = await Team.countDocuments({ guildId });
+                    console.log(`🔍 DEBUG: ${countAfter} équipes restantes après suppression`);
+                    
+                    await interaction.editReply(`🗑️ **${result.deletedCount}** équipes supprimées de la base de données\n📊 Avant: ${countBefore} équipes\n📊 Après: ${countAfter} équipes`);
                     break;
             }
         } catch (error) {
