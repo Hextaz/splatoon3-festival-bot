@@ -237,12 +237,18 @@ const handleCreateFestivalConfirm = async (interaction) => {
                     .setTitle(`📣 Le Festival "${festival.title}" a été créé! 📣`)
                     .setDescription(`Vous pouvez dès maintenant commencer à vous préparer pour le festival!`)
                     .addFields(
-                        { name: '⏳ Date de début', value: `<t:${Math.floor(new Date(festival.startDate).getTime() / 1000)}:F>` },
+                        { name: '⏳ Date de début', value: `<t:${Math.floor(new Date(festival.startDate).getTime() / 1000)}:F> (<t:${Math.floor(new Date(festival.startDate).getTime() / 1000)}:R>)` },
                         { name: '🗳️ Votez dès maintenant', value: 'Utilisez la commande `/vote` pour rejoindre l\'un des camps suivants:' },
                         { name: festival.campNames[0], value: 'Camp 1', inline: true },
                         { name: festival.campNames[1], value: 'Camp 2', inline: true },
                         { name: festival.campNames[2], value: 'Camp 3', inline: true },
-                        { name: '👥 Formez votre équipe', value: 'Après avoir voté pour un camp, vous pourrez:\n- Créer votre équipe avec `/create-team`\n- Rejoindre une équipe existante avec `/join-team`\n- Consulter la liste des équipes avec `/teams-list`' }
+                        { name: '👥 Formez votre équipe', value: 'Après avoir voté pour un camp, vous pourrez:\n- Créer votre équipe avec `/create-team`\n- Rejoindre une équipe existante avec `/join-team`\n- Consulter la liste des équipes avec `/teams-list`' },
+                        { name: '🎮 Configuration', value: 
+                            `**Taille d'équipe**: ${festival.getTeamSizeDisplay()}\n` +
+                            `**Mode de jeu**: ${festival.getGameModeDisplay()}\n` +
+                            `**Maps bannies**: ${festival.bannedMaps?.length || 0}`,
+                            inline: false 
+                        }
                     )
                     .setTimestamp();
                 

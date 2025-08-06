@@ -185,6 +185,12 @@ module.exports = {
                 }
             );
             
+            // Debug pour comparer avec les autres embeds
+            console.log('🔧 DEBUG current-festival - festival.teamSize:', festival.teamSize);
+            console.log('🔧 DEBUG current-festival - festival.gameMode:', festival.gameMode);
+            console.log('🔧 DEBUG current-festival - festival.getTeamSizeDisplay():', festival.getTeamSizeDisplay());
+            console.log('🔧 DEBUG current-festival - getGameModeDisplay(festival.gameMode):', getGameModeDisplay(festival.gameMode));
+            
             // Si il y a des maps bannies, les afficher
             if (festival.bannedMaps.length > 0) {
                 const bannedMapNames = festival.bannedMaps

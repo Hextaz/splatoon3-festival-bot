@@ -563,6 +563,12 @@ async function resetFestivalData(guild = null) {
 function createStartEmbed(festival) {
     const { EmbedBuilder } = require('discord.js');
     
+    // Debug pour identifier le problème d'affichage
+    console.log('🔧 DEBUG createStartEmbed - festival.teamSize:', festival.teamSize);
+    console.log('🔧 DEBUG createStartEmbed - festival.gameMode:', festival.gameMode);
+    console.log('🔧 DEBUG createStartEmbed - festival.getTeamSizeDisplay():', festival.getTeamSizeDisplay());
+    console.log('🔧 DEBUG createStartEmbed - festival.getGameModeDisplay():', festival.getGameModeDisplay());
+    
     return new EmbedBuilder()
         .setColor('#FF9900')
         .setTitle(`🎉 Le Festival "${festival.title}" commence maintenant! 🎉`)
