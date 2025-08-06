@@ -113,12 +113,18 @@ async function loadFestival(guildId = null) {
             try {
                 const { loadConfig } = require('../commands/config');
                 const config = await loadConfig(guildId);
+                console.log('🔧 DEBUG config complète:', JSON.stringify(config, null, 2));
+                
                 if (config && config.settings && config.settings.maxMembersPerTeam) {
                     teamSize = config.settings.maxMembersPerTeam;
                     console.log(`📐 teamSize récupéré depuis la config: ${teamSize}`);
+                } else {
+                    console.log('⚠️ maxMembersPerTeam non trouvé dans la config, utilisation de la valeur par défaut 4');
+                    console.log('🔧 Chemin config.settings:', config?.settings);
                 }
             } catch (error) {
                 console.warn('Impossible de récupérer teamSize depuis la config, utilisation de la valeur par défaut');
+                console.error('Erreur:', error);
             }
             
             console.log(`🔧 Conversion: modes=${JSON.stringify(festivalData.modes)} → gameMode=${gameMode}, teamSize=${teamSize}`);

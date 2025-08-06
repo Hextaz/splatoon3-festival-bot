@@ -487,7 +487,8 @@ class DataAdapter {
             if (config) {
                 const result = {
                     announcementChannelId: config.announceChannelId || undefined,
-                    announcementRoleId: config.adminRoleId || undefined
+                    announcementRoleId: config.adminRoleId || undefined,
+                    settings: config.settings || undefined
                 };
                 
                 // Nettoyer les undefined
