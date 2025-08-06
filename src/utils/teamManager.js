@@ -47,7 +47,6 @@ async function saveTeams() {
         console.log(`💾 Sauvegarde de ${teams.length} équipes avec DataAdapter`);
         for (const team of teams) {
             await adapter.saveTeam({
-                id: team.id,
                 name: team.name,
                 leaderId: team.leader,
                 members: team.members,
@@ -181,10 +180,9 @@ function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = nu
                 console.error(`Erreur lors de la configuration complète de l'équipe ${name}:`, error);
             }
         })();
-    } else {
-        // Sauvegarder seulement si pas de guild (pas de configuration async)
-        saveTeams();
     }
+    // Note: Plus de sauvegarde automatique ici car elle se fait dans la partie async
+    // Si pas de guild, l'équipe sera sauvée lors de la prochaine opération
     
     return team;
 }

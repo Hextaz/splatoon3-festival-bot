@@ -94,23 +94,24 @@ class DataAdapter {
             const festival = await this.getFestival();
             if (!festival) throw new Error('No active festival');
 
-            if (teamData.id) {
-                // Mise à jour
-                return await Team.findByIdAndUpdate(teamData.id, {
+            // UPSERT basé sur le nom d'équipe (unique dans un festival)
+            return await Team.findOneAndUpdate(
+                { 
+                    guildId: this.guildId,
+                    festivalId: festival._id,
+                    name: teamData.name
+                },
+                {
                     ...teamData,
                     guildId: this.guildId,
                     festivalId: festival._id,
                     updatedAt: new Date()
-                }, { new: true });
-            } else {
-                // Création
-                const team = new Team({
-                    ...teamData,
-                    guildId: this.guildId,
-                    festivalId: festival._id
-                });
-                return await team.save();
-            }
+                },
+                { 
+                    upsert: true,  // Créer si n'existe pas
+                    new: true      // Retourner le document mis à jour
+                }
+            );
         } else {
             const teams = await this.getTeams();
             const teamId = teamData.id || Date.now().toString();
