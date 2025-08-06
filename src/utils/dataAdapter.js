@@ -133,9 +133,29 @@ class DataAdapter {
 
     async clearAllTeams() {
         if (isMongoDBAvailable()) {
+            console.log(`🔍 clearAllTeams: Début suppression pour guildId: ${this.guildId}`);
+            
+            // D'abord, compter les équipes existantes
+            const countBefore = await Team.countDocuments({ guildId: this.guildId });
+            console.log(`🔍 clearAllTeams: ${countBefore} équipes trouvées pour guildId ${this.guildId}`);
+            
+            // Lister les équipes pour debug
+            if (countBefore > 0) {
+                const teams = await Team.find({ guildId: this.guildId });
+                console.log(`🔍 clearAllTeams: Équipes à supprimer:`);
+                teams.forEach((team, index) => {
+                    console.log(`  ${index + 1}. ${team.name} (ID: ${team._id}, Festival: ${team.festivalId})`);
+                });
+            }
+            
             // Supprimer TOUTES les équipes du serveur, peu importe le festival
             const result = await Team.deleteMany({ guildId: this.guildId });
-            console.log(`🗑️ ${result.deletedCount} équipes supprimées de MongoDB pour le serveur ${this.guildId} (tous festivals confondus)`);
+            console.log(`🗑️ clearAllTeams: ${result.deletedCount} équipes supprimées de MongoDB pour le serveur ${this.guildId} (tous festivals confondus)`);
+            
+            // Vérifier après suppression
+            const countAfter = await Team.countDocuments({ guildId: this.guildId });
+            console.log(`🔍 clearAllTeams: ${countAfter} équipes restantes après suppression`);
+            
             return result;
         } else {
             await this._saveJSONData('teams.json', {});

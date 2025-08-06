@@ -124,21 +124,26 @@ async function loadTeams() {
 // Fonction pour supprimer toutes les équipes (utilisée lors du reset)
 async function clearAllTeams() {
     try {
+        console.log(`🔍 teamManager.clearAllTeams: currentGuildId = ${currentGuildId}`);
+        
         const adapter = getDataAdapter();
         
         if (!adapter) {
-            console.warn('DataAdapter non disponible - suppression des équipes en mémoire uniquement');
+            console.warn('❌ teamManager.clearAllTeams: DataAdapter non disponible - suppression des équipes en mémoire uniquement');
             teams.length = 0;
             return;
         }
 
+        console.log(`🔍 teamManager.clearAllTeams: DataAdapter créé avec guildId ${currentGuildId}`);
+        
         // Supprimer de la base de données
         await adapter.clearAllTeams();
         
         // Vider le tableau en mémoire
+        const teamCountBefore = teams.length;
         teams.length = 0;
         
-        console.log('✅ Toutes les équipes supprimées (base + mémoire)');
+        console.log(`✅ teamManager.clearAllTeams: ${teamCountBefore} équipes supprimées en mémoire, base de données nettoyée`);
     } catch (error) {
         console.error('❌ Erreur lors de la suppression de toutes les équipes:', error);
         // En cas d'erreur, au moins vider la mémoire
