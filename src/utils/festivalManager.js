@@ -436,22 +436,10 @@ async function resetFestivalData(guild = null) {
     // Supprimer TOUTES les équipes (base de données + mémoire)
     console.log('🗑️ Suppression de toutes les équipes...');
     try {
-        // Utiliser DataAdapter directement au lieu de teamManager pour éviter les problèmes de contexte
-        const adapter = getDataAdapter(currentGuildId);
-        if (adapter) {
-            await adapter.clearAllTeams();
-            console.log('✅ Équipes supprimées de la base de données via DataAdapter');
-        } else {
-            console.warn('❌ DataAdapter non disponible pour la suppression des équipes');
-        }
-        
-        // Vider aussi la mémoire de teamManager
-        const { teams } = require('./teamManager');
-        const teamCountBefore = teams.length;
-        teams.length = 0;
-        console.log(`✅ ${teamCountBefore} équipes supprimées de la mémoire teamManager`);
-        
-        console.log('✅ Toutes les équipes supprimées avec succès (base + mémoire)');
+        // Utiliser teamManager.clearAllTeams() qui gère base + mémoire
+        const teamManager = require('./teamManager');
+        await teamManager.clearAllTeams();
+        console.log('✅ Toutes les équipes supprimées via teamManager.clearAllTeams()');
     } catch (error) {
         console.error('❌ Erreur lors de la suppression des équipes:', error);
     }

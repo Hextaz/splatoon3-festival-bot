@@ -101,15 +101,15 @@ async function initializeManagersForGuild(guildId) {
             interactionHandlers.setCurrentGuildId(guildId);
         }
         
-        // Load data for all managers after guildId is set
+        // Charger le festival EN PREMIER pour que les autres managers puissent filtrer par festivalId
+        const festival = await festivalManager.loadFestival(guildId);
+        
+        // Load data for all managers after guildId AND festival are set
         await teamManager.loadTeams();
         await voteManager.loadVotes();
         await scoreTracker.loadScores();
         await matchHistoryManager.loadMatchHistory();
         await mapProbabilityManager.loadProbabilities();
-        
-        // Charger le festival après que tous les autres managers soient prêts
-        const festival = await festivalManager.loadFestival(guildId);
 
         // Vérification du statut du festival au démarrage
         if (festival) {
@@ -353,8 +353,7 @@ async function loadAllData() {
             console.log('=== FIN VÉRIFICATION STATUT FESTIVAL ===');
         }
 
-        // Charger les autres données
-        await teamManager.loadTeams();
+        // Nettoyage des équipes corrompues
         teamManager.cleanupCorruptedTeams();
 
         // Charger l'historique des matchs
