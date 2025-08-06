@@ -571,7 +571,12 @@ class DataAdapter {
     async savePendingResults(guildId, resultsData) {
         if (isMongoDBAvailable()) {
             const festival = await this.getFestival();
-            if (!festival) throw new Error('No active festival');
+            if (!festival) {
+                console.error('❌ savePendingResults: Aucun festival actif trouvé pour guildId:', guildId || this.guildId);
+                throw new Error('No active festival');
+            }
+
+            console.log(`🔍 savePendingResults: Festival trouvé: ${festival.title} (ID: ${festival._id})`);
 
             // Supprimer les anciens résultats en attente
             await PendingResult.deleteMany({ 
