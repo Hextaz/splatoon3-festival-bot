@@ -133,8 +133,9 @@ class DataAdapter {
 
     async clearAllTeams() {
         if (isMongoDBAvailable()) {
+            // Supprimer TOUTES les équipes du serveur, peu importe le festival
             const result = await Team.deleteMany({ guildId: this.guildId });
-            console.log(`🗑️ ${result.deletedCount} équipes supprimées de MongoDB pour le serveur ${this.guildId}`);
+            console.log(`🗑️ ${result.deletedCount} équipes supprimées de MongoDB pour le serveur ${this.guildId} (tous festivals confondus)`);
             return result;
         } else {
             await this._saveJSONData('teams.json', {});
