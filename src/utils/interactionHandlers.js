@@ -2054,9 +2054,12 @@ function getGameModeDisplayName(gameMode) {
 
 // Ajouter la fonction handleMapBanSelection
 const handleMapBanSelection = async (interaction) => {
+    // IMPORTANT: Répondre à l'interaction pour éviter "This interaction failed"
+    await interaction.deferUpdate();
+    
     const setup = interaction.client.festivalSetup?.[interaction.user.id];
     if (!setup) {
-        return await safeReply(interaction, {
+        return await safeEdit(interaction, {
             content: 'Session de configuration expirée.',
             ephemeral: true
         });
@@ -2065,8 +2068,9 @@ const handleMapBanSelection = async (interaction) => {
     // Sauvegarder les maps bannies sélectionnées
     setup.bannedMaps = interaction.values || [];
     
-    // Pas besoin de répondre ici - l'utilisateur doit cliquer sur "Confirmer la sélection"
-    // pour continuer vers l'étape suivante
+    console.log(`📋 Maps bannies sélectionnées: ${setup.bannedMaps.join(', ')}`);
+    
+    // L'utilisateur doit maintenant cliquer sur "Confirmer la sélection" pour continuer
 };
 
 const handleFestivalDuration = async (interaction) => {
