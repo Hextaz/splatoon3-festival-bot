@@ -192,8 +192,15 @@ async function saveFestival(festival, guildId = null) {
             modes: festival.gameMode ? [festival.gameMode] : ['Défense de Zone']
         };
         
-        await adapter.saveFestival(festivalData);
-        console.log('✅ Festival sauvegardé avec DataAdapter');
+        const savedFestival = await adapter.saveFestival(festivalData);
+        
+        // CRUCIAL: Assigner l'ID MongoDB au festival
+        if (savedFestival && savedFestival._id) {
+            festival.id = savedFestival._id.toString();
+            console.log(`✅ Festival sauvegardé avec DataAdapter (ID: ${festival.id})`);
+        } else {
+            console.log('✅ Festival sauvegardé avec DataAdapter');
+        }
     } catch (error) {
         console.error('Erreur lors de la sauvegarde du festival:', error);
         throw error;
