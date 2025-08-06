@@ -142,6 +142,9 @@ async function loadFestival(guildId = null) {
                 }
             );
             
+            // CRUCIAL: Assigner l'ID MongoDB pour que les équipes puissent s'y référer
+            festival.id = festivalData._id.toString();
+            
             // Définir isActive depuis MongoDB
             festival.isActive = festivalData.isActive || false;
             

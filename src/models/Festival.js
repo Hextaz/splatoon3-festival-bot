@@ -1,5 +1,6 @@
 class Festival {
     constructor(title, campNames, startDate, endDate, announcementChannelId, options = {}) {
+        this.id = null; // ID unique du festival (généré par MongoDB)
         this.title = title;
         this.campNames = campNames; // Array de 3 noms de camps
         this.startDate = startDate; // Date en format ISO
@@ -25,6 +26,7 @@ class Festival {
 
     toJSON() {
         return {
+            id: this.id,
             title: this.title,
             campNames: this.campNames,
             startDate: this.startDate,
@@ -51,6 +53,7 @@ class Festival {
                 bannedMaps: json.bannedMaps || []
             }
         );
+        festival.id = json.id; // Assigner l'ID du festival
         festival.isActive = json.isActive || false;
         return festival;
     }

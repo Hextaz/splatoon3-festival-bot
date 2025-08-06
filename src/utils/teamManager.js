@@ -196,6 +196,15 @@ function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = nu
     // Assigner le festivalId du festival actuel
     const { getCurrentFestival } = require('./festivalManager');
     const currentFestival = getCurrentFestival();
+    
+    console.log(`🔍 createTeam Debug:`);
+    console.log(`  - currentFestival: ${currentFestival ? 'trouvé' : 'null'}`);
+    if (currentFestival) {
+        console.log(`  - festival.title: ${currentFestival.title}`);
+        console.log(`  - festival.id: ${currentFestival.id}`);
+        console.log(`  - typeof festival.id: ${typeof currentFestival.id}`);
+    }
+    
     if (currentFestival) {
         team.festivalId = currentFestival.id;
         console.log(`🔍 Équipe ${name} assignée au festival ${currentFestival.title} (ID: ${currentFestival.id})`);
