@@ -325,7 +325,16 @@ async function handleDocumentationSelect(interaction) {
         options: {
             getString: () => section
         },
+        replied: false,
+        deferred: false,
         reply: async (options) => {
+            const { safeEdit } = require('../utils/responseUtils');
+            await safeEdit(interaction, {
+                embeds: options.embeds,
+                components: []
+            });
+        },
+        followUp: async (options) => {
             const { safeEdit } = require('../utils/responseUtils');
             await safeEdit(interaction, {
                 embeds: options.embeds,
