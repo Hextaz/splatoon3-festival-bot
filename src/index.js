@@ -143,7 +143,7 @@ async function initializeManagersForGuild(guildId) {
             } else if (now >= startDate && now <= endDate && !festival.isActive) {
                 // Festival devrait être actif mais ne l'est pas - Activer immédiatement
                 console.log('🎉 ACTIVATION IMMÉDIATE DU FESTIVAL AU REDÉMARRAGE...');
-                await festivalManager.verifyFestivalStatus();
+                await festivalManager.verifyFestivalStatus(guildId);
             } else if (startDate > now || (now >= startDate && now <= endDate)) {
                 // Festival futur ou en cours - Reprogrammer les timeouts
                 console.log('📅 REPROGRAMMATION DES TIMEOUTS D\'ACTIVATION...');

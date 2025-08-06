@@ -252,7 +252,7 @@ function getCorrectGameModeDisplay(gameMode) {
     return modes[gameMode] || 'Modes mixtes';
 }
 
-async function verifyFestivalStatus() {
+async function verifyFestivalStatus(guildId = null) {
     const festival = getCurrentFestival();
     if (!festival) return;
     
@@ -262,15 +262,15 @@ async function verifyFestivalStatus() {
     
     // Si le festival devrait être actif mais ne l'est pas
     if (now >= startDate && now <= endDate && !festival.isActive) {
-        console.log('Festival devrait être actif, activation...');
+        console.log('🔧 Festival détecté comme devant être actif, activation...');
         festival.activate();
-        await saveFestivalAuto(festival);
+        await saveFestivalAuto(festival, guildId || currentGuildId);
     }
     
     // Si le festival est actif mais devrait être terminé
     if (now > endDate && festival.isActive) {
         festival.deactivate();
-        await saveFestivalAuto(festival);
+        await saveFestivalAuto(festival, guildId || currentGuildId);
     }
 }
 
