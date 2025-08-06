@@ -569,7 +569,7 @@ async function handleSimulateMatches(interaction, festival) {
     });
 }
 
-function checkTeamsConsistency() {
+async function checkTeamsConsistency() {
     const allTeams = await getAllTeams();
     const busyTeams = allTeams.filter(t => t.busy);
     
