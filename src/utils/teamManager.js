@@ -57,7 +57,8 @@ async function saveTeams() {
                 roleId: team.roleId,
                 isSearching: team.busy || false,
                 lastSearchTime: team.lastSearchTime,
-                searchLockUntil: team.searchLockUntil
+                searchLockUntil: team.searchLockUntil,
+                festivalId: team.festivalId
             });
         }
         console.log('✅ Équipes sauvegardées avec DataAdapter');
@@ -130,6 +131,7 @@ async function loadTeams() {
                 team.busy = data.isSearching || false;
                 team.lastSearchTime = data.lastSearchTime;
                 team.searchLockUntil = data.searchLockUntil;
+                team.festivalId = data.festivalId; // Restaurer le festivalId
                 
                 return team;
             });
@@ -190,6 +192,17 @@ function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = nu
     }
 
     const team = new Team(name, leaderId, camp, isOpen, code);
+    
+    // Assigner le festivalId du festival actuel
+    const { getCurrentFestival } = require('./festivalManager');
+    const currentFestival = getCurrentFestival();
+    if (currentFestival) {
+        team.festivalId = currentFestival.id;
+        console.log(`🔍 Équipe ${name} assignée au festival ${currentFestival.title} (ID: ${currentFestival.id})`);
+    } else {
+        console.log(`⚠️ Équipe ${name} créée sans festival actif`);
+    }
+    
     teams.push(team);
     
     // NOUVEAU : Créer les rôles et les attribuer immédiatement si guild est fourni

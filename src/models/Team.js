@@ -13,6 +13,7 @@ class Team {
         this.matchChannelId = null; // ID du salon de match en cours
         this.roleId = null; // Nouvel attribut pour stocker l'ID du rôle d'équipe
         this.currentBO3 = null; // Données du BO3 actuel
+        this.festivalId = null; // ID du festival auquel appartient l'équipe
     }
 
     addMember(memberId) {
