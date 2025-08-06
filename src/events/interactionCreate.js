@@ -215,7 +215,8 @@ module.exports = {
                 }
             }
             else if (interaction.isButton()) {
-                if (interaction.customId.startsWith('open_') || interaction.customId.startsWith('closed_')) {
+                if (interaction.customId.startsWith('open_') || interaction.customId.startsWith('closed_') || 
+                    interaction.customId.startsWith('team_open_') || interaction.customId.startsWith('team_closed_')) {
                     await handleTeamTypeButton(interaction);
                 } else if (interaction.customId.startsWith('duration_')) {
                     await handleDurationButton(interaction);

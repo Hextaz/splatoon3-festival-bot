@@ -87,8 +87,27 @@ async function loadTeams() {
         const teamsData = await adapter.getTeams();
         
         if (teamsData && Object.keys(teamsData).length > 0) {
+            // Vérifier si on doit filtrer par festival actuel
+            const { getCurrentFestival } = require('./festivalManager');
+            const currentFestival = getCurrentFestival();
+            
             // Convertir les données MongoDB en objets Team
-            teams = Object.values(teamsData).map(data => {
+            const allTeamsFromDB = Object.values(teamsData);
+            let filteredTeams = allTeamsFromDB;
+            
+            // Si un festival est actif, ne charger que les équipes de ce festival
+            if (currentFestival) {
+                filteredTeams = allTeamsFromDB.filter(teamData => 
+                    teamData.festivalId === currentFestival.id || 
+                    !teamData.festivalId  // Garder les équipes sans festivalId pour compatibility
+                );
+                
+                console.log(`🔍 Festival actuel: ${currentFestival.title}`);
+                console.log(`📊 Équipes totales en base: ${allTeamsFromDB.length}`);
+                console.log(`📊 Équipes pour ce festival: ${filteredTeams.length}`);
+            }
+            
+            teams = filteredTeams.map(data => {
                 const team = new Team(data.name, data.leaderId, data.camp, data.isOpen, data.accessCode);
                 
                 // Rétablir tous les membres (sauf le leader qui est déjà ajouté par le constructeur)

@@ -999,7 +999,17 @@ const handleCampSelect = async (interaction) => {
 
 // Gestionnaire pour les boutons d'équipe ouverte/fermée
 const handleTeamTypeButton = async (interaction) => {
-    const [type, encodedTeamName] = interaction.customId.split('_');
+    let type, encodedTeamName;
+    
+    // Gérer les deux formats d'ID: "open_" et "team_open_"
+    if (interaction.customId.startsWith('team_')) {
+        const parts = interaction.customId.split('_');
+        type = parts[1]; // 'open' ou 'closed'
+        encodedTeamName = parts[2]; // nom optionnel
+    } else {
+        [type, encodedTeamName] = interaction.customId.split('_');
+    }
+    
     const isOpen = type === 'open';
     
     // Récupérer les données temporaires

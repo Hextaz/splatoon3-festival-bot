@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { getCurrentFestival } = require('../utils/festivalManager');
 const { createTeam } = require('../utils/teamManager'); // Assurez-vous d'importer la fonction createTeam
 const { safeReply } = require('../utils/responseUtils');
@@ -51,16 +51,27 @@ module.exports = {
             });
         }
         
+        // Créer l'embed de présentation
+        const embed = new EmbedBuilder()
+            .setColor('#0099FF')
+            .setTitle('🏗️ Création d\'équipe')
+            .setDescription(`Vous allez créer l'équipe **${teamName}** pour le camp **${playerCampName}**`)
+            .addFields(
+                { name: '📊 Format du festival', value: formatDisplay, inline: true },
+                { name: '🎯 Camp', value: playerCampName, inline: true },
+                { name: '👥 Taille d\'équipe', value: `${teamSize} joueurs`, inline: true }
+            );
+        
         // Créer les boutons pour le type d'équipe (ouverte/fermée)
         const openButton = new ButtonBuilder()
-            .setCustomId(`open_${teamName}`)
-            .setLabel('Équipe ouverte')
+            .setCustomId(`team_open_${teamName}`)
+            .setLabel('🔓 Équipe ouverte')
             .setStyle(ButtonStyle.Success);
                 
         const closedButton = new ButtonBuilder()
-            .setCustomId(`closed_${teamName}`)
-            .setLabel('Équipe fermée (code requis)')
-            .setStyle(ButtonStyle.Danger);
+            .setCustomId(`team_closed_${teamName}`)
+            .setLabel('🔒 Équipe fermée (code requis)')
+            .setStyle(ButtonStyle.Secondary);
                 
         const buttonRow = new ActionRowBuilder().addComponents(openButton, closedButton);
         
@@ -72,25 +83,10 @@ module.exports = {
             campDisplayName: playerCampName
         };
         
-        try {
-            // Créer l'équipe
-            const team = createTeam(teamName, interaction.user.id, playerCamp, true, null, interaction.guild);
-            
-            // Message de succès adapté au format
-            await safeReply(interaction, {
-                content: `✅ Équipe **${teamName}** créée avec succès pour le camp **${playerCampName}** !\n\n` +
-                        `📊 **Format du festival** : ${formatDisplay}\n` +
-                        `👥 **Membres actuels** : 1/${teamSize}\n` +
-                        `📝 **Prochaine étape** : Recrutez ${teamSize - 1} joueur(s) supplémentaire(s) pour compléter votre équipe.\n\n` +
-                        `💡 Les autres joueurs peuvent vous rejoindre avec \`/join-team name:${teamName}\``,
-                ephemeral: true
-            });
-            
-        } catch (error) {
-            await safeReply(interaction, {
-                content: `Erreur lors de la création de l'équipe: ${error.message}`,
-                ephemeral: true
-            });
-        }
+        await safeReply(interaction, {
+            embeds: [embed],
+            components: [buttonRow],
+            ephemeral: true
+        });
     },
 };
