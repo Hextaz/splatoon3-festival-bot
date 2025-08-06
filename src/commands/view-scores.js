@@ -15,12 +15,13 @@ module.exports = {
                 .setRequired(false)),
     
     async execute(interaction) {
+        await interaction.deferReply({ });
+        
         try {
             const festival = getCurrentFestival();
             if (!festival) {
-                return await safeReply(interaction, {
-                    content: 'Aucun festival actif actuellement.',
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: 'Aucun festival actif actuellement.'
                 });
             }
             
@@ -77,7 +78,7 @@ module.exports = {
             }
             
             // Répondre à l'interaction
-            await safeReply(interaction, {
+            await interaction.editReply({
                 embeds: [embed],
                 ephemeral: !shouldAnnounce
             });
@@ -101,23 +102,20 @@ module.exports = {
                         });
                         
                         await safeFollowUp(interaction, {
-                            content: `Les scores ont été annoncés avec succès dans <#${festival.announcementChannelId}>`,
-                            ephemeral: true
+                            content: `Les scores ont été annoncés avec succès dans <#${festival.announcementChannelId}>`
                         });
                     }
                 } catch (error) {
                     console.error('Erreur lors de l\'annonce des scores:', error);
                     await safeFollowUp(interaction, {
-                        content: `Erreur lors de l'annonce des scores: ${error.message}`,
-                        ephemeral: true
+                        content: `Erreur lors de l'annonce des scores: ${error.message}`
                     });
                 }
             }
         } catch (error) {
             console.error('Erreur dans la commande view-scores:', error);
             await safeReply(interaction, {
-                content: `Une erreur s'est produite: ${error.message}`,
-                ephemeral: true
+                content: `Une erreur s'est produite: ${error.message}`
             });
         }
     },

@@ -490,6 +490,42 @@ async function resetFestivalData(guild = null) {
     } catch (error) {
         console.error('❌ Erreur lors du reset des probabilités de cartes:', error);
     }
+
+    // Réinitialiser les résultats en attente
+    console.log('🗑️ Réinitialisation des résultats en attente...');
+    try {
+        const adapter = getDataAdapter(currentGuildId);
+        if (adapter) {
+            await adapter.clearAllPendingResults();
+            console.log('✅ Résultats en attente réinitialisés');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du reset des résultats en attente:', error);
+    }
+
+    // Réinitialiser l'historique des matchs
+    console.log('🗑️ Réinitialisation de l\'historique des matchs...');
+    try {
+        const adapter = getDataAdapter(currentGuildId);
+        if (adapter) {
+            await adapter.clearAllMatchHistory();
+            console.log('✅ Historique des matchs réinitialisé');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du reset de l\'historique:', error);
+    }
+
+    // Réinitialiser les compteurs de matchs
+    console.log('🗑️ Réinitialisation des compteurs de matchs...');
+    try {
+        const adapter = getDataAdapter(currentGuildId);
+        if (adapter) {
+            await adapter.clearAllMatchCounters();
+            console.log('✅ Compteurs de matchs réinitialisés');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du reset des compteurs:', error);
+    }
     
     // Supprimer TOUS les rôles d'équipe, même ceux qui n'étaient pas dans le tableau d'équipes
     if (guild) {

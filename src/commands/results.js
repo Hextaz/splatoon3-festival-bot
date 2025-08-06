@@ -11,38 +11,37 @@ module.exports = {
         .setDescription('Déclarer le résultat de votre match actuel'),
 
     async execute(interaction) {
+        await interaction.deferReply({ });
+        
         try {
             // Vérifier si l'utilisateur est membre d'une équipe
             const userTeam = findTeamByMember(interaction.user.id);
             if (!userTeam) {
-                return await safeReply(interaction, {
-                    content: "Vous n'êtes membre d'aucune équipe.",
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: "Vous n'êtes membre d'aucune équipe."
                 });
             }
             
             // Vérifier si l'utilisateur est capitaine de son équipe
             if (!userTeam.isLeader(interaction.user.id)) {
-                return await safeReply(interaction, {
-                    content: "Seul le capitaine de l'équipe peut déclarer les résultats d'un match.",
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: "Seul le capitaine de l'équipe peut déclarer les résultats d'un match."
                 });
             }
             
             // Vérifier si l'équipe est en match
             if (!userTeam.currentOpponent) {
-                return await safeReply(interaction, {
-                    content: "Votre équipe n'est pas actuellement en match.",
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: "Votre équipe n'est pas actuellement en match."
                 });
             }
             
             // Récupérer l'équipe adverse
-            const opponentTeam = getAllTeams().find(t => t.name === userTeam.currentOpponent);
+            const allTeams = await getAllTeams();
+            const opponentTeam = allTeams.find(t => t.name === userTeam.currentOpponent);
             if (!opponentTeam) {
-                return await safeReply(interaction, {
-                    content: "Équipe adverse introuvable. Veuillez contacter un administrateur.",
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: "Équipe adverse introuvable. Veuillez contacter un administrateur."
                 });
             }
             
@@ -57,15 +56,13 @@ module.exports = {
                 // Si c'est l'autre équipe qui a déjà déclaré
                 if (pendingResult.declaringTeam !== userTeam.name) {
                     // On ne montre pas les boutons, mais un message pour dire que l'autre équipe a déjà déclaré
-                    return await safeReply(interaction, {
-                        content: `L'équipe adverse a déjà déclaré un résultat. Veuillez attendre leur message de confirmation dans le salon de match.`,
-                        ephemeral: true
+                    return await interaction.editReply({
+                        content: `L'équipe adverse a déjà déclaré un résultat. Veuillez attendre leur message de confirmation dans le salon de match.`
                     });
                 } else {
                     // Si c'est cette équipe qui a déjà déclaré, montrer son résultat actuel
                     return await safeReply(interaction, {
-                        content: `Vous avez déjà déclaré que votre équipe a ${pendingResult.result === 'V' ? 'gagné' : 'perdu'}. Attendez la confirmation de l'équipe adverse.`,
-                        ephemeral: true
+                        content: `Vous avez déjà déclaré que votre équipe a ${pendingResult.result === 'V' ? 'gagné' : 'perdu'}. Attendez la confirmation de l'équipe adverse.`
                     });
                 }
             }
@@ -94,8 +91,7 @@ module.exports = {
         } catch (error) {
             console.error('Erreur dans la commande results:', error);
             await safeReply(interaction, {
-                content: `Une erreur s'est produite: ${error.message}`,
-                ephemeral: true
+                content: `Une erreur s'est produite: ${error.message}`
             });
         }
     }

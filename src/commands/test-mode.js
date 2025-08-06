@@ -113,7 +113,7 @@ module.exports = {
 
 // Fonction pour afficher le statut des équipes virtuelles
 async function handleStatus(interaction, festival) {
-    const allTeams = getAllTeams();
+    const allTeams = await getAllTeams();
     const virtualTeams = allTeams.filter(team => team.isVirtual);
     
     if (virtualTeams.length === 0) {
@@ -437,7 +437,7 @@ async function handleCreateTeams(interaction, festival) {
 // Fonction pour simuler des matchs
 async function handleSimulateMatches(interaction, festival) {
     const count = interaction.options.getInteger('count');
-    const allTeams = getAllTeams().filter(team => team.isVirtual);
+    const allTeams = await (await getAllTeams()).filter(team => team.isVirtual);
     
     console.log(`[TEST] Répartition des équipes par taille:`);
     console.log(`[TEST] - Équipes complètes (4 membres): ${allTeams.filter(t => t.members.length === 4).length}`);
@@ -570,7 +570,7 @@ async function handleSimulateMatches(interaction, festival) {
 }
 
 function checkTeamsConsistency() {
-    const allTeams = getAllTeams();
+    const allTeams = await getAllTeams();
     const busyTeams = allTeams.filter(t => t.busy);
     
     console.log(`[TEST] Vérification de cohérence: ${busyTeams.length} équipes occupées sur ${allTeams.length}`);
@@ -613,7 +613,7 @@ function checkTeamsConsistency() {
 // Fonction pour nettoyer les équipes virtuelles
 async function handleCleanup(interaction) {
     const guild = interaction.guild;
-    const allTeams = getAllTeams();
+    const allTeams = await getAllTeams();
     const virtualTeams = allTeams.filter(team => team.isVirtual);
     
     if (virtualTeams.length === 0) {

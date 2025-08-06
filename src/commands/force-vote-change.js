@@ -24,14 +24,15 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ADMINISTRATOR),
 
     async execute(interaction) {
+        await interaction.deferReply({ });
+        
         const targetUser = interaction.options.getUser('user');
         const newCampId = interaction.options.getString('new_camp');
         
         const festival = getCurrentFestival();
         if (!festival) {
-            return await safeReply(interaction, {
-                content: 'Aucun festival actif.',
-                ephemeral: true
+            return await interaction.editReply({
+                content: 'Aucun festival actif.'
             });
         }
 
@@ -85,15 +86,13 @@ module.exports = {
                         `👤 **Utilisateur**: ${targetUser.username}\n` +
                         `🏕️ **Ancien camp**: ${oldCampRoles.length > 0 ? oldCampRoles[0].role.name : 'Aucun'}\n` +
                         `🏕️ **Nouveau camp**: Camp ${newCampName}\n` +
-                        `🗳️ **Vote mis à jour**: Oui${teamWarning}`,
-                ephemeral: true
+                        `🗳️ **Vote mis à jour**: Oui${teamWarning}`
             });
             
         } catch (error) {
             console.error('Erreur lors du changement forcé de camp:', error);
             await safeReply(interaction, {
-                content: `Erreur: ${error.message}`,
-                ephemeral: true
+                content: `Erreur: ${error.message}`
             });
         }
     }

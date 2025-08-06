@@ -17,13 +17,15 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
         
         const teamName = interaction.options.getString('team');
-        const allTeams = getAllTeams();
         
-        const team = allTeams.find(t => t.name.toLowerCase().includes(teamName.toLowerCase()));
-        if (!team) {
-            return await interaction.editReply(`Équipe "${teamName}" introuvable.`);
-        }
-        
+        try {
+            // Utiliser le nouveau système MongoDB
+            const allTeams = await getAllTeams();
+            
+            const team = allTeams.find(t => t.name.toLowerCase().includes(teamName.toLowerCase()));
+            if (!team) {
+                return await interaction.editReply(`Équipe "${teamName}" introuvable.`);
+            }
         // Calculer les scores pour tous les adversaires potentiels
         const scores = allTeams
             .filter(t => t.name !== team.name && !t.isVirtual)
@@ -104,5 +106,10 @@ module.exports = {
         });
         
         await interaction.editReply({ embeds: [embed] });
+        
+        } catch (error) {
+            console.error('Erreur dans debug-team-scores:', error);
+            await interaction.editReply(`Erreur lors du calcul des scores: ${error.message}`);
+        }
     }
 };

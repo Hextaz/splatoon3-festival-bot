@@ -92,12 +92,61 @@ const campScoreSchema = new mongoose.Schema({
 const mapProbabilitySchema = new mongoose.Schema({
     guildId: { type: String, required: true },
     festivalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Festival' },
-    teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
-    mapMode: { type: String, required: true }, // "map_mode" format
-    timesPlayed: { type: Number, default: 0 },
-    timesWon: { type: Number, default: 0 },
-    probability: { type: Number, default: 0.5 },
+    teamName: { type: String, required: true }, // Nom de l'équipe
+    mapKey: { type: String, required: true }, // Clé de la map (ex: "hammerhead_bridge_splat_zones")
+    probability: { type: Number, default: 1.0 },
+    timesSelected: { type: Number, default: 0 },
     lastUpdated: { type: Date, default: Date.now }
+});
+
+// Schéma pour les résultats en attente
+const pendingResultSchema = new mongoose.Schema({
+    guildId: { type: String, required: true },
+    festivalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Festival' },
+    matchId: { type: String, required: true }, // ID unique du match
+    declaringTeam: { type: String, required: true }, // Nom de l'équipe qui déclare
+    opponentTeam: { type: String, required: true }, // Nom de l'équipe adverse
+    declaringTeamResult: { type: String, required: true }, // "V" ou "D"
+    opponentTeamResult: { type: String, required: true }, // "V" ou "D"
+    timestamp: { type: Date, default: Date.now },
+    expiresAt: { type: Date, required: true }, // Expiration automatique
+    status: { 
+        type: String, 
+        enum: ['pending', 'confirmed', 'expired'], 
+        default: 'pending' 
+    }
+});
+
+// Schéma pour l'historique des matchs
+const matchHistorySchema = new mongoose.Schema({
+    guildId: { type: String, required: true },
+    festivalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Festival' },
+    matchNumber: { type: Number, required: true },
+    timestamp: { type: Date, default: Date.now },
+    team1: {
+        name: { type: String, required: true },
+        camp: { type: String, required: true },
+        result: { type: String, required: true } // "V" ou "D"
+    },
+    team2: {
+        name: { type: String, required: true },
+        camp: { type: String, required: true },
+        result: { type: String, required: true } // "V" ou "D"
+    },
+    winner: { type: String }, // Camp gagnant
+    multiplier: { type: Number, default: 1 },
+    pointsAwarded: { type: Number, default: 1 },
+    bo3Maps: [{ type: String }] // Maps jouées dans le BO3
+});
+
+// Schéma pour les compteurs de matchs par équipe
+const teamMatchCounterSchema = new mongoose.Schema({
+    guildId: { type: String, required: true },
+    festivalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Festival' },
+    teamName: { type: String, required: true },
+    matchCount: { type: Number, default: 0 },
+    waitTime: { type: Number, default: 0 }, // Temps d'attente en ms
+    lastMatchTime: { type: Date }
 });
 
 // Schéma pour la configuration par serveur
@@ -123,7 +172,11 @@ teamSchema.index({ guildId: 1, festivalId: 1 });
 voteSchema.index({ guildId: 1, festivalId: 1, userId: 1 }, { unique: true });
 matchSchema.index({ guildId: 1, festivalId: 1 });
 campScoreSchema.index({ guildId: 1, festivalId: 1, camp: 1 }, { unique: true });
-mapProbabilitySchema.index({ guildId: 1, festivalId: 1, teamId: 1, mapMode: 1 }, { unique: true });
+mapProbabilitySchema.index({ guildId: 1, festivalId: 1, teamName: 1, mapKey: 1 }, { unique: true });
+pendingResultSchema.index({ guildId: 1, festivalId: 1, matchId: 1 }, { unique: true });
+pendingResultSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // Auto-suppression
+matchHistorySchema.index({ guildId: 1, festivalId: 1, matchNumber: 1 });
+teamMatchCounterSchema.index({ guildId: 1, festivalId: 1, teamName: 1 }, { unique: true });
 
 module.exports = {
     Festival: mongoose.model('Festival', festivalSchema),
@@ -132,5 +185,8 @@ module.exports = {
     Match: mongoose.model('Match', matchSchema),
     CampScore: mongoose.model('CampScore', campScoreSchema),
     MapProbability: mongoose.model('MapProbability', mapProbabilitySchema),
+    PendingResult: mongoose.model('PendingResult', pendingResultSchema),
+    MatchHistory: mongoose.model('MatchHistory', matchHistorySchema),
+    TeamMatchCounter: mongoose.model('TeamMatchCounter', teamMatchCounterSchema),
     GuildConfig: mongoose.model('GuildConfig', guildConfigSchema)
 };

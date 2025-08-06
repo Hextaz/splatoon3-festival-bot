@@ -1,5 +1,5 @@
 const { isMongoDBAvailable } = require('./database');
-const { Festival, Team, Vote, Match, CampScore, MapProbability, GuildConfig } = require('../models/mongodb');
+const { Festival, Team, Vote, Match, CampScore, MapProbability, PendingResult, MatchHistory, TeamMatchCounter, GuildConfig } = require('../models/mongodb');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -334,9 +334,24 @@ class DataAdapter {
 
     async loadMatchHistory(guildId) {
         if (isMongoDBAvailable()) {
-            // Pour MongoDB, on peut stocker l'historique des matchs dans un document séparé
-            // ou dans une collection dédiée. Pour l'instant, on utilise le fallback JSON
-            return this._getJSONData(`guilds/${guildId}/matchHistory.json`);
+            const festival = await this.getFestival();
+            if (!festival) return [];
+
+            const matches = await MatchHistory.find({ 
+                guildId: guildId || this.guildId, 
+                festivalId: festival._id 
+            }).sort({ matchNumber: 1 });
+
+            // Convertir en format JSON attendu
+            return matches.map(match => ({
+                timestamp: match.timestamp.getTime(),
+                team1: match.team1,
+                team2: match.team2,
+                winner: match.winner,
+                multiplier: match.multiplier,
+                pointsAwarded: match.pointsAwarded,
+                bo3Maps: match.bo3Maps
+            }));
         } else {
             return this._getJSONData(`guilds/${guildId}/matchHistory.json`);
         }
@@ -344,16 +359,69 @@ class DataAdapter {
 
     async saveMatchHistory(guildId, historyData) {
         if (isMongoDBAvailable()) {
-            // Pour l'instant, on utilise le fallback JSON
-            return this._saveJSONData(`guilds/${guildId}/matchHistory.json`, historyData);
+            const festival = await this.getFestival();
+            if (!festival) throw new Error('No active festival');
+
+            // Supprimer l'ancien historique
+            await MatchHistory.deleteMany({ 
+                guildId: guildId || this.guildId, 
+                festivalId: festival._id 
+            });
+
+            // Sauvegarder le nouvel historique
+            const historyDocs = historyData.map((match, index) => ({
+                guildId: guildId || this.guildId,
+                festivalId: festival._id,
+                matchNumber: index + 1,
+                timestamp: new Date(match.timestamp),
+                team1: match.team1,
+                team2: match.team2,
+                winner: match.winner,
+                multiplier: match.multiplier || 1,
+                pointsAwarded: match.pointsAwarded || 1,
+                bo3Maps: match.bo3Maps || []
+            }));
+
+            if (historyDocs.length > 0) {
+                await MatchHistory.insertMany(historyDocs);
+            }
+            return historyData;
         } else {
             return this._saveJSONData(`guilds/${guildId}/matchHistory.json`, historyData);
         }
     }
 
+    async clearAllMatchHistory() {
+        if (isMongoDBAvailable()) {
+            const result = await MatchHistory.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} entrées d'historique supprimées de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData(`guilds/${this.guildId}/matchHistory.json`, []);
+            console.log('🗑️ Historique des matchs supprimé du fichier JSON');
+        }
+    }
+
     async loadMatchCounters(guildId) {
         if (isMongoDBAvailable()) {
-            return this._getJSONData(`guilds/${guildId}/matchCounters.json`);
+            const festival = await this.getFestival();
+            if (!festival) return {};
+
+            const counters = await TeamMatchCounter.find({ 
+                guildId: guildId || this.guildId, 
+                festivalId: festival._id 
+            });
+
+            // Convertir en format JSON attendu
+            const countersObj = {};
+            counters.forEach(counter => {
+                countersObj[counter.teamName] = {
+                    matchCount: counter.matchCount,
+                    waitTime: counter.waitTime,
+                    lastMatchTime: counter.lastMatchTime ? counter.lastMatchTime.getTime() : null
+                };
+            });
+            return countersObj;
         } else {
             return this._getJSONData(`guilds/${guildId}/matchCounters.json`);
         }
@@ -361,9 +429,42 @@ class DataAdapter {
 
     async saveMatchCounters(guildId, countersData) {
         if (isMongoDBAvailable()) {
-            return this._saveJSONData(`guilds/${guildId}/matchCounters.json`, countersData);
+            const festival = await this.getFestival();
+            if (!festival) throw new Error('No active festival');
+
+            // Supprimer les anciens compteurs
+            await TeamMatchCounter.deleteMany({ 
+                guildId: guildId || this.guildId, 
+                festivalId: festival._id 
+            });
+
+            // Sauvegarder les nouveaux
+            const counterDocs = Object.entries(countersData).map(([teamName, data]) => ({
+                guildId: guildId || this.guildId,
+                festivalId: festival._id,
+                teamName,
+                matchCount: data.matchCount || 0,
+                waitTime: data.waitTime || 0,
+                lastMatchTime: data.lastMatchTime ? new Date(data.lastMatchTime) : null
+            }));
+
+            if (counterDocs.length > 0) {
+                await TeamMatchCounter.insertMany(counterDocs);
+            }
+            return countersData;
         } else {
             return this._saveJSONData(`guilds/${guildId}/matchCounters.json`, countersData);
+        }
+    }
+
+    async clearAllMatchCounters() {
+        if (isMongoDBAvailable()) {
+            const result = await TeamMatchCounter.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} compteurs de matchs supprimés de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData(`guilds/${this.guildId}/matchCounters.json`, {});
+            console.log('🗑️ Compteurs de matchs supprimés du fichier JSON');
         }
     }
 
@@ -441,7 +542,27 @@ class DataAdapter {
 
     async loadPendingResults(guildId) {
         if (isMongoDBAvailable()) {
-            return this._getJSONData(`guilds/${guildId}/pendingResults.json`);
+            const festival = await this.getFestival();
+            if (!festival) return {};
+
+            const pendingResults = await PendingResult.find({ 
+                guildId: guildId || this.guildId, 
+                festivalId: festival._id,
+                status: 'pending'
+            });
+
+            // Convertir en format JSON attendu
+            const resultsObj = {};
+            pendingResults.forEach(result => {
+                resultsObj[result.matchId] = {
+                    declaringTeam: result.declaringTeam,
+                    opponentTeam: result.opponentTeam,
+                    declaringTeamResult: result.declaringTeamResult,
+                    opponentTeamResult: result.opponentTeamResult,
+                    timestamp: result.timestamp.getTime()
+                };
+            });
+            return resultsObj;
         } else {
             return this._getJSONData(`guilds/${guildId}/pendingResults.json`);
         }
@@ -449,9 +570,45 @@ class DataAdapter {
 
     async savePendingResults(guildId, resultsData) {
         if (isMongoDBAvailable()) {
-            return this._saveJSONData(`guilds/${guildId}/pendingResults.json`, resultsData);
+            const festival = await this.getFestival();
+            if (!festival) throw new Error('No active festival');
+
+            // Supprimer les anciens résultats en attente
+            await PendingResult.deleteMany({ 
+                guildId: guildId || this.guildId, 
+                festivalId: festival._id 
+            });
+
+            // Sauvegarder les nouveaux
+            const resultDocs = Object.entries(resultsData).map(([matchId, data]) => ({
+                guildId: guildId || this.guildId,
+                festivalId: festival._id,
+                matchId,
+                declaringTeam: data.declaringTeam,
+                opponentTeam: data.opponentTeam,
+                declaringTeamResult: data.declaringTeamResult,
+                opponentTeamResult: data.opponentTeamResult,
+                timestamp: new Date(data.timestamp),
+                expiresAt: new Date(Date.now() + (10 * 60 * 1000)) // Expire dans 10 minutes
+            }));
+
+            if (resultDocs.length > 0) {
+                await PendingResult.insertMany(resultDocs);
+            }
+            return resultsData;
         } else {
             return this._saveJSONData(`guilds/${guildId}/pendingResults.json`, resultsData);
+        }
+    }
+
+    async clearAllPendingResults() {
+        if (isMongoDBAvailable()) {
+            const result = await PendingResult.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} résultats en attente supprimés de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData(`guilds/${this.guildId}/pendingResults.json`, {});
+            console.log('🗑️ Tous les résultats en attente supprimés du fichier JSON');
         }
     }
 
@@ -612,8 +769,23 @@ class DataAdapter {
     
     async getMapProbabilities() {
         if (isMongoDBAvailable()) {
-            // Pour l'instant, utilisons le fallback JSON même avec MongoDB
-            return this._getJSONData(`guilds/${this.guildId}/mapProbabilities.json`);
+            const festival = await this.getFestival();
+            if (!festival) return {};
+
+            const mapProbs = await MapProbability.find({ 
+                guildId: this.guildId, 
+                festivalId: festival._id 
+            });
+            
+            // Convertir en format attendu
+            const data = {};
+            mapProbs.forEach(prob => {
+                if (!data[prob.teamName]) {
+                    data[prob.teamName] = {};
+                }
+                data[prob.teamName][prob.mapKey] = prob.probability;
+            });
+            return data;
         } else {
             return this._getJSONData(`guilds/${this.guildId}/mapProbabilities.json`);
         }
@@ -621,7 +793,33 @@ class DataAdapter {
     
     async saveMapProbabilities(probData) {
         if (isMongoDBAvailable()) {
-            return this._saveJSONData(`guilds/${this.guildId}/mapProbabilities.json`, probData);
+            const festival = await this.getFestival();
+            if (!festival) throw new Error('No active festival');
+            
+            // Supprimer les anciennes probabilités
+            await MapProbability.deleteMany({ 
+                guildId: this.guildId, 
+                festivalId: festival._id 
+            });
+            
+            // Sauvegarder les nouvelles
+            const probDocs = [];
+            Object.entries(probData).forEach(([teamName, teamProbs]) => {
+                Object.entries(teamProbs).forEach(([mapKey, probability]) => {
+                    probDocs.push({
+                        guildId: this.guildId,
+                        festivalId: festival._id,
+                        teamName,
+                        mapKey,
+                        probability
+                    });
+                });
+            });
+            
+            if (probDocs.length > 0) {
+                await MapProbability.insertMany(probDocs);
+            }
+            return probData;
         } else {
             return this._saveJSONData(`guilds/${this.guildId}/mapProbabilities.json`, probData);
         }
@@ -639,6 +837,9 @@ class DataAdapter {
                 await Match.deleteMany({ guildId: this.guildId, festivalId: festival._id });
                 await CampScore.deleteMany({ guildId: this.guildId, festivalId: festival._id });
                 await MapProbability.deleteMany({ guildId: this.guildId, festivalId: festival._id });
+                await PendingResult.deleteMany({ guildId: this.guildId, festivalId: festival._id });
+                await MatchHistory.deleteMany({ guildId: this.guildId, festivalId: festival._id });
+                await TeamMatchCounter.deleteMany({ guildId: this.guildId, festivalId: festival._id });
                 await Festival.findByIdAndDelete(festival._id);
             }
             

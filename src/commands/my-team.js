@@ -9,13 +9,14 @@ module.exports = {
         .setDescription('Affiche les informations de votre équipe actuelle'),
     
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
+        
         try {
             const team = findTeamByMember(interaction.user.id);
             
             if (!team) {
-                return await safeReply(interaction, {
-                    content: "Vous n'êtes membre d'aucune équipe.",
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: "Vous n'êtes membre d'aucune équipe."
                 });
             }
             
@@ -91,16 +92,14 @@ module.exports = {
                 });
             }
             
-            await safeReply(interaction, {
-                embeds: [embed],
-                ephemeral: true
+            await interaction.editReply({
+                embeds: [embed]
             });
             
         } catch (error) {
             console.error('Error in my-team command:', error);
-            await safeReply(interaction, {
-                content: 'Une erreur est survenue lors de l\'affichage des informations de votre équipe.',
-                ephemeral: true
+            await interaction.editReply({
+                content: 'Une erreur est survenue lors de l\'affichage des informations de votre équipe.'
             });
         }
     },

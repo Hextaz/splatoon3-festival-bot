@@ -11,12 +11,13 @@ module.exports = {
         .setDescription('Voir les probabilités de sélection des maps pour votre équipe'),
 
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
+        
         const userTeam = findTeamByMember(interaction.user.id);
         
         if (!userTeam) {
-            return await safeReply(interaction, {
-                content: "Vous n'êtes membre d'aucune équipe.",
-                ephemeral: true
+            return await interaction.editReply({
+                content: "Vous n'êtes membre d'aucune équipe."
             });
         }
 
@@ -45,13 +46,12 @@ module.exports = {
                 { name: '📝 Note', value: 'Les probabilités évoluent après chaque BO3 joué.' }
             );
             
-            await safeReply(interaction, { embeds: [embed], ephemeral: true });
+            await interaction.editReply({ embeds: [embed] });
             
         } catch (error) {
             console.error('Erreur lors de la récupération des stats de maps:', error);
-            await safeReply(interaction, {
-                content: 'Erreur lors de la récupération des statistiques de maps.',
-                ephemeral: true
+            await interaction.editReply({
+                content: 'Erreur lors de la récupération des statistiques de maps.'
             });
         }
     }

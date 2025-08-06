@@ -24,6 +24,8 @@ module.exports = {
     
     async execute(interaction) {
     try {
+        await interaction.deferReply({ ephemeral: true });
+        
         // Définir le serveur actuel
         setCurrentGuildId(interaction.guild.id);
         
@@ -33,14 +35,11 @@ module.exports = {
         // Récupérer le festival actuel (potentiellement mis à jour)
         const festival = getCurrentFestival();
             
-            if (!festival) {
-                return await safeReply(interaction, {
-                    content: 'Aucun festival n\'est actuellement programmé. Utilisez `/start-festival` pour en créer un nouveau.',
-                    ephemeral: true
-                });
-            }
-            
-            // Vérifier si le festival est programmé pour l'avenir ou s'il est terminé
+        if (!festival) {
+            return await interaction.editReply({
+                content: 'Aucun festival n\'est actuellement programmé. Utilisez `/start-festival` pour en créer un nouveau.'
+            });
+        }            // Vérifier si le festival est programmé pour l'avenir ou s'il est terminé
             const now = new Date();
             const startDate = new Date(festival.startDate);
             const endDate = new Date(festival.endDate);
@@ -81,12 +80,11 @@ module.exports = {
                         });
                     }
                     
-                    return await safeReply(interaction, { embeds: [embed] });
+                    return await interaction.editReply({ embeds: [embed] });
                 } else if (endDate < now) {
                     // Festival réellement terminé
-                    return await safeReply(interaction, {
-                        content: `Le festival "${festival.title}" est terminé. Il sera complètement supprimé sous peu.`,
-                        ephemeral: true
+                    return await interaction.editReply({
+                        content: `Le festival "${festival.title}" est terminé. Il sera complètement supprimé sous peu.`
                     });
                 } else {
                     // Festival en cours mais pas encore activé
@@ -140,7 +138,8 @@ module.exports = {
             const totalVotes = votes.camp1 + votes.camp2 + votes.camp3;
             
             // Récupérer uniquement le nombre total d'équipes
-            const totalTeams = getAllTeams().length;
+            const allTeams = await getAllTeams();
+            const totalTeams = allTeams.length;
             
             // Créer un embed avec les informations autorisées
             const embed = new EmbedBuilder()
@@ -198,15 +197,14 @@ module.exports = {
                 });
             }
             
-            await safeReply(interaction, {
+            await interaction.editReply({
                 embeds: [embed]
             });
             
         } catch (error) {
             console.error('Erreur dans la commande current-festival:', error);
-            await safeReply(interaction, {
-                content: `Une erreur s'est produite: ${error.message}`,
-                ephemeral: true
+            await interaction.editReply({
+                content: `Une erreur s'est produite: ${error.message}`
             });
         }
     }
