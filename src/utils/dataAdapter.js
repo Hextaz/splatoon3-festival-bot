@@ -508,7 +508,15 @@ class DataAdapter {
             // Sauvegarder les nouvelles
             const probDocs = [];
             Object.entries(probData).forEach(([teamName, teamProbs]) => {
+                if (!teamName || teamName === 'null' || !teamProbs) {
+                    console.warn(`⚠️ MapProbability: teamName ou teamProbs invalide`, { teamName, teamProbs });
+                    return;
+                }
                 Object.entries(teamProbs).forEach(([mapKey, probability]) => {
+                    if (!mapKey || mapKey === 'null' || probability === null || probability === undefined) {
+                        console.warn(`⚠️ MapProbability: mapKey ou probability invalide`, { teamName, mapKey, probability });
+                        return;
+                    }
                     probDocs.push({
                         guildId,
                         festivalId: festival._id,
@@ -810,7 +818,15 @@ class DataAdapter {
             // Sauvegarder les nouvelles
             const probDocs = [];
             Object.entries(probData).forEach(([teamName, teamProbs]) => {
+                if (!teamName || teamName === 'null' || !teamProbs) {
+                    console.warn(`⚠️ MapProbability: teamName ou teamProbs invalide`, { teamName, teamProbs });
+                    return;
+                }
                 Object.entries(teamProbs).forEach(([mapKey, probability]) => {
+                    if (!mapKey || mapKey === 'null' || probability === null || probability === undefined) {
+                        console.warn(`⚠️ MapProbability: mapKey ou probability invalide`, { teamName, mapKey, probability });
+                        return;
+                    }
                     probDocs.push({
                         guildId: this.guildId,
                         festivalId: festival._id,

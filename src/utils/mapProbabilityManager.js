@@ -54,7 +54,25 @@ class MapProbabilityManager {
             // Convertir les Maps en objets pour la sérialisation JSON
             const dataToSave = {};
             for (const [teamName, mapProbs] of this.teamMapProbabilities) {
-                dataToSave[teamName] = Object.fromEntries(mapProbs);
+                if (!teamName || teamName === 'null') {
+                    console.warn(`⚠️ MapProbabilityManager: teamName invalide ignoré:`, teamName);
+                    continue;
+                }
+                if (!mapProbs) {
+                    console.warn(`⚠️ MapProbabilityManager: mapProbs null pour équipe ${teamName}`);
+                    continue;
+                }
+                const cleanMapProbs = {};
+                for (const [mapKey, probability] of mapProbs) {
+                    if (!mapKey || mapKey === 'null' || probability == null) {
+                        console.warn(`⚠️ MapProbabilityManager: données invalides ignorées`, { teamName, mapKey, probability });
+                        continue;
+                    }
+                    cleanMapProbs[mapKey] = probability;
+                }
+                if (Object.keys(cleanMapProbs).length > 0) {
+                    dataToSave[teamName] = cleanMapProbs;
+                }
             }
             
             await this.dataAdapter.saveMapProbabilities(dataToSave);

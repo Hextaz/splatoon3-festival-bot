@@ -29,8 +29,12 @@ async function getCurrentFestival(guildId = currentGuildId) {
         const adapter = getDataAdapter(guildId);
         const festival = await adapter.getFestival();
         
-        // Mettre à jour le cache local
+        // Mettre à jour le cache local ET convertir l'objet MongoDB en Festival
         if (festival) {
+            // Si c'est un objet MongoDB, le convertir vers le format Festival
+            if (festival._id && !festival.id) {
+                festival.id = festival._id.toString();
+            }
             currentFestival = festival;
             currentGuildId = guildId;
         }

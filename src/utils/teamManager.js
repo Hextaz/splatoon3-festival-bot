@@ -180,7 +180,7 @@ async function clearAllTeams() {
 }
 
 // Fonction pour créer une équipe
-function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = null) {
+async function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = null) {
     // Vérifier si une équipe avec ce nom existe déjà
     if (teams.some(t => t.name.toLowerCase() === name.toLowerCase())) {
         throw new Error("Une équipe avec ce nom existe déjà.");
@@ -194,8 +194,28 @@ function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = nu
     const team = new Team(name, leaderId, camp, isOpen, code);
     
     // Assigner le festivalId du festival actuel
-    const { getCurrentFestival } = require('./festivalManager');
-    const currentFestival = getCurrentFestival();
+    const { getCurrentFestivalAsync } = require('./festivalManager');
+    let currentFestival = null;
+    
+    try {
+        // Récupérer le festival actif depuis MongoDB pour avoir l'ID correct
+        const DataAdapter = require('./dataAdapter');
+        if (guild) {
+            const adapter = new DataAdapter(guild.id);
+            const festivalData = await adapter.getFestival();
+            if (festivalData && festivalData._id) {
+                currentFestival = {
+                    title: festivalData.title,
+                    id: festivalData._id.toString()
+                };
+            }
+        }
+    } catch (error) {
+        console.error('Erreur lors de la récupération du festival pour l\'équipe:', error);
+        // Fallback vers la version sync
+        const { getCurrentFestival } = require('./festivalManager');
+        currentFestival = getCurrentFestival();
+    }
     
     console.log(`🔍 createTeam Debug:`);
     console.log(`  - currentFestival: ${currentFestival ? 'trouvé' : 'null'}`);
@@ -205,11 +225,13 @@ function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = nu
         console.log(`  - typeof festival.id: ${typeof currentFestival.id}`);
     }
     
-    if (currentFestival) {
+    if (currentFestival && currentFestival.id) {
         team.festivalId = currentFestival.id;
         console.log(`🔍 Équipe ${name} assignée au festival ${currentFestival.title} (ID: ${currentFestival.id})`);
     } else {
-        console.log(`⚠️ Équipe ${name} créée sans festival actif`);
+        console.log(`⚠️ Équipe ${name} créée sans festival actif ou sans ID valide`);
+        // Pour éviter les équipes orphelines, on peut lever une erreur
+        throw new Error('Aucun festival actif trouvé. Veuillez démarrer un festival avant de créer une équipe.');
     }
     
     teams.push(team);

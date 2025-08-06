@@ -536,12 +536,13 @@ const handleCreateTeamModal = async (interaction) => {
     const code = isOpen ? null : generateTeamCode();
     
     try {
-        const team = createTeam(
+        const team = await createTeam(
             teamName, 
             interaction.user.id, 
             camp, 
             isOpen, 
-            code
+            code,
+            interaction.guild
         );
         
         const embed = new EmbedBuilder()
@@ -1025,7 +1026,7 @@ const handleTeamTypeButton = async (interaction) => {
     const code = isOpen ? null : generateTeamCode();
     
     try {
-        const team = createTeam(
+        const team = await createTeam(
             teamName, 
             interaction.user.id, 
             camp, 
