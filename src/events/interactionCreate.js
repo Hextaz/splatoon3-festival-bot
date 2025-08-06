@@ -137,7 +137,7 @@ module.exports = {
             // CRITICAL: Immediate defer for critical commands that are known to timeout
             const criticalCommands = ['start-festival'];
             // Remove festivalduration_ from criticalButtons to avoid defer before modal
-            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'vote_'];
+            const criticalButtons = ['teamsize_', 'gamemode_', 'mapban_', 'vote_', 'team_open_', 'team_closed_'];
             const criticalModals = ['festivalSetupModal'];
 
             const isCriticalCommand = interaction.type === InteractionType.ApplicationCommand && 
