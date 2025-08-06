@@ -195,10 +195,14 @@ async function saveFestival(festival, guildId = null) {
         const savedFestival = await adapter.saveFestival(festivalData);
         
         // CRUCIAL: Assigner l'ID MongoDB au festival
+        console.log(`🔍 saveFestival Debug: savedFestival =`, savedFestival);
+        console.log(`🔍 saveFestival Debug: savedFestival._id =`, savedFestival?._id);
+        
         if (savedFestival && savedFestival._id) {
             festival.id = savedFestival._id.toString();
             console.log(`✅ Festival sauvegardé avec DataAdapter (ID: ${festival.id})`);
         } else {
+            console.log('⚠️ Festival sauvegardé mais aucun ID retourné par adapter.saveFestival()');
             console.log('✅ Festival sauvegardé avec DataAdapter');
         }
     } catch (error) {
