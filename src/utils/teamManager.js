@@ -34,6 +34,15 @@ async function saveTeams() {
             throw new Error('DataAdapter non disponible - Guild ID manquant');
         }
 
+        // Vérifier s'il y a un festival actif - Si pas de festival, on est en cours de reset
+        const { getCurrentFestival } = require('./festivalManager');
+        const currentFestival = getCurrentFestival();
+        
+        if (!currentFestival) {
+            console.log('💾 Pas de festival actif - Skip sauvegarde équipes (probablement en cours de reset)');
+            return;
+        }
+
         // Sauvegarder chaque équipe individuellement dans MongoDB
         console.log(`💾 Sauvegarde de ${teams.length} équipes avec DataAdapter`);
         for (const team of teams) {
