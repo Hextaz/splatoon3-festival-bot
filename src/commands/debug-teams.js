@@ -32,7 +32,9 @@ module.exports = {
                     } else {
                         let response = `📊 **${allTeams.length} équipes trouvées:**\n\n`;
                         allTeams.forEach((team, index) => {
-                            response += `${index + 1}. **${team.name}** (Festival: \`${team.festivalId}\`)\n`;
+                            response += `${index + 1}. **${team.name}** (Festival: \`${team.festivalId || 'null'}\`)\n`;
+                            response += `   - Camp: ${team.camp || 'N/A'}\n`;
+                            response += `   - Membres: ${team.members ? team.members.length : 0}\n`;
                         });
                         await interaction.editReply(response);
                     }

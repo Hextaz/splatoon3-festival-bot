@@ -902,11 +902,14 @@ async function activateFestivalNow(festival, client) {
         
         // Activer le festival
         festival.activate();
-        await saveFestival(festival);
+        
+        // Récupérer le guildId pour sauvegarder le festival
+        const guild = client.guilds.cache.first();
+        const guildId = guild ? guild.id : festival.guildId;
+        await saveFestival(festival, guildId);
         
         // Envoyer l'annonce de début
         if (client.guilds.cache.size > 0) {
-            const guild = client.guilds.cache.first();
             try {
                 const channel = await guild.channels.fetch(festival.announcementChannelId);
                 if (channel) {
@@ -940,11 +943,14 @@ async function deactivateFestivalNow(festival, client) {
         
         // Désactiver le festival
         festival.deactivate();
-        await saveFestival(festival);
+        
+        // Récupérer le guildId pour sauvegarder le festival
+        const guild = client.guilds.cache.first();
+        const guildId = guild ? guild.id : festival.guildId;
+        await saveFestival(festival, guildId);
         
         // Envoyer l'annonce de fin
         if (client.guilds.cache.size > 0) {
-            const guild = client.guilds.cache.first();
             try {
                 const channel = await guild.channels.fetch(festival.announcementChannelId);
                 if (channel) {
