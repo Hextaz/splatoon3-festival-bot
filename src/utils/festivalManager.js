@@ -95,15 +95,49 @@ async function loadFestival(guildId = null) {
         // Si c'est un objet MongoDB, convertir vers le format Festival
         let festival;
         if (festivalData._id) {
-            // Format MongoDB - créer un objet Festival compatible
+            // Format MongoDB - convertir correctement vers le nouveau format
+            console.log('🔄 Conversion des données MongoDB vers Format Festival...');
+            
+            // Convertir modes array vers gameMode string
+            let gameMode = 'mixed'; // défaut
+            if (festivalData.modes && festivalData.modes.length > 0) {
+                if (festivalData.modes.length === 1) {
+                    gameMode = festivalData.modes[0]; // Ex: 'splat_zones'
+                } else {
+                    gameMode = 'mixed'; // Plusieurs modes = mixte
+                }
+            }
+            
+            // Récupérer teamSize depuis la config MongoDB
+            let teamSize = 4; // défaut
+            try {
+                const { loadConfig } = require('../commands/config');
+                const config = await loadConfig(guildId);
+                if (config && config.settings && config.settings.maxMembersPerTeam) {
+                    teamSize = config.settings.maxMembersPerTeam;
+                    console.log(`📐 teamSize récupéré depuis la config: ${teamSize}`);
+                }
+            } catch (error) {
+                console.warn('Impossible de récupérer teamSize depuis la config, utilisation de la valeur par défaut');
+            }
+            
+            console.log(`🔧 Conversion: modes=${JSON.stringify(festivalData.modes)} → gameMode=${gameMode}, teamSize=${teamSize}`);
+            
             festival = new Festival(
                 festivalData.title,
                 festivalData.campNames,
                 festivalData.startTime,
                 festivalData.endTime,
-                null, // Sera défini depuis la config plus bas
-                { modes: festivalData.modes }
+                null, // announcementChannelId sera défini plus bas
+                { 
+                    teamSize: teamSize,
+                    gameMode: gameMode,
+                    bannedMaps: festivalData.bannedMaps || []
+                }
             );
+            
+            // Définir isActive depuis MongoDB
+            festival.isActive = festivalData.isActive || false;
             
             // Récupérer l'announcementChannelId depuis la configuration
             try {
@@ -562,12 +596,6 @@ async function resetFestivalData(guild = null) {
 // Créer l'embed d'annonce de début
 function createStartEmbed(festival) {
     const { EmbedBuilder } = require('discord.js');
-    
-    // Debug pour identifier le problème d'affichage
-    console.log('🔧 DEBUG createStartEmbed - festival.teamSize:', festival.teamSize);
-    console.log('🔧 DEBUG createStartEmbed - festival.gameMode:', festival.gameMode);
-    console.log('🔧 DEBUG createStartEmbed - festival.getTeamSizeDisplay():', festival.getTeamSizeDisplay());
-    console.log('🔧 DEBUG createStartEmbed - festival.getGameModeDisplay():', festival.getGameModeDisplay());
     
     return new EmbedBuilder()
         .setColor('#FF9900')

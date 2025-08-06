@@ -61,8 +61,6 @@ class Festival {
     }
 
     getGameModeDisplay() {
-        console.log('DEBUG Festival.getGameModeDisplay - gameMode:', this.gameMode); // Debug
-        
         const modes = {
             'turf': 'Guerre de Territoire uniquement',
             'ranked': 'Modes Pro uniquement',
@@ -70,10 +68,7 @@ class Festival {
             'mixed': 'Modes mixtes (BO3 varié)'
         };
         
-        const result = modes[this.gameMode] || 'Modes mixtes';
-        console.log('DEBUG Festival.getGameModeDisplay - result:', result); // Debug
-        
-        return result;
+        return modes[this.gameMode] || 'Modes mixtes';
     }
 
     isMapBanned(mapKey) {

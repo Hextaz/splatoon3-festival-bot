@@ -269,7 +269,7 @@ async function loadAllData() {
                 if (festival.isActive) {
                     console.log('⚠️ Festival encore marqué comme actif, désactivation...');
                     festival.deactivate();
-                    await festivalManager.saveFestival(festival);
+                    await festivalManager.saveFestival(festival, guildId);
                 }
                 
                 // Envoyer l'annonce de fin si le bot était éteint pendant la fin
@@ -315,7 +315,7 @@ async function loadAllData() {
                 if (!festival.isActive) {
                     console.log('🎉 AUTO-ACTIVATION du festival en cours');
                     festival.activate();
-                    await festivalManager.saveFestival(festival);
+                    await festivalManager.saveFestival(festival, guildId);
                     
                     // Envoyer l'annonce de début si le bot était éteint pendant le début
                     if (client.guilds.cache.size > 0) {

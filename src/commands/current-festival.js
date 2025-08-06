@@ -92,7 +92,7 @@ module.exports = {
                     // Festival en cours mais pas encore activé
                     console.log('🔧 Festival détecté comme devant être actif, activation...');
                     festival.activate();
-                    await saveFestival(festival);
+                    await saveFestival(festival, interaction.guild.id);
                     
                     // Envoyer l'annonce de début maintenant
                     try {
@@ -184,12 +184,6 @@ module.exports = {
                     inline: false 
                 }
             );
-            
-            // Debug pour comparer avec les autres embeds
-            console.log('🔧 DEBUG current-festival - festival.teamSize:', festival.teamSize);
-            console.log('🔧 DEBUG current-festival - festival.gameMode:', festival.gameMode);
-            console.log('🔧 DEBUG current-festival - festival.getTeamSizeDisplay():', festival.getTeamSizeDisplay());
-            console.log('🔧 DEBUG current-festival - getGameModeDisplay(festival.gameMode):', getGameModeDisplay(festival.gameMode));
             
             // Si il y a des maps bannies, les afficher
             if (festival.bannedMaps.length > 0) {
