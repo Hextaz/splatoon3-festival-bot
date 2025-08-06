@@ -399,11 +399,15 @@ async function resetFestivalData(guild = null) {
         console.log('Aucune équipe à nettoyer ou pas de guild fournie');
     }
     
-    // Vider le tableau d'équipes
-    teams.length = 0;
-    // Sauvegarder l'état vide dans le fichier
-    await saveTeams();
-    console.log(`Équipes complètement vidées et sauvegardées`);
+    // Supprimer TOUTES les équipes (base de données + mémoire)
+    console.log('🗑️ Suppression de toutes les équipes...');
+    const { clearAllTeams } = require('./teamManager');
+    try {
+        await clearAllTeams();
+        console.log('✅ Toutes les équipes supprimées avec succès');
+    } catch (error) {
+        console.error('❌ Erreur lors de la suppression des équipes:', error);
+    }
 
     // Réinitialiser également la file d'attente de recherche de match
     const matchSearch = require('./matchSearch');
@@ -421,22 +425,36 @@ async function resetFestivalData(guild = null) {
         console.warn('Impossible de réinitialiser les résultats en attente:', error.message);
     }
 
-    // Réinitialiser les scores
-    scoreTracker.scores = {
-        camp1: 0,
-        camp2: 0,
-        camp3: 0
-    };
-    // Réinitialiser également l'historique des matchs
-    scoreTracker.matchHistory = [];
-    // NE PAS sauvegarder ici car il n'y a plus de festival actif
-    // Les scores seront sauvegardés lors de la création du nouveau festival
-    console.log('Scores et historique des matchs réinitialisés en mémoire');
+    // Réinitialiser les scores et l'historique des matchs
+    console.log('🗑️ Réinitialisation des scores et historique des matchs...');
+    try {
+        await scoreTracker.resetScores();
+        console.log('✅ Scores et historique des matchs réinitialisés');
+    } catch (error) {
+        console.error('❌ Erreur lors du reset des scores:', error);
+    }
 
     // Réinitialiser les votes
+    console.log('🗑️ Réinitialisation des votes...');
     const { resetVotes } = require('./vote');
-    await resetVotes();
-    console.log('Votes réinitialisés et sauvegardés');
+    try {
+        await resetVotes();
+        console.log('✅ Votes réinitialisés');
+    } catch (error) {
+        console.error('❌ Erreur lors du reset des votes:', error);
+    }
+
+    // Réinitialiser les probabilités de cartes
+    console.log('🗑️ Réinitialisation des probabilités de cartes...');
+    try {
+        const adapter = getDataAdapter(currentGuildId);
+        if (adapter) {
+            await adapter.clearAllMapProbabilities();
+            console.log('✅ Probabilités de cartes réinitialisées');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du reset des probabilités de cartes:', error);
+    }
     
     // Supprimer TOUS les rôles d'équipe, même ceux qui n'étaient pas dans le tableau d'équipes
     if (guild) {

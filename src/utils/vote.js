@@ -105,17 +105,34 @@ function getWinningCamp() {
  * Réinitialise complètement les votes
  */
 async function resetVotes() {
-    // Réinitialiser l'instance de Vote
-    voteInstance.votes = {
-        camp1: 0,
-        camp2: 0,
-        camp3: 0
-    };
-    voteInstance.userVotes = new Map();
-    
-    // NE PAS sauvegarder ici car il n'y a plus de festival actif
-    // Les votes seront sauvegardés lors de la création du nouveau festival
-    console.log('Votes réinitialisés en mémoire avec succès');
+    try {
+        const adapter = getDataAdapter();
+        
+        if (adapter) {
+            // Supprimer de la base de données
+            await adapter.clearAllVotes();
+        }
+        
+        // Réinitialiser l'instance de Vote en mémoire
+        voteInstance.votes = {
+            camp1: 0,
+            camp2: 0,
+            camp3: 0
+        };
+        voteInstance.userVotes = new Map();
+        
+        console.log('✅ Votes réinitialisés (base de données + mémoire)');
+    } catch (error) {
+        console.error('❌ Erreur lors du reset des votes:', error);
+        // En cas d'erreur, au moins réinitialiser la mémoire
+        voteInstance.votes = {
+            camp1: 0,
+            camp2: 0,
+            camp3: 0
+        };
+        voteInstance.userVotes = new Map();
+        throw error;
+    }
 }
 
 module.exports = {

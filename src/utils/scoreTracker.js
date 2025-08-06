@@ -222,6 +222,39 @@ const scoreTracker = {
     // Récupérer l'historique récent (derniers 10 matchs)
     getRecentMatches: function(count = 10) {
         return this.matchHistory.slice(-count);
+    },
+
+    // Réinitialiser complètement les scores et l'historique
+    async resetScores() {
+        try {
+            const adapter = getDataAdapter();
+            
+            if (adapter) {
+                // Supprimer de la base de données
+                await adapter.clearAllScores();
+                await adapter.clearAllMatches();
+            }
+            
+            // Réinitialiser en mémoire
+            this.scores = {
+                camp1: 0,
+                camp2: 0,
+                camp3: 0
+            };
+            this.matchHistory = [];
+            
+            console.log('✅ Scores et historique des matchs réinitialisés (base de données + mémoire)');
+        } catch (error) {
+            console.error('❌ Erreur lors du reset des scores:', error);
+            // En cas d'erreur, au moins réinitialiser la mémoire
+            this.scores = {
+                camp1: 0,
+                camp2: 0,
+                camp3: 0
+            };
+            this.matchHistory = [];
+            throw error;
+        }
     }
 };
 

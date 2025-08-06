@@ -131,6 +131,17 @@ class DataAdapter {
         }
     }
 
+    async clearAllTeams() {
+        if (isMongoDBAvailable()) {
+            const result = await Team.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} équipes supprimées de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData('teams.json', {});
+            console.log('🗑️ Toutes les équipes supprimées du fichier JSON');
+        }
+    }
+
     // --- VOTES ---
 
     async getVotes() {
@@ -167,6 +178,17 @@ class DataAdapter {
             const votes = await this.getVotes();
             votes[userId] = camp;
             return this._saveJSONData('votes.json', votes);
+        }
+    }
+
+    async clearAllVotes() {
+        if (isMongoDBAvailable()) {
+            const result = await Vote.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} votes supprimés de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData('votes.json', {});
+            console.log('🗑️ Tous les votes supprimés du fichier JSON');
         }
     }
 
@@ -211,6 +233,17 @@ class DataAdapter {
             matchData.id = matchId;
             matches.push(matchData);
             return this._saveJSONData('matchHistory.json', matches);
+        }
+    }
+
+    async clearAllMatches() {
+        if (isMongoDBAvailable()) {
+            const result = await Match.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} matchs supprimés de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData('matchHistory.json', []);
+            console.log('🗑️ Tous les matchs supprimés du fichier JSON');
         }
     }
 
@@ -262,6 +295,17 @@ class DataAdapter {
             return scoresData;
         } else {
             return this._saveJSONData('scores.json', scoresData);
+        }
+    }
+
+    async clearAllScores() {
+        if (isMongoDBAvailable()) {
+            const result = await CampScore.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} scores supprimés de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData('scores.json', {});
+            console.log('🗑️ Tous les scores supprimés du fichier JSON');
         }
     }
 
@@ -358,6 +402,17 @@ class DataAdapter {
             }
         } else {
             return this._saveJSONData(`guilds/${guildId}/mapProbabilities.json`, probData);
+        }
+    }
+
+    async clearAllMapProbabilities() {
+        if (isMongoDBAvailable()) {
+            const result = await MapProbability.deleteMany({ guildId: this.guildId });
+            console.log(`🗑️ ${result.deletedCount} probabilités de cartes supprimées de MongoDB pour le serveur ${this.guildId}`);
+            return result;
+        } else {
+            await this._saveJSONData(`guilds/${this.guildId}/mapProbabilities.json`, {});
+            console.log('🗑️ Toutes les probabilités de cartes supprimées du fichier JSON');
         }
     }
 

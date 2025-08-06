@@ -121,6 +121,32 @@ async function loadTeams() {
     }
 }
 
+// Fonction pour supprimer toutes les équipes (utilisée lors du reset)
+async function clearAllTeams() {
+    try {
+        const adapter = getDataAdapter();
+        
+        if (!adapter) {
+            console.warn('DataAdapter non disponible - suppression des équipes en mémoire uniquement');
+            teams.length = 0;
+            return;
+        }
+
+        // Supprimer de la base de données
+        await adapter.clearAllTeams();
+        
+        // Vider le tableau en mémoire
+        teams.length = 0;
+        
+        console.log('✅ Toutes les équipes supprimées (base + mémoire)');
+    } catch (error) {
+        console.error('❌ Erreur lors de la suppression de toutes les équipes:', error);
+        // En cas d'erreur, au moins vider la mémoire
+        teams.length = 0;
+        throw error;
+    }
+}
+
 // Fonction pour créer une équipe
 function createTeam(name, leaderId, camp, isOpen = true, code = null, guild = null) {
     // Vérifier si une équipe avec ce nom existe déjà
