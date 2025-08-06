@@ -93,6 +93,10 @@ async function loadTeams() {
             
             // Convertir les données MongoDB en objets Team
             const allTeamsFromDB = Object.values(teamsData);
+            
+            console.log(`🔍 loadTeams: currentFestival = ${currentFestival ? currentFestival.title : 'null'}`);
+            console.log(`🔍 loadTeams: Équipes totales en base avant filtrage: ${allTeamsFromDB.length}`);
+            
             let filteredTeams = allTeamsFromDB;
             
             // Si un festival est actif, ne charger que les équipes de ce festival
@@ -105,6 +109,8 @@ async function loadTeams() {
                 console.log(`🔍 Festival actuel: ${currentFestival.title}`);
                 console.log(`📊 Équipes totales en base: ${allTeamsFromDB.length}`);
                 console.log(`📊 Équipes pour ce festival: ${filteredTeams.length}`);
+            } else {
+                console.log('⚠️ Pas de festival actif - chargement de toutes les équipes');
             }
             
             teams = filteredTeams.map(data => {
