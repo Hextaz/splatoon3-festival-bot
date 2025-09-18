@@ -53,11 +53,10 @@ async function getCurrentFestival(guildId = currentGuildId) {
             
             if (festivalData._id) {
                 // C'est un objet MongoDB, récupérer la config pour les vraies valeurs
-                const { loadConfig } = require('./guildDataManager');
-                const config = await loadConfig(guildId);
+                const configData = await adapter.getConfig();
                 
                 // Utiliser les vraies valeurs de la config, pas les valeurs par défaut du schéma
-                const realTeamSize = config?.settings?.maxMembersPerTeam || 4;
+                const realTeamSize = configData?.settings?.maxMembersPerTeam || 4;
                 const realGameMode = festivalData.modes && festivalData.modes[0] ? festivalData.modes[0] : 'mixed';
                 
                 const festivalJson = {
