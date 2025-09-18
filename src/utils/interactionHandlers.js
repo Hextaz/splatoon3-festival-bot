@@ -465,7 +465,7 @@ const handleVoteButton = async (interaction) => {
     const parts = interaction.customId.split('_');
     const campId = parts[1]; // camp1, camp2, camp3
     const campName = parts[2]; // Nom réel du camp
-    const festival = getCurrentFestival();
+    const festival = getCurrentFestival(interaction.guild.id);
     
     if (!festival) {
         return await safeEdit(interaction, {
@@ -598,7 +598,7 @@ const handleJoinTeamModal = async (interaction) => {
     
     try {
         // Vérifier si le joueur a choisi un camp
-        const festival = getCurrentFestival();
+        const festival = getCurrentFestival(interaction.guild.id);
         if (!festival) {
             throw new Error('Aucun festival actif actuellement.');
         }
@@ -799,7 +799,7 @@ const handleKickMember = async (interaction) => {
 // Gestion de la commande teams-list
 const handleTeamsList = async (interaction) => {
     const teams = getAllTeams();
-    const festival = getCurrentFestival();
+    const festival = getCurrentFestival(interaction.guild.id);
     
     if (teams.length === 0) {
         await safeEdit(interaction, { 
@@ -955,7 +955,7 @@ const handleResultEntry = async (interaction) => {
 
 const handleMatchupModal = async (interaction) => {
     // Vérifier si un festival est actif
-    const festival = getCurrentFestival();
+    const festival = getCurrentFestival(interaction.guild.id);
     if (!festival || !festival.isActive) {
         return await safeReply(interaction, {
             content: 'Aucun festival actif actuellement. Les matchups seront disponibles quand le festival démarrera.',
@@ -1002,7 +1002,7 @@ const handleCampSelect = async (interaction) => {
     const teamName = interaction.message.content.match(/Creating team "([^"]+)"/)[1];
     
     // Récupérer le festival et le nom réel du camp
-    const festival = getCurrentFestival();
+    const festival = getCurrentFestival(interaction.guild.id);
     const campIndex = parseInt(campValue.replace('camp', '')) - 1;
     const campDisplayName = festival.campNames[campIndex];
     

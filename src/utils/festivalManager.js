@@ -997,12 +997,17 @@ async function activateFestivalNow(festival, client) {
         let guild = null;
         let guildId = festival.guildId;
         
+        console.log(`🔍 Festival guildId: ${guildId}`);
+        console.log(`🔍 Client guilds: ${client.guilds.cache.map(g => `${g.name} (${g.id})`).join(', ')}`);
+        
         if (guildId) {
             guild = client.guilds.cache.get(guildId);
+            console.log(`🔍 Guild trouvée: ${guild ? guild.name : 'AUCUNE'}`);
         } else {
             // Fallback : prendre la première guild si guildId n'est pas défini
             guild = client.guilds.cache.first();
             guildId = guild ? guild.id : null;
+            console.log(`🔍 Fallback vers première guild: ${guild ? guild.name : 'AUCUNE'}`);
         }
         
         if (!guild) {
@@ -1014,8 +1019,10 @@ async function activateFestivalNow(festival, client) {
         
         // Envoyer l'annonce de début dans la bonne guild
         try {
+            console.log(`🔍 Tentative récupération canal ${festival.announcementChannelId} dans guild ${guild.name} (${guild.id})`);
             const channel = await guild.channels.fetch(festival.announcementChannelId);
             if (channel) {
+                console.log(`✅ Canal trouvé: ${channel.name} dans guild ${channel.guild.name}`);
                 const config = await require('../commands/config').loadConfig(guild.id);
                 const mentionText = config.announcementRoleId ? 
                     `<@&${config.announcementRoleId}> ` : '';

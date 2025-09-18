@@ -147,7 +147,7 @@ async function createTeamChannel(guild, team) {
         
         // Récupérer le festival pour obtenir le nom du camp
         const { getCurrentFestival } = require('./festivalManager');
-        const festival = getCurrentFestival();
+        const festival = getCurrentFestival(guild.id);
         
         // Déterminer le nom d'affichage du camp
         let campName;

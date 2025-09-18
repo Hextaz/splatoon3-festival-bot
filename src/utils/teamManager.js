@@ -103,7 +103,7 @@ async function loadTeams(guildId) {
         if (teamsData && Object.keys(teamsData).length > 0) {
             // Vérifier si on doit filtrer par festival actuel
             const { getCurrentFestival } = require('./festivalManager');
-            const currentFestival = getCurrentFestival();
+            const currentFestival = getCurrentFestival(guildId);
             
             // Convertir les données MongoDB en objets Team
             const allTeamsFromDB = Object.values(teamsData);
@@ -229,7 +229,7 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
         console.error('Erreur lors de la récupération du festival pour l\'équipe:', error);
         // Fallback vers la version sync
         const { getCurrentFestival } = require('./festivalManager');
-        currentFestival = getCurrentFestival();
+        currentFestival = getCurrentFestival(guildId);
     }
     
     console.log(`🔍 createTeam Debug:`);
@@ -649,14 +649,14 @@ async function clearAllTeams(guildId) {
 
 // Dans src/utils/teamManager.js, modifiez la fonction isTeamComplete:
 
-function isTeamComplete(team) {
+function isTeamComplete(team, guildId = null) {
     if (!team || !team.members || !Array.isArray(team.members)) {
         return false;
     }
     
     try {
         const { getCurrentFestival } = require('./festivalManager');
-        const festival = getCurrentFestival();
+        const festival = guildId ? getCurrentFestival(guildId) : null;
         const requiredSize = festival?.teamSize || 4;
         return team.members.length >= requiredSize;
     } catch (error) {

@@ -155,7 +155,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     
     // Vérifier si l'équipe a le bon nombre de membres selon le festival
     if (!isTestMode) {
-        const festival = getCurrentFestival();
+        const festival = getCurrentFestival(guildId);
         const requiredSize = festival?.teamSize || 4;
         const currentSize = team.members.length;
         
@@ -658,7 +658,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         saveTeams();
 
         // NOUVEAU: Générer le BO3
-        const festival = getCurrentFestival(); // Récupérer le festival actuel
+        const festival = getCurrentFestival(guildId); // Récupérer le festival actuel
         const bo3Generator = new BO3Generator(festival); // Passer le festival au générateur
         let bo3Data = null;
         
@@ -704,8 +704,8 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
                 .setTitle(`🎮 Nouveau match! 🎮`)
                 .setDescription(`Un match a été trouvé!`)
                 .addFields(
-                    { name: 'Équipe 1', value: `${updatedTeam1.name} (${getCampDisplayName(updatedTeam1)})`, inline: true },
-                    { name: 'Équipe 2', value: `${updatedTeam2.name} (${getCampDisplayName(updatedTeam2)})`, inline: true }
+                    { name: 'Équipe 1', value: `${updatedTeam1.name} (${getCampDisplayName(updatedTeam1, guildId)})`, inline: true },
+                    { name: 'Équipe 2', value: `${updatedTeam2.name} (${getCampDisplayName(updatedTeam2, guildId)})`, inline: true }
                 )
                 .setTimestamp();
         }
@@ -777,8 +777,8 @@ function getMultiplierAnnouncement(multiplier) {
 }
 
 // Obtenir le nom d'affichage d'un camp
-function getCampDisplayName(team) {
-    const festival = getCurrentFestival();
+function getCampDisplayName(team, guildId) {
+    const festival = getCurrentFestival(guildId);
     
     if (team.campDisplayName) {
         return team.campDisplayName;
