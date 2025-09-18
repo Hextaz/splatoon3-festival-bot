@@ -557,6 +557,9 @@ setInterval(async () => {
     try {
         isProcessingMatches = true;
         
+        // Récupérer les équipes en recherche pour cette guilde
+        const searchingTeams = getSearchingTeamsForGuild(guildId);
+        
         // Travailler sur une copie de l'array pour éviter les modifications pendant l'itération
         const teamsToProcess = [...searchingTeams];
         
