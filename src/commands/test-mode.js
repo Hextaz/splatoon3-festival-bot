@@ -315,7 +315,7 @@ async function handleCreateTeams(interaction, festival) {
             
             // Enregistrer un vote pour ce camp
             try {
-                castVote(camp, virtualUserId);
+                castVote(camp, virtualUserId, interaction.guild.id);
                 console.log(`Vote enregistré pour ${camp}`);
             } catch (voteError) {
                 console.error(`Erreur de vote:`, voteError);

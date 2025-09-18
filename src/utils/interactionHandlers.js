@@ -516,7 +516,7 @@ const handleVoteButton = async (interaction) => {
         await member.roles.add(campRole);
         
         // Enregistrer le vote dans le système de vote avec l'ID de l'utilisateur
-        castVote(campId, interaction.user.id);
+        castVote(campId, interaction.user.id, interaction.guild.id);
         
         // Créer un embed de confirmation avec des instructions plus complètes
         const embed = new EmbedBuilder()
@@ -906,7 +906,7 @@ const handleVoteInteraction = async (interaction) => {
     const camp = interaction.options.getString('camp');
     
     try {
-        castVote(camp);
+        castVote(camp, interaction.user.id, interaction.guild.id);
         await safeReply(interaction, `Vote cast for ${camp}.`);
     } catch (error) {
         await safeReply(interaction, `Error: ${error.message}`);

@@ -70,7 +70,7 @@ module.exports = {
             await member.roles.add(newCampRole);
             
             // 3. Mettre à jour le vote dans le système
-            castVote(newCampId, targetUser.id);
+            castVote(newCampId, targetUser.id, interaction.guild.id);
             
             // 4. Vérifier si l'utilisateur était dans une équipe incompatible
             const { findTeamByMember } = require('../utils/teamManager');

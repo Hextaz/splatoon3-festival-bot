@@ -283,51 +283,31 @@ async function createFestival(title, campNames, startDate, endDate, announcement
     
     setCurrentFestival(festival, guild?.id);
     
-    // Sauvegarder avec DataAdapter si disponible
-    if (guild?.id) {
-        try {
-            const adapter = getDataAdapter(guild.id);
-            await adapter.saveFestival({
-                title: festival.title,
-                campNames: festival.campNames,
-                startTime: festival.startDate,
-                endTime: festival.endDate,
-                modes: festival.gameMode || options.modes || ['Défense de Zone'],
-                ...options
-            });
-            
-            // Mettre à jour la configuration pour correspondre à la taille d'équipe
+    // Sauvegarder avec le système unifié
+    try {
+        await saveFestival(festival, guild?.id);
+        
+        // Mettre à jour la configuration pour correspondre à la taille d'équipe
+        if (guild?.id) {
             const teamSize = options.teamSize || festival.teamSize || 4;
             console.log(`🔧 Mise à jour maxMembersPerTeam à ${teamSize} pour correspondre au festival`);
             
-            // Charger la config actuelle
-            const currentConfig = await adapter.getConfig();
-            if (currentConfig) {
-                // Mettre à jour maxMembersPerTeam
-                const updatedConfig = {
-                    ...currentConfig,
-                    // Note: on ne peut pas mettre les settings directement, il faut les mettre dans la base de données MongoDB
-                };
-                
-                // Utiliser MongoDB directement pour mettre à jour les settings
-                const { GuildConfig } = require('../models/mongodb');
-                await GuildConfig.findOneAndUpdate(
-                    { guildId: guild.id },
-                    { 
-                        'settings.maxMembersPerTeam': teamSize 
-                    },
-                    { upsert: true }
-                );
-                console.log(`✅ Configuration mise à jour: maxMembersPerTeam = ${teamSize}`);
-            }
-            
-            console.log('✅ Festival sauvegardé avec DataAdapter');
-        } catch (error) {
-            console.warn('⚠️ Erreur DataAdapter, fallback vers JSON:', error.message);
-            await saveFestival(festival, guild.id);
+            // Utiliser MongoDB directement pour mettre à jour les settings
+            const { GuildConfig } = require('../models/mongodb');
+            await GuildConfig.findOneAndUpdate(
+                { guildId: guild.id },
+                { 
+                    'settings.maxMembersPerTeam': teamSize 
+                },
+                { upsert: true }
+            );
+            console.log(`✅ Configuration mise à jour: maxMembersPerTeam = ${teamSize}`);
         }
-    } else {
-        await saveFestival(festival, guild?.id);
+        
+        console.log('✅ Festival sauvegardé avec succès');
+    } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde du festival:', error.message);
+        throw error;
     }
     
     console.log('Festival reconstruit:', {
