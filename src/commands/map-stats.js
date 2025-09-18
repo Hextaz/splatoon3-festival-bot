@@ -13,7 +13,7 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         
-        const userTeam = findTeamByMember(interaction.user.id);
+        const userTeam = findTeamByMember(interaction.user.id, interaction.guild.id);
         
         if (!userTeam) {
             return await interaction.editReply({
@@ -22,21 +22,28 @@ module.exports = {
         }
 
         try {
-            await mapProbabilityManager.loadProbabilities();
-            const stats = mapProbabilityManager.getTeamProbabilityStats(userTeam.name);
+            const guildId = interaction.guild.id;
+            const teamProbs = mapProbabilityManager.getTeamProbabilities(userTeam.name, guildId);
             
             const embed = new EmbedBuilder()
                 .setColor('#0099FF')
                 .setTitle(`📊 Probabilités de maps - ${userTeam.name}`)
                 .setDescription('Probabilités de sélection de chaque map pour vos prochains matchs');
             
-            // Maps les plus probables
-            const mostLikelyText = stats.mostLikely
+            // Convertir les probabilités en tableau trié
+            const mapStats = Array.from(teamProbs.entries())
+                .map(([mapKey, probability]) => ({ mapKey, probability }))
+                .sort((a, b) => b.probability - a.probability);
+            
+            // Maps les plus probables (top 5)
+            const mostLikely = mapStats.slice(0, 5);
+            const mostLikelyText = mostLikely
                 .map(item => `${MAPS[item.mapKey]}: **${(item.probability * 100).toFixed(1)}%**`)
                 .join('\n');
             
-            // Maps les moins probables  
-            const leastLikelyText = stats.leastLikely
+            // Maps les moins probables (bottom 5)
+            const leastLikely = mapStats.slice(-5).reverse();
+            const leastLikelyText = leastLikely
                 .map(item => `${MAPS[item.mapKey]}: **${(item.probability * 100).toFixed(1)}%**`)
                 .join('\n');
             

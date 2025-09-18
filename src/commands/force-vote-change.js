@@ -29,7 +29,7 @@ module.exports = {
         const targetUser = interaction.options.getUser('user');
         const newCampId = interaction.options.getString('new_camp');
         
-        const festival = getCurrentFestival();
+        const festival = getCurrentFestival(interaction.guild.id);
         if (!festival) {
             return await interaction.editReply({
                 content: 'Aucun festival actif.'
@@ -74,7 +74,7 @@ module.exports = {
             
             // 4. Vérifier si l'utilisateur était dans une équipe incompatible
             const { findTeamByMember } = require('../utils/teamManager');
-            const userTeam = findTeamByMember(targetUser.id);
+            const userTeam = findTeamByMember(targetUser.id, interaction.guild.id);
             
             let teamWarning = '';
             if (userTeam && userTeam.camp !== newCampId) {

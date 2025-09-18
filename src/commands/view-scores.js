@@ -16,7 +16,8 @@ module.exports = {
     
     async execute(interaction) {
         try {
-            const festival = getCurrentFestival();
+            const guildId = interaction.guild.id;
+            const festival = getCurrentFestival(guildId);
             if (!festival) {
                 return await safeReply(interaction, {
                     content: 'Aucun festival actif actuellement.',
@@ -27,8 +28,8 @@ module.exports = {
             const shouldAnnounce = interaction.options.getBoolean('announce') || false;
             
             // Récupérer les scores et calculer les pourcentages
-            const scores = scoreTracker.getCurrentScores();
-            const percentages = scoreTracker.getScoresAsPercentages();
+            const scores = scoreTracker.getCurrentScores(guildId);
+            const percentages = scoreTracker.getScoresAsPercentages(guildId);
             const totalPoints = scores.camp1 + scores.camp2 + scores.camp3;
             
             // Créer un embed avec les informations de score

@@ -12,7 +12,7 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
         
         try {
-            const team = findTeamByMember(interaction.user.id);
+            const team = findTeamByMember(interaction.user.id, interaction.guild.id);
             
             if (!team) {
                 return await interaction.editReply({
@@ -21,7 +21,7 @@ module.exports = {
             }
             
             // RÉCUPÉRER LA TAILLE REQUISE SELON LE FESTIVAL
-            const festival = getCurrentFestival();
+            const festival = getCurrentFestival(interaction.guild.id);
             const maxSize = festival?.teamSize || 4;
             const currentSize = team.members.length;
             

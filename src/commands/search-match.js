@@ -11,8 +11,9 @@ module.exports = {
     
     async execute(interaction) {
         try {
+            const guildId = interaction.guild.id;
             // Vérifier si un festival est actif
-            const festival = getCurrentFestival();
+            const festival = getCurrentFestival(guildId);
             if (!festival || !festival.isActive) {
                 return await safeReply(interaction, {
                     content: 'Aucun festival actif actuellement. Les matchs seront disponibles quand le festival démarrera.',
@@ -21,7 +22,7 @@ module.exports = {
             }
             
             // Vérifier si l'utilisateur est dans une équipe
-            const team = findTeamByMember(interaction.user.id);
+            const team = findTeamByMember(interaction.user.id, guildId);
             if (!team) {
                 return await safeReply(interaction, {
                     content: "Vous n'êtes membre d'aucune équipe. Rejoignez ou créez une équipe d'abord.",

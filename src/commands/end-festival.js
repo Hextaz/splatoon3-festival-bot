@@ -4,6 +4,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const { getCurrentFestival, resetFestivalData, saveFestival, deleteFestival } = require('../utils/festivalManager');
 const scoreTracker = require('../utils/scoreTracker');
 const { loadConfig } = require('../commands/config');
+const { safeReply, safeEdit, safeFollowUp } = require('../utils/responseUtils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -15,8 +16,10 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
         
         try {
+            const guildId = interaction.guild.id;
+            
             // Vérifier s'il y a un festival en cours
-            const festival = getCurrentFestival();
+            const festival = getCurrentFestival(guildId);
             if (!festival) {
                 return await safeEdit(interaction, {
                     content: 'Aucun festival n\'est actif actuellement.',
@@ -29,11 +32,11 @@ module.exports = {
             
             // Désactiver le festival et sauvegarder immédiatement pour l'annonce
             festival.deactivate();
-            await saveFestival(festival);
+            await saveFestival(festival, guildId);
             
             // Calculer les résultats finaux
-            const winningCamp = scoreTracker.getWinningCamp();
-            const scores = scoreTracker.getCurrentScores();
+            const winningCamp = scoreTracker.getWinningCamp(guildId);
+            const scores = scoreTracker.getCurrentScores(guildId);
             
             // Créer l'embed d'annonce de fin
             let embed;
@@ -73,21 +76,27 @@ module.exports = {
             }
             
             // Envoyer l'annonce dans le canal d'annonce du festival
-            const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
-            if (channel) {
-                // Charger la configuration pour obtenir le rôle à mentionner
-                const config = await loadConfig(interaction.guild.id);
-                
-                const mentionText = config.announcementRoleId ? 
-                    `<@&${config.announcementRoleId}> ` : '';
-                
-                await channel.send({ 
-                    content: `${mentionText}🏆 **Le Festival "${festival.title}" a été terminé manuellement!** 🏆`,
-                    embeds: [embed] 
-                });
-                
-                // Annoncer la dissolution des équipes
-                await channel.send("Le festival a été terminé manuellement. Toutes les équipes seront dissoutes dans 30 secondes.");
+            if (festival.announcementChannelId) {
+                try {
+                    const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
+                    if (channel) {
+                        // Charger la configuration pour obtenir le rôle à mentionner
+                        const config = await loadConfig(interaction.guild.id);
+                        
+                        const mentionText = config.announcementRoleId ? 
+                            `<@&${config.announcementRoleId}> ` : '';
+                        
+                        await channel.send({ 
+                            content: `${mentionText}🏆 **Le Festival "${festival.title}" a été terminé manuellement!** 🏆`,
+                            embeds: [embed] 
+                        });
+                        
+                        // Annoncer la dissolution des équipes
+                        await channel.send("Le festival a été terminé manuellement. Toutes les équipes seront dissoutes dans 30 secondes.");
+                    }
+                } catch (channelError) {
+                    console.warn('Impossible d\'envoyer l\'annonce dans le canal:', channelError.message);
+                }
             }
             
             // Répondre à l'administrateur qui a exécuté la commande
@@ -102,11 +111,10 @@ module.exports = {
 
                 // S'assurer que le système d'équipes est bien nettoyé
                 const teamManager = require('../utils/teamManager');
-const { safeReply, safeEdit, safeFollowUp } = require('../utils/responseUtils');
-                await teamManager.clearAllTeams();
+                await teamManager.clearAllTeams(guildId);
                 
                 // Supprimer complètement le festival
-                await deleteFestival();
+                await deleteFestival(guildId);
                 
                 console.log('Festival supprimé avec succès après 30 secondes');
             }, 30 * 1000); // 30 secondes

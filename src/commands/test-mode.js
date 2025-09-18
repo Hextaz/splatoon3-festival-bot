@@ -69,7 +69,7 @@ module.exports = {
             const subcommand = interaction.options.getSubcommand();
                         
             // Vérifier si un festival est actif
-            const festival = getCurrentFestival();
+            const festival = getCurrentFestival(interaction.guild.id);
             if (!festival && subcommand !== 'cleanup') {
                 return await interaction.editReply({
                     content: 'Aucun festival actif. Veuillez d\'abord créer un festival avec `/start-festival`.',
@@ -817,7 +817,7 @@ async function simulateMatchResult(interaction, team1, team2) {
 async function handleFillMyTeam(interaction, festival) {
     
     // Get admin's team
-    const adminTeam = findTeamByMember(interaction.user.id);
+    const adminTeam = findTeamByMember(interaction.user.id, interaction.guild.id);
     if (!adminTeam) {
         return await interaction.editReply({
             content: "Vous n'êtes membre d'aucune équipe. Créez ou rejoignez une équipe d'abord.",

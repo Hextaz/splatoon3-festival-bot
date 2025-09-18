@@ -23,7 +23,7 @@ module.exports = {
 
     async execute(interaction) {
         const section = interaction.options.getString('section');
-        const festival = getCurrentFestival();
+        const festival = getCurrentFestival(interaction.guild.id);
 
         // Si aucune section spécifiée, afficher le menu principal
         if (!section) {

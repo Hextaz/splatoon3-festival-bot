@@ -15,7 +15,7 @@ module.exports = {
         
         try {
             // Vérifier si l'utilisateur est membre d'une équipe
-            const userTeam = findTeamByMember(interaction.user.id);
+            const userTeam = findTeamByMember(interaction.user.id, interaction.guild.id);
             if (!userTeam) {
                 return await interaction.editReply({
                     content: "Vous n'êtes membre d'aucune équipe."
