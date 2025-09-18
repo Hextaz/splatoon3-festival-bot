@@ -52,7 +52,14 @@ async function getCurrentFestival(guildId = currentGuildId) {
             let festival;
             
             if (festivalData._id) {
-                // C'est un objet MongoDB, utiliser directement ses propriétés
+                // C'est un objet MongoDB, récupérer la config pour les vraies valeurs
+                const { loadConfig } = require('./guildDataManager');
+                const config = await loadConfig(guildId);
+                
+                // Utiliser les vraies valeurs de la config, pas les valeurs par défaut du schéma
+                const realTeamSize = config?.settings?.maxMembersPerTeam || 4;
+                const realGameMode = festivalData.modes && festivalData.modes[0] ? festivalData.modes[0] : 'mixed';
+                
                 const festivalJson = {
                     id: festivalData._id.toString(),
                     title: festivalData.title,
@@ -61,8 +68,8 @@ async function getCurrentFestival(guildId = currentGuildId) {
                     endDate: festivalData.endTime || festivalData.endDate,
                     announcementChannelId: festivalData.announcementChannelId,
                     isActive: festivalData.isActive,
-                    teamSize: festivalData.teamSize || 4, // Directement depuis MongoDB
-                    gameMode: festivalData.gameMode || (festivalData.modes && festivalData.modes[0]) || 'mixed',
+                    teamSize: realTeamSize, // Depuis la config
+                    gameMode: realGameMode, // Depuis les modes du festival
                     bannedMaps: festivalData.bannedMaps || []
                 };
                 
