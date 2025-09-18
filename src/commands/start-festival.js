@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { loadConfig } = require('../commands/config');
-const { setCurrentGuildId } = require('../utils/festivalManager');
 const { safeReply, safeDefer, safeEdit, safeFollowUp } = require('../utils/responseUtils');
 
 module.exports = {
@@ -24,9 +23,6 @@ module.exports = {
         }
         
         try {
-            // Définir le serveur actuel pour le gestionnaire de festival
-            setCurrentGuildId(interaction.guild.id);
-            
             // Charger la configuration
             const config = await loadConfig(interaction.guild.id);
             

@@ -11,20 +11,22 @@ const DataAdapter = require('./dataAdapter');
 
 // Maps pour gérer les festivals par guild
 const festivalsByGuild = new Map(); // guildId -> festival
-let currentGuildId = null; // Pour compatibilité, mais on utilise les Maps
 
 // Helper pour obtenir le DataAdapter
-function getDataAdapter(guildId = currentGuildId) {
+function getDataAdapter(guildId) {
     if (!guildId) {
-        console.warn('Aucun guildId défini pour festivalManager, utilisation JSON');
+        console.error('guildId requis pour festivalManager DataAdapter');
         return null;
     }
     return new DataAdapter(guildId);
 }
 
 // Helper pour obtenir le festival d'une guild spécifique
-function getCurrentFestivalSync(guildId = currentGuildId) {
-    if (!guildId) return null;
+function getCurrentFestivalSync(guildId) {
+    if (!guildId) {
+        console.error('guildId requis pour getCurrentFestivalSync');
+        return null;
+    }
     return festivalsByGuild.get(guildId) || null;
 }
 
@@ -39,8 +41,11 @@ function setCurrentFestival(festival, guildId) {
 }
 
 // Fonction pour obtenir le festival actuel (async)
-async function getCurrentFestival(guildId = currentGuildId) {
-    if (!guildId) return null;
+async function getCurrentFestival(guildId) {
+    if (!guildId) {
+        console.error('guildId requis pour getCurrentFestival');
+        return null;
+    }
     
     try {
         const adapter = getDataAdapter(guildId);
@@ -81,7 +86,6 @@ async function getCurrentFestival(guildId = currentGuildId) {
             }
             
             setCurrentFestival(festival, guildId);
-            currentGuildId = guildId;
             return festival;
         } else {
             setCurrentFestival(null, guildId);
@@ -91,22 +95,9 @@ async function getCurrentFestival(guildId = currentGuildId) {
         console.error('Erreur lors de la récupération du festival:', error);
         return getCurrentFestivalSync(guildId); // Fallback vers le cache local
     }
-} // Stocker l'ID du serveur actuel
+}
+
 let scheduledJobs = {};
-
-// Fonctions helpers pour gérer le guildId automatiquement
-const getCurrentGuildId = () => currentGuildId;
-const setCurrentGuildId = (guildId) => { currentGuildId = guildId; };
-
-// Wrapper pour saveFestival avec guildId automatique
-const saveFestivalAuto = async (festival, guildId = null) => {
-    return await saveFestival(festival, guildId || currentGuildId);
-};
-
-// Wrapper pour loadFestival avec guildId automatique  
-const loadFestivalAuto = async (guildId = null) => {
-    return await loadFestival(guildId || currentGuildId);
-};
 
 // Créer le dossier data s'il n'existe pas
 async function ensureDataDirExists() {
@@ -210,7 +201,6 @@ async function loadFestival(guildId = null) {
         }
         
         setCurrentFestival(festival, guildId);
-        currentGuildId = guildId;
         
         return festival;
     } catch (error) {
@@ -266,29 +256,6 @@ async function saveFestival(festival, guildId = null) {
 async function createFestival(title, campNames, startDate, endDate, announcementChannelId, guild = null, options = {}) {
     console.log('🏗️ ===== CRÉATION D\'UN NOUVEAU FESTIVAL =====');
     console.log(`🔍 Guild: ${guild ? guild.name : 'NON FOURNIE'} (${guild ? guild.id : 'N/A'})`);
-    
-    // CRUCIAL: Initialiser tous les managers avec le bon guildId AVANT le reset
-    if (guild) {
-        console.log('🔧 Initialisation des managers avec le guildId...');
-        
-        // TeamManager
-        const { setCurrentGuildId: setTeamGuildId } = require('./teamManager');
-        setTeamGuildId(guild.id);
-        
-        // Autres managers
-        const scoreTracker = require('./scoreTracker');
-        const matchHistoryManager = require('./matchHistoryManager');
-        const voteManager = require('./vote');
-        const mapProbabilityManager = require('./mapProbabilityManager');
-        
-        // Ces setCurrentGuildId ne sont plus nécessaires avec le nouveau système d'isolation
-        // Toutes les fonctions prennent maintenant guildId en paramètre
-        
-        // FestivalManager
-        setCurrentGuildId(guild.id);
-        
-        console.log('✅ Tous les managers initialisés');
-    }
     
     // IMPORTANT: Nettoyage complet de toutes les données avant création du nouveau festival
     console.log('🧹 Nettoyage complet des données avant création du nouveau festival...');
@@ -400,8 +367,13 @@ function getCorrectGameModeDisplay(gameMode) {
     return modes[gameMode] || 'Modes mixtes';
 }
 
-async function verifyFestivalStatus(guildId = null) {
-    const festival = guildId ? getCurrentFestivalSync(guildId) : null;
+async function verifyFestivalStatus(guildId) {
+    if (!guildId) {
+        console.error('guildId requis pour verifyFestivalStatus');
+        return;
+    }
+    
+    const festival = getCurrentFestivalSync(guildId);
     if (!festival) return;
     
     const now = new Date();
@@ -412,30 +384,30 @@ async function verifyFestivalStatus(guildId = null) {
     if (now >= startDate && now <= endDate && !festival.isActive) {
         console.log('🔧 Festival détecté comme devant être actif, activation...');
         festival.activate();
-        await saveFestivalAuto(festival, guildId || currentGuildId);
+        await saveFestival(festival, guildId);
     }
     
     // Si le festival est actif mais devrait être terminé
     if (now > endDate && festival.isActive) {
         festival.deactivate();
-        await saveFestivalAuto(festival, guildId || currentGuildId);
+        await saveFestival(festival, guildId);
     }
 }
 
 // Réinitialiser les données (équipes, scores, etc.)
-async function resetFestivalData(guild = null) {
+async function resetFestivalData(guild) {
     console.log('🧹 ===== DÉBUT DU RESET FESTIVAL DATA =====');
     console.log(`🔍 Guild fournie: ${guild ? guild.name : 'NON'}`);
-    console.log(`🔍 CurrentGuildId: ${currentGuildId}`);
     
     // Vérifier si la guild est fournie
     if (!guild) {
-        console.warn('Aucune guild fournie, impossible de gérer les rôles des membres');
+        console.error('Guild requise pour resetFestivalData');
+        return;
     }
     
     const { getTeamsForGuild, saveTeams } = require('./teamManager');
     const scoreTracker = require('./scoreTracker');
-    const guildId = guild?.id || currentGuildId;
+    const guildId = guild.id;
 
     const teams = getTeamsForGuild(guildId) || [];
     console.log(`🔍 Nombre d'équipes en mémoire avant reset: ${teams.length}`);
@@ -572,7 +544,7 @@ async function resetFestivalData(guild = null) {
     // Réinitialiser les probabilités de cartes
     console.log('🗑️ Réinitialisation des probabilités de cartes...');
     try {
-        const adapter = getDataAdapter(currentGuildId);
+        const adapter = getDataAdapter(guildId);
         if (adapter) {
             await adapter.clearAllMapProbabilities();
             console.log('✅ Probabilités de cartes réinitialisées');
@@ -584,7 +556,7 @@ async function resetFestivalData(guild = null) {
     // Réinitialiser les résultats en attente
     console.log('🗑️ Réinitialisation des résultats en attente...');
     try {
-        const adapter = getDataAdapter(currentGuildId);
+        const adapter = getDataAdapter(guildId);
         if (adapter) {
             await adapter.clearAllPendingResults();
             console.log('✅ Résultats en attente réinitialisés');
@@ -596,7 +568,7 @@ async function resetFestivalData(guild = null) {
     // Réinitialiser l'historique des matchs
     console.log('🗑️ Réinitialisation de l\'historique des matchs...');
     try {
-        const adapter = getDataAdapter(currentGuildId);
+        const adapter = getDataAdapter(guildId);
         if (adapter) {
             await adapter.clearAllMatchHistory();
             console.log('✅ Historique des matchs réinitialisé');
@@ -608,7 +580,7 @@ async function resetFestivalData(guild = null) {
     // Réinitialiser les compteurs de matchs
     console.log('🗑️ Réinitialisation des compteurs de matchs...');
     try {
-        const adapter = getDataAdapter(currentGuildId);
+        const adapter = getDataAdapter(guildId);
         if (adapter) {
             await adapter.clearAllMatchCounters();
             console.log('✅ Compteurs de matchs réinitialisés');
@@ -858,21 +830,22 @@ function createEndEmbed(festival, guildId) {
 /**
  * Supprime complètement le festival actuel
  */
-async function deleteFestival() {
+async function deleteFestival(guildId) {
     try {
+        if (!guildId) {
+            console.error('guildId requis pour deleteFestival');
+            return false;
+        }
+        
         // Suppression du festival dans MongoDB via DataAdapter
-        if (currentGuildId) {
-            const currentFestival = getCurrentFestivalSync(currentGuildId);
-            if (currentFestival) {
-                const adapter = getDataAdapter(currentGuildId);
-                await adapter.deleteFestival(currentGuildId);
-            }
+        const currentFestival = getCurrentFestivalSync(guildId);
+        if (currentFestival) {
+            const adapter = getDataAdapter(guildId);
+            await adapter.deleteFestival(guildId);
         }
         
         // Vidage de la variable festival pour cette guild
-        if (currentGuildId) {
-            setCurrentFestival(null, currentGuildId);
-        }
+        setCurrentFestival(null, guildId);
         
         console.log('Festival supprimé avec succès');
         return true;
@@ -1277,7 +1250,7 @@ async function checkAndCleanExpiredFestival(festival, client) {
         // Forcer la désactivation
         festival.deactivate();
         const guild = client.guilds.cache.first();
-        const guildId = guild ? guild.id : festival.guildId || currentGuildId;
+        const guildId = guild ? guild.id : festival.guildId;
         
         if (guildId) {
             await saveFestival(festival, guildId);
@@ -1356,18 +1329,16 @@ function getFestivalStatus(festival) {
 
 // Exporter les fonctions
 module.exports = {
-    // Version sync pour compatibilité (cache local) - utilise désormais currentGuildId
-    getCurrentFestival: (guildId = currentGuildId) => getCurrentFestivalSync(guildId),
+    // Version sync pour compatibilité (cache local)
+    getCurrentFestival: getCurrentFestivalSync,
     // Version async pour persistence
     getCurrentFestivalAsync: getCurrentFestival,
     getCurrentFestivalSync: getCurrentFestivalSync,
     setCurrentFestival,
     loadFestival,
-    loadFestivalAuto,
     createFestival,
     resetFestivalData,
     saveFestival,
-    saveFestivalAuto,
     deleteFestival,
     createStartEmbed,
     createEndEmbed,
@@ -1378,7 +1349,5 @@ module.exports = {
     deactivateFestivalNow,
     sendHalfwayAnnouncement,
     getFestivalStatus,
-    checkAndCleanExpiredFestival,  // ← NOUVELLE FONCTION
-    getCurrentGuildId,
-    setCurrentGuildId
+    checkAndCleanExpiredFestival
 };

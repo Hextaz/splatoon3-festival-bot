@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { getCurrentFestivalAsync, saveFestival, setCurrentGuildId, loadFestivalAuto } = require('../utils/festivalManager');
+const { getCurrentFestivalAsync, saveFestival, loadFestival } = require('../utils/festivalManager');
 const { getAllTeams } = require('../utils/teamManager');
 const { getVotes } = require('../utils/vote');
 const scoreTracker = require('../utils/scoreTracker');
