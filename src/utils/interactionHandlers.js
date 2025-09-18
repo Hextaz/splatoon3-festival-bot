@@ -12,53 +12,66 @@ const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
 const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
 
 // Global variables
-const pendingResults = new Map();
-let currentGuildId = null;
+const pendingResultsByGuild = new Map(); // Map<guildId, Map<key, value>>
 const dataAdapter = new DataAdapter();
 
-// Set guild ID for this module
-function setCurrentGuildId(guildId) {
-    currentGuildId = guildId;
-    // Load pending results after guild ID is set
-    loadPendingResults();
+// Fonction helper pour récupérer les résultats en attente d'une guilde
+function getPendingResultsForGuild(guildId) {
+    if (!pendingResultsByGuild.has(guildId)) {
+        pendingResultsByGuild.set(guildId, new Map());
+    }
+    return pendingResultsByGuild.get(guildId);
 }
 
-// Fonction pour charger les résultats en attente
-async function loadPendingResults() {
+// Fonction pour charger les résultats en attente d'une guilde spécifique
+async function loadPendingResults(guildId) {
     try {
-        if (!currentGuildId) {
-            console.error('Guild ID not set for interaction handlers');
+        if (!guildId) {
+            console.error('Guild ID required for loadPendingResults');
             return;
         }
 
-        const data = await dataAdapter.loadPendingResults(currentGuildId);
+        const data = await dataAdapter.loadPendingResults(guildId);
         if (data) {
+            const pendingResults = getPendingResultsForGuild(guildId);
             // Reconstituer la Map depuis l'objet JSON
             Object.entries(data).forEach(([key, value]) => {
                 pendingResults.set(key, value);
             });
             
-            console.log(`${pendingResults.size} résultats en attente chargés`);
+            console.log(`${pendingResults.size} résultats en attente chargés pour guilde ${guildId}`);
         }
     } catch (error) {
         console.error('Erreur lors du chargement des résultats en attente:', error);
     }
 }
 
-// Fonction pour sauvegarder les résultats en attente
-async function savePendingResults() {
+// Fonction pour sauvegarder les résultats en attente d'une guilde spécifique
+async function savePendingResults(guildId) {
     try {
-        if (!currentGuildId) {
-            console.error('Guild ID not set for interaction handlers');
+        if (!guildId) {
+            console.error('Guild ID required for savePendingResults');
             return;
         }
 
+        const pendingResults = getPendingResultsForGuild(guildId);
         // Convertir la Map en objet pour la sérialisation JSON
         const dataToSave = Object.fromEntries(pendingResults);
-        await dataAdapter.savePendingResults(currentGuildId, dataToSave);
+        await dataAdapter.savePendingResults(guildId, dataToSave);
     } catch (error) {
         console.error('Erreur lors de la sauvegarde des résultats en attente:', error);
     }
+}
+
+// Fonction d'initialisation pour une guilde spécifique
+async function initializeForGuild(guildId) {
+    if (!guildId) {
+        console.error('Guild ID required for initialization');
+        return;
+    }
+    
+    console.log(`🔧 Initialisation interactionHandlers pour guilde ${guildId}`);
+    await loadPendingResults(guildId);
 }
 
 // No automatic loading at module startup - wait for guildId to be set
@@ -68,24 +81,33 @@ function cleanupExpiredResults() {
     const now = Date.now();
     const maxAge = 24 * 60 * 60 * 1000; // 24 heures
     
-    let cleanedCount = 0;
-    for (const [matchId, result] of pendingResults.entries()) {
-        if (now - result.timestamp > maxAge) {
-            pendingResults.delete(matchId);
-            cleanedCount++;
+    let totalCleanedCount = 0;
+    
+    // Nettoyer pour chaque guilde
+    for (const [guildId, pendingResults] of pendingResultsByGuild.entries()) {
+        let cleanedCount = 0;
+        for (const [matchId, result] of pendingResults.entries()) {
+            if (now - result.timestamp > maxAge) {
+                pendingResults.delete(matchId);
+                cleanedCount++;
+                totalCleanedCount++;
+            }
+        }
+        
+        if (cleanedCount > 0) {
+            console.log(`${cleanedCount} résultats expirés supprimés pour guilde ${guildId}`);
+            savePendingResults(guildId);
         }
     }
     
-    if (cleanedCount > 0) {
-        console.log(`${cleanedCount} résultats expirés supprimés`);
-        savePendingResults();
+    if (totalCleanedCount > 0) {
+        console.log(`${totalCleanedCount} résultats expirés supprimés au total`);
     }
 }
 
-// Appeler au chargement
-loadPendingResults().then(() => {
-    cleanupExpiredResults();
-});
+// Le chargement des résultats se fait maintenant par guilde via loadPendingResults(guildId)
+// Nettoyage périodique des résultats expirés
+setInterval(cleanupExpiredResults, 60 * 60 * 1000); // Toutes les heures
 
 // Gestionnaire pour le modal de configuration du festival
 const handleFestivalSetupModal = async (interaction) => {
@@ -1167,9 +1189,10 @@ const handleConfigSelect = async (interaction) => {
 const handleResultButton = async (interaction) => {
     try {
         const [_, result, ...matchIdParts] = interaction.customId.split('_');
+        const guildId = interaction.guild.id;
         
         // Vérifier si l'utilisateur est capitaine d'une équipe en match
-        const userTeam = findTeamByMember(interaction.user.id);
+        const userTeam = findTeamByMember(interaction.user.id, guildId);
         
         if (!userTeam) {
             return await safeReply(interaction, {
@@ -1194,7 +1217,7 @@ const handleResultButton = async (interaction) => {
         }
         
         // Récupérer l'équipe adverse directement via currentOpponent
-        const opponentTeam = getAllTeams().find(t => t.name === userTeam.currentOpponent);
+        const opponentTeam = getAllTeams(guildId).find(t => t.name === userTeam.currentOpponent);
         
         if (!opponentTeam) {
             return await safeReply(interaction, {
@@ -1225,6 +1248,7 @@ const handleResultButton = async (interaction) => {
         }
         
         // Déterminer si c'est la première déclaration ou une confirmation
+        const pendingResults = getPendingResultsForGuild(guildId);
         if (!pendingResults.has(matchId)) {
             // Première déclaration
             const userResult = result === 'win' ? 'V' : 'D';
@@ -1239,7 +1263,7 @@ const handleResultButton = async (interaction) => {
                 timestamp: Date.now()
             });
 
-            await savePendingResults();
+            await savePendingResults(guildId);
             
             // Mise à jour du message original
             await safeEdit(interaction, {
@@ -1321,6 +1345,9 @@ const handleResultButton = async (interaction) => {
 
 const handleConfirmButton = async (interaction) => {
     try {
+        const guildId = interaction.guild.id;
+        const pendingResults = getPendingResultsForGuild(guildId);
+        
         const customId = interaction.customId; // Par exemple: "confirm_iuiiia_VS_ooiia"
         console.log('Debug customId complet:', customId);
         
@@ -1438,7 +1465,7 @@ const handleConfirmButton = async (interaction) => {
         // Retirer le résultat en attente
         pendingResults.delete(matchId);
 
-        await savePendingResults();
+        await savePendingResults(guildId);
         
         // Vérifier s'il y a un salon de match à supprimer
         let matchChannelId = null;
@@ -1501,6 +1528,9 @@ const handleConfirmButton = async (interaction) => {
 
 const handleRejectButton = async (interaction) => {
     try {
+        const guildId = interaction.guild.id;
+        const pendingResults = getPendingResultsForGuild(guildId);
+        
         const customId = interaction.customId; // Par exemple: "reject_iuiiia_VS_ooiia"
         
         // Séparer sur le premier underscore seulement pour isoler "reject" du reste
@@ -1569,7 +1599,7 @@ const handleRejectButton = async (interaction) => {
         // Retirer le résultat en attente
         pendingResults.delete(matchId);
 
-        await savePendingResults();
+        await savePendingResults(guildId);
         
         // Mettre à jour le message
         await safeEdit(interaction, {
@@ -2235,14 +2265,13 @@ module.exports = {
     handleResultButton,
     handleConfirmButton,
     handleRejectButton,
-    pendingResults,
-    createMatchId,
+    getPendingResultsForGuild,  // ← Helper function
     loadPendingResults,
     savePendingResults,
+    initializeForGuild,         // ← Initialize function for guild
     handleFestivalSetup,        // ← Ajouter
     handleMapBanSelection,      // ← Ajouter
     handleFinalFestivalSetup,
     handleFestivalDuration,
-    createFinalFestival,
-    setCurrentGuildId           // ← Add the function
+    createFinalFestival
 };

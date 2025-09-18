@@ -91,7 +91,8 @@ async function initializeManagersForGuild(guildId) {
         // mapProbabilityManager utilise maintenant guildId en paramètre
         
         const interactionHandlers = require('./utils/interactionHandlers');
-        // interactionHandlers utilise maintenant guildId en paramètre
+        // Initialiser interactionHandlers pour cette guilde
+        await interactionHandlers.initializeForGuild(guildId);
         
         // Charger le festival EN PREMIER pour que les autres managers puissent filtrer par festivalId
         const festival = await festivalManager.loadFestival(guildId);

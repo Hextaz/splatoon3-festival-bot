@@ -557,35 +557,42 @@ setInterval(async () => {
     try {
         isProcessingMatches = true;
         
-        // Récupérer les équipes en recherche pour cette guilde
-        const searchingTeams = getSearchingTeamsForGuild(guildId);
+        // Traiter chaque guilde séparément
+        const guilds = searchingTeamsByGuild.keys();
         
-        // Travailler sur une copie de l'array pour éviter les modifications pendant l'itération
-        const teamsToProcess = [...searchingTeams];
-        
-        for (let i = 0; i < teamsToProcess.length; i++) {
-            const entry = teamsToProcess[i];
-            
-            // Vérifier que l'équipe est toujours dans la file d'attente
+        for (const guildId of guilds) {
             const searchingTeams = getSearchingTeamsForGuild(guildId);
-            if (!searchingTeams.some(e => e.team.name === entry.team.name)) continue;
             
-            // Vérifier que l'équipe est toujours disponible
-            if (entry.team.busy || entry.team.currentOpponent) {
-                cleanupSearch(entry.team.name, guildId);
-                continue;
-            }
+            // Si pas d'équipes en recherche pour cette guilde, passer à la suivante
+            if (searchingTeams.length === 0) continue;
             
-            const match = findMatch(entry.team, guildId);
+            // Travailler sur une copie de l'array pour éviter les modifications pendant l'itération
+            const teamsToProcess = [...searchingTeams];
             
-            if (match) {
-                // Marquer les deux équipes comme occupées IMMÉDIATEMENT
-                entry.team.busy = true;
-                match.busy = true;
+            for (let i = 0; i < teamsToProcess.length; i++) {
+                const entry = teamsToProcess[i];
                 
-                await createMatch(entry.interaction, entry.team, match);
-                // Traiter un seul match par intervalle pour éviter les conflits
-                break;
+                // Vérifier que l'équipe est toujours dans la file d'attente
+                const currentSearchingTeams = getSearchingTeamsForGuild(guildId);
+                if (!currentSearchingTeams.some(e => e.team.name === entry.team.name)) continue;
+                
+                // Vérifier que l'équipe est toujours disponible
+                if (entry.team.busy || entry.team.currentOpponent) {
+                    cleanupSearch(entry.team.name, guildId);
+                    continue;
+                }
+                
+                const match = findMatch(entry.team, guildId);
+                
+                if (match) {
+                    // Marquer les deux équipes comme occupées IMMÉDIATEMENT
+                    entry.team.busy = true;
+                    match.busy = true;
+                    
+                    await createMatch(entry.interaction, entry.team, match);
+                    // Traiter un seul match par intervalle pour éviter les conflits
+                    break;
+                }
             }
         }
     } finally {
