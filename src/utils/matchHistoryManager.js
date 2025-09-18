@@ -1,233 +1,210 @@
 // src/utils/matchHistoryManager.js
 const DataAdapter = require('./dataAdapter');
 
-class MatchHistoryManager {
-    constructor() {
-        this.teamMatchHistory = new Map();
-        this.teamMatchCounters = new Map();
-        this.MATCH_HISTORY_LIMIT = 20;
-        this.currentGuildId = null;
-        this.dataAdapter = null; // Will be set when guildId is available
-    }
+// Maps pour gérer l'historique des matchs par guild
+const teamMatchHistoryByGuild = new Map(); // guildId -> Map<teamName, Array<opponentNames>>
+const teamMatchCountersByGuild = new Map(); // guildId -> Map<teamName, number>
 
-    setCurrentGuildId(guildId) {
-        this.currentGuildId = guildId;
-        if (guildId) {
-            this.dataAdapter = new DataAdapter(guildId);
+// Helper pour obtenir le DataAdapter
+function getDataAdapter(guildId) {
+    if (!guildId) {
+        console.warn('Aucun guildId défini pour matchHistoryManager');
+        return null;
+    }
+    return new DataAdapter(guildId);
+}
+
+// Helper pour obtenir l'historique d'une guild
+function getHistoryForGuild(guildId) {
+    if (!guildId) return new Map();
+    if (!teamMatchHistoryByGuild.has(guildId)) {
+        teamMatchHistoryByGuild.set(guildId, new Map());
+    }
+    return teamMatchHistoryByGuild.get(guildId);
+}
+
+// Helper pour obtenir les compteurs d'une guild
+function getCountersForGuild(guildId) {
+    if (!guildId) return new Map();
+    if (!teamMatchCountersByGuild.has(guildId)) {
+        teamMatchCountersByGuild.set(guildId, new Map());
+    }
+    return teamMatchCountersByGuild.get(guildId);
+}
+
+// Charger l'historique depuis MongoDB
+async function loadMatchHistory(guildId) {
+    try {
+        const adapter = getDataAdapter(guildId);
+        if (!adapter) {
+            console.error('DataAdapter non disponible pour matchHistoryManager');
+            return;
         }
-    }
 
-    // Sauvegarder l'historique des matchs
-    async saveMatchHistory() {
-        try {
-            if (!this.currentGuildId || !this.dataAdapter) {
-                console.error('Guild ID not set for match history manager');
-                return;
+        const data = await adapter.getMatchHistory();
+        if (data) {
+            // Convertir les données en Maps
+            const history = new Map();
+            const counters = new Map();
+            
+            for (const [teamName, teamData] of Object.entries(data)) {
+                if (teamData.opponents) {
+                    history.set(teamName, teamData.opponents);
+                }
+                if (typeof teamData.matchCounter === 'number') {
+                    counters.set(teamName, teamData.matchCounter);
+                }
             }
-
-            // Convertir Map en objet pour stockage
-            const historyObj = Object.fromEntries(this.teamMatchHistory);
-            const countersObj = Object.fromEntries(this.teamMatchCounters);
             
-            await this.dataAdapter.saveMatchHistory(historyObj);
-            await this.dataAdapter.saveMatchCounters(countersObj);
-            
-            console.log('Historique des matchs sauvegardé');
-        } catch (error) {
-            console.error('Erreur lors de la sauvegarde de l\'historique:', error);
-        }
-    }
-
-    // Charger l'historique des matchs
-    async loadMatchHistory() {
-        try {
-            if (!this.currentGuildId || !this.dataAdapter) {
-                console.error('Guild ID not set for match history manager');
-                return;
-            }
-
-            // Charger l'historique
-            const historyObj = await this.dataAdapter.getMatchHistory();
-            if (historyObj) {
-                this.teamMatchHistory = new Map(Object.entries(historyObj));
-                console.log(`Historique des matchs chargé: ${this.teamMatchHistory.size} équipes`);
-            } else {
-                console.log('Aucun historique de matchs trouvé, démarrage avec historique vide');
-                this.teamMatchHistory = new Map();
-            }
-
-            // Charger les compteurs
-            const countersObj = await this.dataAdapter.getMatchCounters();
-            if (countersObj) {
-                this.teamMatchCounters = new Map(Object.entries(countersObj).map(([k, v]) => [k, parseInt(v)]));
-                console.log(`Compteurs de matchs chargés: ${this.teamMatchCounters.size} équipes`);
-            } else {
-                console.log('Aucun compteur de matchs trouvé, démarrage avec compteurs vides');
-                this.teamMatchCounters = new Map();
-            }
-        } catch (error) {
-            console.error('Erreur lors du chargement de l\'historique:', error);
-        }
-    }
-
-    // Initialiser les compteurs depuis l'historique des scores (comme actuellement)
-    async initializeFromScoreHistory() {
-        try {
-            const scoreTracker = require('./scoreTracker');
-            const matchHistory = scoreTracker.getMatchHistory();
-            
-            console.log('Initialisation des compteurs depuis l\'historique des scores...');
-            
-            matchHistory.forEach((match) => {
-                const team1Name = match.team1.name;
-                const team2Name = match.team2.name;
-                
-                this.teamMatchCounters.set(team1Name, (this.teamMatchCounters.get(team1Name) || 0) + 1);
-                this.teamMatchCounters.set(team2Name, (this.teamMatchCounters.get(team2Name) || 0) + 1);
-            });
-            
-            // Sauvegarder les compteurs initialisés
-            await this.saveMatchHistory();
-            
-        } catch (error) {
-            console.error('Erreur lors de l\'initialisation depuis l\'historique des scores:', error);
-        }
-    }
-
-    // Ajouter un match à l'historique
-    addMatchToHistory(team1Name, team2Name) {
-        const now = Date.now();
-        const matchId = `${Math.min(team1Name, team2Name)}_vs_${Math.max(team1Name, team2Name)}_${now}`;
-        
-        // Incrémenter les compteurs
-        const team1MatchCount = (this.teamMatchCounters.get(team1Name) || 0) + 1;
-        const team2MatchCount = (this.teamMatchCounters.get(team2Name) || 0) + 1;
-        
-        this.teamMatchCounters.set(team1Name, team1MatchCount);
-        this.teamMatchCounters.set(team2Name, team2MatchCount);
-        
-        // Ajouter à l'historique
-        this.addToTeamHistory(team1Name, team2Name, now, matchId, team1MatchCount);
-        this.addToTeamHistory(team2Name, team1Name, now, matchId, team2MatchCount);
-        
-        console.log(`Historique mis à jour: ${team1Name} (match #${team1MatchCount}) vs ${team2Name} (match #${team2MatchCount})`);
-        
-        // Sauvegarder automatiquement
-        this.saveMatchHistory().catch(console.error);
-    }
-
-    addToTeamHistory(teamName, opponentName, timestamp, matchId, matchNumber) {
-        if (!this.teamMatchHistory.has(teamName)) {
-            this.teamMatchHistory.set(teamName, []);
-        }
-        
-        const history = this.teamMatchHistory.get(teamName);
-        history.push({
-            opponent: opponentName,
-            timestamp,
-            matchId,
-            matchNumber
-        });
-        
-        // Garder seulement les N derniers matchs
-        if (history.length > this.MATCH_HISTORY_LIMIT) {
-            history.shift();
-        }
-    }
-
-    // Calculer le score d'un adversaire (comme dans matchSearch.js)
-    calculateOpponentScore(teamName, potentialOpponent) {
-        const history = this.teamMatchHistory.get(teamName) || [];
-        const currentMatchNumber = this.teamMatchCounters.get(teamName) || 0;
-        
-        let score = 100; // Score de base
-        
-        // Bonus pour les équipes d'un autre camp (avec lazy loading)
-        try {
-            const { getAllTeams } = require('./teamManager');
-            const allTeams = getAllTeams();
-            const team = allTeams.find(t => t.name === teamName);
-            const opponent = allTeams.find(t => t.name === potentialOpponent.name);
-            
-            if (team && opponent && team.camp !== opponent.camp) {
-                score += 50;
-            }
-        } catch (error) {
-            console.warn('Impossible de récupérer les équipes pour le calcul du score adversaire');
-        }
-        
-        // Pénalités basées sur la distance en nombre de matchs
-        const matchesAgainstOpponent = history.filter(match => match.opponent === potentialOpponent.name);
-        
-        if (matchesAgainstOpponent.length > 0) {
-            const lastMatchAgainst = matchesAgainstOpponent[matchesAgainstOpponent.length - 1];
-            const matchesSinceLastFaceOff = currentMatchNumber - lastMatchAgainst.matchNumber;
-            
-            if (matchesSinceLastFaceOff === 0) {
-                score -= 100;
-            } else if (matchesSinceLastFaceOff === 1) {
-                score -= 80;
-            } else if (matchesSinceLastFaceOff === 2) {
-                score -= 50;
-            } else if (matchesSinceLastFaceOff >= 3 && matchesSinceLastFaceOff <= 5) {
-                score -= 20;
-            }
+            teamMatchHistoryByGuild.set(guildId, history);
+            teamMatchCountersByGuild.set(guildId, counters);
+            console.log(`Historique des matchs chargé pour ${history.size} équipes`);
         } else {
-            score += 30; // Bonus pour jamais affronté
+            console.log('Aucun historique trouvé, initialisation par défaut');
+            teamMatchHistoryByGuild.set(guildId, new Map());
+            teamMatchCountersByGuild.set(guildId, new Map());
         }
-        
-        // Bonus temps d'attente
-        if (potentialOpponent.waitTime) {
-            const waitMinutes = potentialOpponent.waitTime / (60 * 1000);
-            const waitBonus = Math.min(waitMinutes * 2, 20);
-            score += waitBonus;
-        }
-        
-        return Math.max(score, 1);
-    }
-
-    // Obtenir l'historique d'une équipe
-    getTeamMatchHistory(teamName) {
-        const history = this.teamMatchHistory.get(teamName) || [];
-        const currentMatchNumber = this.teamMatchCounters.get(teamName) || 0;
-        
-        return {
-            teamName,
-            totalMatches: currentMatchNumber,
-            recentHistory: history.slice(-10).map(match => ({
-                opponent: match.opponent,
-                matchNumber: match.matchNumber,
-                matchesAgo: currentMatchNumber - match.matchNumber,
-                timestamp: new Date(match.timestamp).toLocaleTimeString()
-            }))
-        };
-    }
-
-    // Nettoyer l'historique ancien
-    cleanupOldHistory() {
-        const cleanupThreshold = Date.now() - (24 * 60 * 60 * 1000); // 24 heures
-        
-        for (const [teamName, history] of this.teamMatchHistory.entries()) {
-            const filteredHistory = history.filter(match => match.timestamp > cleanupThreshold);
-            if (filteredHistory.length !== history.length) {
-                this.teamMatchHistory.set(teamName, filteredHistory);
-                console.log(`Historique nettoyé pour ${teamName}: ${history.length - filteredHistory.length} anciens matchs supprimés`);
-            }
-        }
-        
-        this.saveMatchHistory().catch(console.error);
-    }
-
-    // Réinitialiser complètement l'historique
-    async resetHistory() {
-        this.teamMatchHistory.clear();
-        this.teamMatchCounters.clear();
-        await this.saveMatchHistory();
-        console.log('Historique des matchs réinitialisé');
+    } catch (error) {
+        console.error('Erreur lors du chargement de l\'historique:', error);
+        teamMatchHistoryByGuild.set(guildId, new Map());
+        teamMatchCountersByGuild.set(guildId, new Map());
     }
 }
 
-// Instance singleton
-const matchHistoryManager = new MatchHistoryManager();
+// Sauvegarder l'historique
+async function saveMatchHistory(guildId) {
+    try {
+        const adapter = getDataAdapter(guildId);
+        if (!adapter) {
+            console.error('DataAdapter non disponible pour matchHistoryManager');
+            return;
+        }
 
-module.exports = matchHistoryManager;
+        const history = getHistoryForGuild(guildId);
+        const counters = getCountersForGuild(guildId);
+        const dataToSave = {};
+        
+        // Combiner historique et compteurs
+        for (const [teamName, opponents] of history.entries()) {
+            dataToSave[teamName] = {
+                opponents: opponents,
+                matchCounter: counters.get(teamName) || 0
+            };
+        }
+        
+        // Ajouter les équipes qui ont seulement des compteurs
+        for (const [teamName, counter] of counters.entries()) {
+            if (!dataToSave[teamName]) {
+                dataToSave[teamName] = {
+                    opponents: [],
+                    matchCounter: counter
+                };
+            }
+        }
+        
+        await adapter.saveMatchHistory(dataToSave);
+        console.log('Historique des matchs sauvegardé');
+    } catch (error) {
+        console.error('Erreur lors de la sauvegarde de l\'historique:', error);
+    }
+}
+
+// Ajouter un match à l'historique
+function addMatchToHistory(team1Name, team2Name, guildId) {
+    const history = getHistoryForGuild(guildId);
+    const counters = getCountersForGuild(guildId);
+    
+    // Initialiser les historiques si nécessaire
+    if (!history.has(team1Name)) {
+        history.set(team1Name, []);
+    }
+    if (!history.has(team2Name)) {
+        history.set(team2Name, []);
+    }
+    
+    // Ajouter les adversaires
+    history.get(team1Name).push(team2Name);
+    history.get(team2Name).push(team1Name);
+    
+    // Incrémenter les compteurs
+    counters.set(team1Name, (counters.get(team1Name) || 0) + 1);
+    counters.set(team2Name, (counters.get(team2Name) || 0) + 1);
+    
+    // Limiter l'historique pour éviter qu'il devienne trop grand
+    const MAX_HISTORY = 10;
+    if (history.get(team1Name).length > MAX_HISTORY) {
+        history.get(team1Name).shift();
+    }
+    if (history.get(team2Name).length > MAX_HISTORY) {
+        history.get(team2Name).shift();
+    }
+    
+    console.log(`Match ajouté à l'historique: ${team1Name} vs ${team2Name}`);
+}
+
+// Vérifier si deux équipes ont joué récemment
+function havePlayedRecently(team1Name, team2Name, guildId, recentThreshold = 3) {
+    const history = getHistoryForGuild(guildId);
+    
+    if (!history.has(team1Name)) return false;
+    
+    const team1History = history.get(team1Name);
+    const recentOpponents = team1History.slice(-recentThreshold);
+    
+    return recentOpponents.includes(team2Name);
+}
+
+// Obtenir le nombre de matchs d'une équipe
+function getTeamMatchCount(teamName, guildId) {
+    const counters = getCountersForGuild(guildId);
+    return counters.get(teamName) || 0;
+}
+
+// Obtenir l'historique d'une équipe
+function getTeamHistory(teamName, guildId) {
+    const history = getHistoryForGuild(guildId);
+    return history.get(teamName) || [];
+}
+
+// Réinitialiser l'historique
+async function resetMatchHistory(guildId) {
+    teamMatchHistoryByGuild.set(guildId, new Map());
+    teamMatchCountersByGuild.set(guildId, new Map());
+    await saveMatchHistory(guildId);
+    console.log(`Historique des matchs réinitialisé pour guild ${guildId}`);
+}
+
+// Nettoyer l'historique des équipes qui n'existent plus
+function cleanupHistory(existingTeamNames, guildId) {
+    const history = getHistoryForGuild(guildId);
+    const counters = getCountersForGuild(guildId);
+    
+    // Supprimer les équipes qui n'existent plus
+    for (const teamName of history.keys()) {
+        if (!existingTeamNames.includes(teamName)) {
+            history.delete(teamName);
+            counters.delete(teamName);
+        }
+    }
+    
+    for (const teamName of counters.keys()) {
+        if (!existingTeamNames.includes(teamName)) {
+            counters.delete(teamName);
+        }
+    }
+    
+    console.log(`Historique nettoyé, ${history.size} équipes conservées`);
+}
+
+module.exports = {
+    loadMatchHistory,
+    saveMatchHistory,
+    addMatchToHistory,
+    havePlayedRecently,
+    getTeamMatchCount,
+    getTeamHistory,
+    resetMatchHistory,
+    cleanupHistory,
+    getHistoryForGuild,
+    getCountersForGuild
+};

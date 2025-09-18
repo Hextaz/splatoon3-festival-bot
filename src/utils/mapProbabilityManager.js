@@ -1,194 +1,167 @@
-// Créer src/utils/mapProbabilityManager.js
+// src/utils/mapProbabilityManager.js
 const DataAdapter = require('./dataAdapter');
 const { ALL_MAP_KEYS } = require('../data/mapsAndModes');
 
-class MapProbabilityManager {
-    constructor() {
-        this.teamMapProbabilities = new Map(); // Map<teamName, Map<mapKey, probability>>
-        this.defaultProbability = 1.0;
-        this.probabilityDecay = 0.3; // Réduction de proba quand une map est sélectionnée
-        this.probabilityIncrease = 0.1; // Augmentation par BO3 sans sélection
-        this.currentGuildId = null;
-        this.dataAdapter = null; // Will be set when guildId is available
+// Maps pour gérer les probabilités par guild
+const teamMapProbabilitiesByGuild = new Map(); // guildId -> Map<teamName, Map<mapKey, probability>>
+const DEFAULT_PROBABILITY = 1.0;
+const PROBABILITY_DECAY = 0.3; // Réduction de proba quand une map est sélectionnée
+const PROBABILITY_INCREASE = 0.1; // Augmentation par BO3 sans sélection
+
+// Helper pour obtenir le DataAdapter
+function getDataAdapter(guildId) {
+    if (!guildId) {
+        console.warn('Aucun guildId défini pour mapProbabilityManager');
+        return null;
     }
+    return new DataAdapter(guildId);
+}
 
-    setCurrentGuildId(guildId) {
-        this.currentGuildId = guildId;
-        if (guildId) {
-            this.dataAdapter = new DataAdapter(guildId);
-        }
+// Helper pour obtenir les probabilités d'une guild
+function getProbabilitiesForGuild(guildId) {
+    if (!guildId) return new Map();
+    if (!teamMapProbabilitiesByGuild.has(guildId)) {
+        teamMapProbabilitiesByGuild.set(guildId, new Map());
     }
+    return teamMapProbabilitiesByGuild.get(guildId);
+}
 
-    async loadProbabilities() {
-        try {
-            if (!this.currentGuildId || !this.dataAdapter) {
-                console.error('Guild ID not set for map probability manager');
-                return;
-            }
-
-            const data = await this.dataAdapter.getMapProbabilities();
-            if (data) {
-                // Reconstituer les Maps depuis l'objet JSON
-                Object.entries(data).forEach(([teamName, mapProbs]) => {
-                    const teamMap = new Map();
-                    Object.entries(mapProbs).forEach(([mapKey, prob]) => {
-                        teamMap.set(mapKey, prob);
-                    });
-                    this.teamMapProbabilities.set(teamName, teamMap);
-                });
-                
-                console.log(`Probabilités de maps chargées pour ${this.teamMapProbabilities.size} équipes`);
-            }
-        } catch (error) {
-            console.error('Erreur lors du chargement des probabilités de maps:', error);
-        }
-    }
-
-    async saveProbabilities() {
-        try {
-            if (!this.currentGuildId || !this.dataAdapter) {
-                console.error('Guild ID not set for map probability manager');
-                return;
-            }
-
-            // Convertir les Maps en objets pour la sérialisation JSON
-            const dataToSave = {};
-            for (const [teamName, mapProbs] of this.teamMapProbabilities) {
-                if (!teamName || teamName === 'null') {
-                    console.warn(`⚠️ MapProbabilityManager: teamName invalide ignoré:`, teamName);
-                    continue;
-                }
-                if (!mapProbs) {
-                    console.warn(`⚠️ MapProbabilityManager: mapProbs null pour équipe ${teamName}`);
-                    continue;
-                }
-                const cleanMapProbs = {};
-                for (const [mapKey, probability] of mapProbs) {
-                    if (!mapKey || mapKey === 'null' || probability == null) {
-                        console.warn(`⚠️ MapProbabilityManager: données invalides ignorées`, { teamName, mapKey, probability });
-                        continue;
-                    }
-                    cleanMapProbs[mapKey] = probability;
-                }
-                if (Object.keys(cleanMapProbs).length > 0) {
-                    dataToSave[teamName] = cleanMapProbs;
-                }
-            }
-            
-            await this.dataAdapter.saveMapProbabilities(dataToSave);
-        } catch (error) {
-            console.error('Erreur lors de la sauvegarde des probabilités de maps:', error);
-        }
-    }
-
-    // Initialiser les probabilités pour une équipe si elles n'existent pas
-    initializeTeamProbabilities(teamName) {
-        if (!this.teamMapProbabilities.has(teamName)) {
-            const teamProbs = new Map();
-            ALL_MAP_KEYS.forEach(mapKey => {
-                teamProbs.set(mapKey, this.defaultProbability);
-            });
-            this.teamMapProbabilities.set(teamName, teamProbs);
-        }
-    }
-
-    // Obtenir les probabilités combinées de deux équipes pour une map
-    getCombinedProbability(team1Name, team2Name, mapKey) {
-        this.initializeTeamProbabilities(team1Name);
-        this.initializeTeamProbabilities(team2Name);
-        
-        const team1Prob = this.teamMapProbabilities.get(team1Name).get(mapKey) || this.defaultProbability;
-        const team2Prob = this.teamMapProbabilities.get(team2Name).get(mapKey) || this.defaultProbability;
-        
-        // Probabilité combinée = moyenne des deux équipes
-        return (team1Prob + team2Prob) / 2;
-    }
-
-    // Sélectionner une map basée sur les probabilités combinées
-    selectRandomMap(team1Name, team2Name, excludedMaps = []) {
-        const availableMaps = ALL_MAP_KEYS.filter(mapKey => !excludedMaps.includes(mapKey));
-        
-        if (availableMaps.length === 0) {
-            throw new Error('Aucune map disponible pour la sélection');
+// Charger les probabilités depuis MongoDB
+async function loadProbabilities(guildId) {
+    try {
+        const adapter = getDataAdapter(guildId);
+        if (!adapter) {
+            console.error('DataAdapter non disponible pour mapProbabilityManager');
+            return;
         }
 
-        // Calculer les probabilités combinées pour toutes les maps disponibles
-        const mapProbabilities = availableMaps.map(mapKey => ({
-            mapKey,
-            probability: this.getCombinedProbability(team1Name, team2Name, mapKey)
-        }));
-
-        // Sélection pondérée
-        const totalWeight = mapProbabilities.reduce((sum, map) => sum + map.probability, 0);
-        let random = Math.random() * totalWeight;
-        
-        for (const map of mapProbabilities) {
-            random -= map.probability;
-            if (random <= 0) {
-                return map.mapKey;
+        const data = await adapter.getMapProbabilities();
+        if (data) {
+            const probabilities = new Map();
+            for (const [teamName, teamData] of Object.entries(data)) {
+                probabilities.set(teamName, new Map(Object.entries(teamData)));
             }
+            teamMapProbabilitiesByGuild.set(guildId, probabilities);
+            console.log(`Probabilités de cartes chargées pour ${probabilities.size} équipes`);
+        } else {
+            console.log('Aucune probabilité trouvée, initialisation par défaut');
+            teamMapProbabilitiesByGuild.set(guildId, new Map());
         }
-        
-        // Fallback si algo de sélection échoue
-        return mapProbabilities[0].mapKey;
-    }
-
-    // Mettre à jour les probabilités après un BO3
-    async updateProbabilitiesAfterBO3(team1Name, team2Name, selectedMaps) {
-        this.initializeTeamProbabilities(team1Name);
-        this.initializeTeamProbabilities(team2Name);
-        
-        const team1Probs = this.teamMapProbabilities.get(team1Name);
-        const team2Probs = this.teamMapProbabilities.get(team2Name);
-        
-        ALL_MAP_KEYS.forEach(mapKey => {
-            if (selectedMaps.includes(mapKey)) {
-                // Maps sélectionnées : réduire la probabilité et reset proche de la base
-                team1Probs.set(mapKey, Math.max(0.1, this.defaultProbability * this.probabilityDecay));
-                team2Probs.set(mapKey, Math.max(0.1, this.defaultProbability * this.probabilityDecay));
-            } else {
-                // Maps non sélectionnées : augmenter légèrement la probabilité
-                const currentProb1 = team1Probs.get(mapKey);
-                const currentProb2 = team2Probs.get(mapKey);
-                
-                team1Probs.set(mapKey, Math.min(2.0, currentProb1 + this.probabilityIncrease));
-                team2Probs.set(mapKey, Math.min(2.0, currentProb2 + this.probabilityIncrease));
-            }
-        });
-        
-        await this.saveProbabilities();
-        console.log(`Probabilités mises à jour pour ${team1Name} et ${team2Name} après BO3`);
-    }
-
-    // Obtenir les statistiques de probabilité pour une équipe
-    getTeamProbabilityStats(teamName) {
-        this.initializeTeamProbabilities(teamName);
-        const teamProbs = this.teamMapProbabilities.get(teamName);
-        
-        const stats = {
-            teamName,
-            mapProbabilities: {},
-            mostLikely: [],
-            leastLikely: []
-        };
-        
-        // Convertir en objet et trier
-        const probArray = Array.from(teamProbs.entries()).map(([mapKey, prob]) => ({
-            mapKey,
-            probability: prob
-        }));
-        
-        probArray.sort((a, b) => b.probability - a.probability);
-        
-        stats.mapProbabilities = Object.fromEntries(probArray.map(item => [item.mapKey, item.probability]));
-        stats.mostLikely = probArray.slice(0, 5);
-        stats.leastLikely = probArray.slice(-5).reverse();
-        
-        return stats;
+    } catch (error) {
+        console.error('Erreur lors du chargement des probabilités:', error);
+        teamMapProbabilitiesByGuild.set(guildId, new Map());
     }
 }
 
-// Instance singleton
-const mapProbabilityManager = new MapProbabilityManager();
+// Sauvegarder les probabilités
+async function saveProbabilities(guildId) {
+    try {
+        const adapter = getDataAdapter(guildId);
+        if (!adapter) {
+            console.error('DataAdapter non disponible pour mapProbabilityManager');
+            return;
+        }
 
-module.exports = mapProbabilityManager;
+        const probabilities = getProbabilitiesForGuild(guildId);
+        const dataToSave = {};
+        
+        for (const [teamName, teamMaps] of probabilities.entries()) {
+            dataToSave[teamName] = Object.fromEntries(teamMaps);
+        }
+        
+        await adapter.saveMapProbabilities(dataToSave);
+        console.log('Probabilités de cartes sauvegardées');
+    } catch (error) {
+        console.error('Erreur lors de la sauvegarde des probabilités:', error);
+    }
+}
+
+// Initialiser les probabilités par défaut pour une équipe
+function initializeTeamProbabilities(teamName, guildId) {
+    const probabilities = getProbabilitiesForGuild(guildId);
+    
+    if (!probabilities.has(teamName)) {
+        const teamMaps = new Map();
+        for (const mapKey of ALL_MAP_KEYS) {
+            teamMaps.set(mapKey, DEFAULT_PROBABILITY);
+        }
+        probabilities.set(teamName, teamMaps);
+        console.log(`Probabilités initialisées pour l'équipe ${teamName}`);
+    }
+}
+
+// Obtenir les probabilités d'une équipe
+function getTeamProbabilities(teamName, guildId) {
+    const probabilities = getProbabilitiesForGuild(guildId);
+    
+    if (!probabilities.has(teamName)) {
+        initializeTeamProbabilities(teamName, guildId);
+    }
+    
+    return probabilities.get(teamName);
+}
+
+// Mettre à jour les probabilités après sélection de carte
+function updateProbabilitiesAfterMapSelection(teamName, selectedMap, guildId) {
+    const teamMaps = getTeamProbabilities(teamName, guildId);
+    
+    // Réduire la probabilité de la carte sélectionnée
+    const currentProb = teamMaps.get(selectedMap) || DEFAULT_PROBABILITY;
+    teamMaps.set(selectedMap, Math.max(currentProb - PROBABILITY_DECAY, 0.1));
+    
+    // Augmenter légèrement les autres cartes
+    for (const [mapKey, probability] of teamMaps.entries()) {
+        if (mapKey !== selectedMap) {
+            teamMaps.set(mapKey, Math.min(probability + PROBABILITY_INCREASE, 2.0));
+        }
+    }
+    
+    console.log(`Probabilités mises à jour pour ${teamName} après sélection de ${selectedMap}`);
+}
+
+// Sélectionner une carte avec probabilités pondérées
+function selectRandomMapWithProbabilities(teamName, bannedMaps = [], guildId) {
+    const teamMaps = getTeamProbabilities(teamName, guildId);
+    
+    // Filtrer les cartes bannies
+    const availableMaps = Array.from(teamMaps.entries())
+        .filter(([mapKey]) => !bannedMaps.includes(mapKey));
+    
+    if (availableMaps.length === 0) {
+        console.warn(`Aucune carte disponible pour ${teamName}, retour aux cartes par défaut`);
+        return ALL_MAP_KEYS[Math.floor(Math.random() * ALL_MAP_KEYS.length)];
+    }
+    
+    // Calculer le total des probabilités
+    const totalWeight = availableMaps.reduce((sum, [, prob]) => sum + prob, 0);
+    
+    // Sélection pondérée
+    let random = Math.random() * totalWeight;
+    for (const [mapKey, probability] of availableMaps) {
+        random -= probability;
+        if (random <= 0) {
+            return mapKey;
+        }
+    }
+    
+    // Fallback
+    return availableMaps[0][0];
+}
+
+// Réinitialiser les probabilités
+async function resetProbabilities(guildId) {
+    teamMapProbabilitiesByGuild.set(guildId, new Map());
+    await saveProbabilities(guildId);
+    console.log(`Probabilités réinitialisées pour guild ${guildId}`);
+}
+
+module.exports = {
+    loadProbabilities,
+    saveProbabilities,
+    initializeTeamProbabilities,
+    getTeamProbabilities,
+    updateProbabilitiesAfterMapSelection,
+    selectRandomMapWithProbabilities,
+    resetProbabilities,
+    getProbabilitiesForGuild
+};
