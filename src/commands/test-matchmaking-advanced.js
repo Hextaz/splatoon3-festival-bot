@@ -2,7 +2,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 // In src/commands/test-matchmaking-advanced.js, add this import at the top:
 const { getAllTeams, saveTeams } = require('../utils/teamManager');
-const { startVirtualTeamSearch, calculateOpponentScore, getTeamMatchHistory, finishMatch } = require('../utils/matchSearch');
+const { calculateOpponentScore, getTeamMatchHistory, finishMatch } = require('../utils/matchSearch');
 const matchHistoryManager = require('../utils/matchHistoryManager');
 const scoreTracker = require('../utils/scoreTracker');
 
@@ -407,7 +407,7 @@ function simulateMatchResult(team1, team2, experiment) {
         
         // Terminer le match proprement sans mettre à jour les scores
         const { finishMatch } = require('../utils/matchSearch');
-        finishMatch(team1.name, team2.name);
+        finishMatch(team1.name, team2.name, interaction.guild.id);
         
         experiment.metrics.matchesCompleted++;
         experiment.realTimeEvents.push({

@@ -122,14 +122,8 @@ async function withTeamLock(teamNames, action, callback) {
 
 // Commencer la recherche de match
 async function startMatchSearch(interaction, team, isTestMode = false) {
-    const guildId = interaction?.guild?.id;
-    if (!guildId) {
-        console.error('Aucun guildId trouvé dans startMatchSearch');
-        return false;
-    }
-    
     // Vérifier si le festival est actif
-    const festival = getCurrentFestival(guildId);
+    const festival = getCurrentFestival();
     if (!festival || !festival.isActive) {
         console.log(`Tentative de recherche annulée: aucun festival actif`);
         if (interaction) {
@@ -142,7 +136,6 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     }
     
     // Vérifier si l'équipe est déjà en recherche
-    const searchingTeams = getSearchingTeamsForGuild(guildId);
     const existingSearch = searchingTeams.find(entry => entry.team.name === team.name);
 
     // Vérifier si l'utilisateur est le leader de l'équipe (sauf en mode test)
@@ -241,13 +234,12 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     // Configurer le timeout pour annuler automatiquement après 5 minutes
     searchEntry.timeoutId = setTimeout(() => {
         // Vérifier si l'équipe est toujours en recherche
-        const searchingTeams = getSearchingTeamsForGuild(guildId);
         const index = searchingTeams.findIndex(entry => entry.team.name === team.name);
         if (index !== -1) {
             console.log(`[TIMEOUT] L'équipe ${team.name} a été retirée du matchmaking après 5 minutes`);
             
             // Retirer de la file d'attente
-            cleanupSearch(team.name, guildId);
+            cleanupSearch(team.name);
             
             // Notifier l'équipe dans son salon
             try {
@@ -323,21 +315,68 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     }
     
     // Planifier la notification après 30 secondes
-    setTimeout(() => checkWaitingTeam(searchEntry, guildId), 30000);
+    setTimeout(() => checkWaitingTeam(searchEntry), 30000);
 }
 
 // Commencer la recherche de match sans nécessiter d'interaction (pour les équipes virtuelles)
-// Fonction supprimée: startVirtualTeamSearch - tests virtuels retirés
+function startVirtualTeamSearch(team, guild = null) {
+    // Vérifier si le festival est actif
+    const festival = getCurrentFestival();
+    if (!festival || !festival.isActive) {
+        console.log(`Tentative de recherche annulée: aucun festival actif`);
+        return false;
+    }
+    
+    // Vérifier si l'équipe est déjà en recherche
+    const existingSearch = searchingTeams.find(entry => entry.team.name === team.name);
+    
+    if (existingSearch) {
+        console.log(`[TEST] L'équipe ${team.name} est déjà en recherche depuis ${Math.floor((Date.now() - existingSearch.startTime) / 1000)} secondes`);
+        return false;
+    }
+    
+    // Vérifier si l'équipe est en match
+    if (team.currentOpponent) {
+        console.log(`[TEST] L'équipe ${team.name} est déjà en match contre ${team.currentOpponent}`);
+        return false;
+    }
+    
+    // Vérifier si l'équipe a au moins 4 membres
+    if (team.members.length < 4) {
+        console.log(`[TEST] L'équipe ${team.name} n'a que ${team.members.length} membres et ne peut pas rechercher`);
+        return false;
+    }
+
+    // IMPORTANT: Ne pas chercher de match immédiat ici!
+    // Ajouter simplement à la file d'attente
+    if (guild) {
+        team.storedGuild = guild; // Stocker la référence à la guild dans l'équipe
+    }
+    
+    const searchEntry = {
+        team: team,
+        interaction: null,
+        startTime: Date.now(),
+        notifiedAfterWait: false,
+        isVirtualSearch: true,
+        guild: guild
+    };
+    
+    // IMPORTANT: Ne pas marquer l'équipe comme occupée ici, cela sera fait lors du match
+    searchingTeams.push(searchEntry);
+    console.log(`[TEST] L'équipe ${team.name} a été ajoutée à la file d'attente (${searchingTeams.length} équipes en attente)`);
+    
+    return true;
+}
 
 // Vérifier une équipe après son temps d'attente minimum
-async function checkWaitingTeam(searchEntry, guildId) {
+async function checkWaitingTeam(searchEntry) {
     // Vérifier si l'équipe est toujours en recherche
-    const searchingTeams = getSearchingTeamsForGuild(guildId);
     const index = searchingTeams.findIndex(entry => entry.team.name === searchEntry.team.name);
     if (index === -1) return; // L'équipe n'est plus en recherche
     
     // Vérifier à nouveau s'il y a un match disponible
-    const match = findMatch(searchEntry.team, guildId);
+    const match = findMatch(searchEntry.team);
     
     if (match) {
         // Un match a été trouvé
@@ -379,9 +418,8 @@ async function checkWaitingTeam(searchEntry, guildId) {
 }
 
 // Trouver un match pour une équipe
-function findMatch(team, guildId) {
-    const allTeams = getAllTeams(guildId);
-    const searchingTeams = getSearchingTeamsForGuild(guildId);
+function findMatch(team) {
+    const allTeams = getAllTeams();
     const now = Date.now();
 
     // Récupérer toutes les équipes disponibles avec vérifications de base
@@ -403,7 +441,7 @@ function findMatch(team, guildId) {
         if (isEligible) {
             // Vérifier si l'équipe est complète
             try {
-                return isTeamComplete(t, guildId);
+                return isTeamComplete(t);
             } catch (error) {
                 console.error(`Erreur lors de la vérification de complétude pour ${t.name}:`, error);
                 return false;
@@ -426,7 +464,7 @@ function findMatch(team, guildId) {
         return {
             ...t,
             waitTime: waitTime,
-            score: calculateOpponentScore(team.name, { ...t, waitTime }, guildId)
+            score: calculateOpponentScore(team.name, { ...t, waitTime })
         };
     });
     
@@ -437,7 +475,7 @@ function findMatch(team, guildId) {
         availableTeamsWithScores.slice(0, 3).map(t => `${t.name}: ${t.score}`).join(', '));
     
     // Système de sélection pondérée intelligente
-    return selectOpponentWithWeighting(team, availableTeamsWithScores, guildId);
+    return selectOpponentWithWeighting(team, availableTeamsWithScores);
 }
 
 // Sélectionner un adversaire selon les critères de priorité
@@ -452,7 +490,7 @@ function selectOpponent(team, availableTeams, lastOpponent, areSearching) {
 }
 
 // Sélectionner un adversaire avec pondération
-function selectOpponentWithWeighting(team, availableTeamsWithScores, guildId) {
+function selectOpponentWithWeighting(team, availableTeamsWithScores) {
     if (availableTeamsWithScores.length === 0) return null;
     
     // Séparer en catégories selon votre priorité souhaitée
@@ -483,15 +521,13 @@ function selectOpponentWithWeighting(team, availableTeamsWithScores, guildId) {
     const lastResortTeams = availableTeamsWithScores.filter(t => t.score < 50);
     
     // NOUVEAU : Temps d'attente minimum pour éviter les revendications rapides
-    // Note: Cette fonction nécessiterait un guildId pour fonctionner correctement
-    // Pour l'instant, on utilise une approche de fallback
-    let teamWaitTime = 0;
-    // TODO: Passer guildId à cette fonction pour une isolation complète
+    const teamSearchEntry = searchingTeams.find(entry => entry.team.name === team.name);
+    const teamWaitTime = teamSearchEntry ? (Date.now() - teamSearchEntry.startTime) : 0;
+    const waitTimeMinutes = teamWaitTime / (60 * 1000);
     
-    console.log(`${team.name} attend depuis un temps indéterminé (fonction à mettre à jour)`);
+    console.log(`${team.name} attend depuis ${Math.round(waitTimeMinutes * 100) / 100} minutes`);
     
     // Si l'équipe attend depuis MOINS de 1 minute, être plus sélectif
-    const waitTimeMinutes = teamWaitTime / (60 * 1000);
     if (waitTimeMinutes < 1) {
         if (excellentOtherCampTeams.length > 0) {
             console.log(`${team.name} - Pool EXCELLENT autres camps (attente < 1min)`);
@@ -564,16 +600,15 @@ setInterval(async () => {
             const entry = teamsToProcess[i];
             
             // Vérifier que l'équipe est toujours dans la file d'attente
-            const searchingTeams = getSearchingTeamsForGuild(guildId);
             if (!searchingTeams.some(e => e.team.name === entry.team.name)) continue;
             
             // Vérifier que l'équipe est toujours disponible
             if (entry.team.busy || entry.team.currentOpponent) {
-                cleanupSearch(entry.team.name, guildId);
+                cleanupSearch(entry.team.name);
                 continue;
             }
             
-            const match = findMatch(entry.team, guildId);
+            const match = findMatch(entry.team);
             
             if (match) {
                 // Marquer les deux équipes comme occupées IMMÉDIATEMENT
@@ -592,15 +627,9 @@ setInterval(async () => {
 
 // Créer un match entre deux équipes
 async function createMatch(interaction, team1, team2, onMatchCreated = null) {
-    const guildId = interaction?.guild?.id;
-    if (!guildId) {
-        console.error('Aucun guildId trouvé dans createMatch');
-        return false;
-    }
-    
     // Utiliser le nouveau mécanisme de verrouillage avec les équipes mises à jour
     return await withTeamLock([team1.name, team2.name], 'createMatch', async () => {
-        const allTeams = getAllTeams(guildId);
+        const allTeams = getAllTeams();
         const updatedTeam1 = allTeams.find(t => t.name === team1.name);
         const updatedTeam2 = allTeams.find(t => t.name === team2.name);
 
@@ -623,7 +652,6 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         // SECTION CRITICHE: Nettoyer et mettre à jour l'état des équipes atomiquement
         
         // 1. Supprimer les équipes de la file d'attente de recherche
-        const searchingTeams = getSearchingTeamsForGuild(guildId);
         const searchIndex1 = searchingTeams.findIndex(entry => entry.team.name === updatedTeam1.name);
         if (searchIndex1 !== -1) searchingTeams.splice(searchIndex1, 1);
         
@@ -631,7 +659,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         if (searchIndex2 !== -1) searchingTeams.splice(searchIndex2, 1);
         
         // AJOUTER L'HISTORIQUE DU MATCH
-        addMatchToHistory(updatedTeam1.name, updatedTeam2.name, guildId);
+        addMatchToHistory(updatedTeam1.name, updatedTeam2.name);
         
         // 2. Marquer les équipes comme occupées
         updatedTeam1.busy = true;
@@ -653,7 +681,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         let bo3Data = null;
         
         try {
-            bo3Data = await bo3Generator.generateBO3(updatedTeam1.name, updatedTeam2.name, guildId);
+            bo3Data = await bo3Generator.generateBO3(updatedTeam1.name, updatedTeam2.name);
             console.log(`BO3 généré pour ${updatedTeam1.name} vs ${updatedTeam2.name}:`, 
                 bo3Data.games.map(g => `${g.modeDisplayName} sur ${g.mapDisplayName}`).join(', '));
         } catch (error) {
@@ -668,7 +696,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         }
         
         // Sauvegarder immédiatement
-        saveTeams(guildId);
+        saveTeams();
         
         // Créer un salon de match
         const matchChannel = await createMatchChannel(guild, team1, team2);
@@ -781,8 +809,7 @@ function getCampDisplayName(team) {
 }
 
 // Nettoyer la recherche d'une équipe
-function cleanupSearch(teamName, guildId) {
-    const searchingTeams = getSearchingTeamsForGuild(guildId);
+function cleanupSearch(teamName) {
     const index = searchingTeams.findIndex(entry => entry.team.name === teamName);
     if (index !== -1) {
         // Annuler le timeout si existant
@@ -794,7 +821,7 @@ function cleanupSearch(teamName, guildId) {
         searchingTeams.splice(index, 1);
         
         // Trouver l'équipe et vérifier qu'elle n'est pas en match
-        const team = findTeamByName(teamName, guildId);
+        const team = findTeamByName(teamName);
         if (team && !team.currentOpponent) {
             // Si elle n'est pas en match, la marquer comme non occupée
             team.busy = false;
@@ -817,53 +844,45 @@ setInterval(async () => {
     try {
         searchProcessRunning = true;
         
-        // Traiter chaque guilde séparément
-        const guilds = searchingTeamsByGuild.keys();
-        
-        for (const guildId of guilds) {
-            const searchingTeams = getSearchingTeamsForGuild(guildId);
-            
-            // Log seulement si la taille a changé ou après au moins 5 minutes
-            const now = Date.now();
-            const fiveMinutes = 5 * 60 * 1000;
-            if (searchingTeams.length > 0 && 
-                (searchingTeams.length !== lastQueueSize || now - lastQueueLog > fiveMinutes)) {
-                console.log(`[Guild ${guildId}] État de la file d'attente: ${searchingTeams.length} équipes en recherche`);
-                lastQueueLog = now;
-                lastQueueSize = searchingTeams.length;
-            }
-            
-            // Vérifier s'il y a au moins 2 équipes en recherche
-            if (searchingTeams.length < 2) {
-                continue;
-            }
-            
-            // Prendre simplement les deux premières équipes et essayer de les mettre en match
-            const entry1 = searchingTeams[0];
-            const entry2 = searchingTeams[1];
-            
-            // Vérifier si les équipes existent toujours et ne sont pas déjà en match
-            const teams = getAllTeams(guildId);
-            const team1 = teams.find(t => t.name === entry1.team.name);
-            const team2 = teams.find(t => t.name === entry2.team.name);
-            
-            if (!team1 || !team2 || team1.busy || team2.busy || 
-                team1.currentOpponent || team2.currentOpponent) {
-                // Si l'une des équipes n'est pas disponible, la retirer de la file d'attente
-                if (!team1 || team1.busy || team1.currentOpponent) {
-                    searchingTeams.splice(0, 1);
-                }
-                if (!team2 || team2.busy || team2.currentOpponent) {
-                    const index2 = searchingTeams.indexOf(entry2);
-                    if (index2 !== -1) searchingTeams.splice(index2, 1);
-                }
-                continue;
-            }
-            
-            // Créer le match (avec le nouveau mécanisme de verrouillage)
-            console.log(`Tentative de match entre ${team1.name} et ${team2.name}`);
-            await createMatch(entry1.interaction, team1, team2);
+        // Log seulement si la taille a changé ou après au moins 5 minutes
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        if (searchingTeams.length > 0 && 
+            (searchingTeams.length !== lastQueueSize || now - lastQueueLog > fiveMinutes)) {
+            console.log(`État de la file d'attente: ${searchingTeams.length} équipes en recherche`);
+            lastQueueLog = now;
+            lastQueueSize = searchingTeams.length;
         }
+        
+        // Vérifier s'il y a au moins 2 équipes en recherche
+        if (searchingTeams.length < 2) {
+            return;
+        }
+        
+        // Prendre simplement les deux premières équipes et essayer de les mettre en match
+        const entry1 = searchingTeams[0];
+        const entry2 = searchingTeams[1];
+        
+        // Vérifier si les équipes existent toujours et ne sont pas déjà en match
+        const teams = getAllTeams();
+        const team1 = teams.find(t => t.name === entry1.team.name);
+        const team2 = teams.find(t => t.name === entry2.team.name);
+        
+        if (!team1 || !team2 || team1.busy || team2.busy || 
+            team1.currentOpponent || team2.currentOpponent) {
+            // Si l'une des équipes n'est pas disponible, la retirer de la file d'attente
+            if (!team1 || team1.busy || team1.currentOpponent) {
+                searchingTeams.splice(0, 1);
+            }
+            if (!team2 || team2.busy || team2.currentOpponent) {
+                searchingTeams.splice(searchingTeams.indexOf(entry2), 1);
+            }
+            return;
+        }
+        
+        // Créer le match (avec le nouveau mécanisme de verrouillage)
+        console.log(`Tentative de match entre ${team1.name} et ${team2.name}`);
+        await createMatch(entry1.interaction, team1, team2);
         
     } finally {
         searchProcessRunning = false;
@@ -871,11 +890,11 @@ setInterval(async () => {
 }, 3000); // Vérifier plus fréquemment (toutes les 3 secondes)
 
 // Fonction pour terminer un match et libérer les équipes
-function finishMatch(team1Name, team2Name, guildId) {
+function finishMatch(team1Name, team2Name) {
     return withTeamLock([team1Name, team2Name], 'finishMatch', () => {
         console.log(`[TRANSACTION] Début fin de match: ${team1Name} vs ${team2Name}`);
         
-        const allTeams = getAllTeams(guildId);
+        const allTeams = getAllTeams();
         const team1 = allTeams.find(t => t.name === team1Name);
         const team2 = allTeams.find(t => t.name === team2Name);
         
@@ -1258,7 +1277,8 @@ module.exports = {
     cleanupSearch,
     createMatch,
     finishMatch,
-    getSearchingTeams: (guildId) => getSearchingTeamsForGuild(guildId), // CORRIGÉ pour isolation guild
+    getSearchingTeams: () => searchingTeams,
+    startVirtualTeamSearch,
     resetSearchQueue,
     repairInconsistentStates,
     getTeamMatchHistory,

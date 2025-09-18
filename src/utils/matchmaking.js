@@ -56,8 +56,8 @@ function validateResults(team1Result, team2Result) {
 }
 
 // Rediriger vers finishMatch dans matchSearch.js
-function clearMatchup(team1Name, team2Name) {
-    return finishMatch(team1Name, team2Name);
+function clearMatchup(team1Name, team2Name, guildId) {
+    return finishMatch(team1Name, team2Name, guildId);
 }
 
 module.exports = {

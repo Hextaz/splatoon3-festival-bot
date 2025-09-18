@@ -923,7 +923,7 @@ const handleResultEntry = async (interaction) => {
         scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name);
         
         // Clear the matchup to make teams available again
-        clearMatchup(team1Name, team2Name);
+        clearMatchup(team1Name, team2Name, interaction.guild.id);
         
         await safeReply(interaction, `Results submitted: ${team1Name} - ${team1Result}, ${team2Name} - ${team2Result}`);
     } catch (error) {

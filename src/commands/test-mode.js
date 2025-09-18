@@ -648,7 +648,7 @@ async function handleCleanup(interaction) {
         if (team.currentOpponent) {
             const opponentTeam = allTeams.find(t => t.name === team.currentOpponent);
             if (opponentTeam) {
-                require('../utils/matchSearch').finishMatch(team.name, opponentTeam.name);
+                require('../utils/matchSearch').finishMatch(team.name, opponentTeam.name, interaction.guild.id);
                 matchesTerminated++;
             }
         }

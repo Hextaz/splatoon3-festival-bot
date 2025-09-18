@@ -433,15 +433,17 @@ async function resetFestivalData(guild = null) {
         console.warn('Aucune guild fournie, impossible de gérer les rôles des membres');
     }
     
-    const { teams, saveTeams } = require('./teamManager');
+    const { getTeamsForGuild, saveTeams } = require('./teamManager');
     const scoreTracker = require('./scoreTracker');
+    const guildId = guild?.id || currentGuildId;
 
+    const teams = getTeamsForGuild(guildId) || [];
     console.log(`🔍 Nombre d'équipes en mémoire avant reset: ${teams.length}`);
 
     // Réinitialiser l'historique des matchs
     console.log('🗑️ Reset de l\'historique des matchs...');
     const matchHistoryManager = require('./matchHistoryManager');
-    await matchHistoryManager.resetHistory();
+    await matchHistoryManager.resetMatchHistory(guildId);
     console.log('Historique des matchs réinitialisé');
     
     // Vérification des équipes disponibles
@@ -517,16 +519,16 @@ async function resetFestivalData(guild = null) {
     console.log('🗑️ Suppression de toutes les équipes...');
     try {
         // FORCER la suppression directe en base de données
-        if (currentGuildId) {
+        if (guildId) {
             const DataAdapter = require('./dataAdapter');
-            const adapter = new DataAdapter(currentGuildId);
+            const adapter = new DataAdapter(guildId);
             await adapter.clearAllTeams();
             console.log('✅ Toutes les équipes supprimées directement en base de données');
         }
         
         // Utiliser teamManager.clearAllTeams() pour nettoyer la mémoire
         const teamManager = require('./teamManager');
-        await teamManager.clearAllTeams();
+        await teamManager.clearAllTeams(guildId);
         console.log('✅ Toutes les équipes supprimées via teamManager.clearAllTeams()');
     } catch (error) {
         console.error('❌ Erreur lors de la suppression des équipes:', error);
@@ -534,7 +536,7 @@ async function resetFestivalData(guild = null) {
 
     // Réinitialiser également la file d'attente de recherche de match
     const matchSearch = require('./matchSearch');
-    matchSearch.resetSearchQueue();
+    matchSearch.resetSearchQueue(guildId);
     console.log('File d\'attente de recherche réinitialisée');
 
     // Réinitialiser les résultats en attente
