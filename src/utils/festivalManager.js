@@ -279,6 +279,11 @@ async function createFestival(title, campNames, startDate, endDate, announcement
         }
     }
     
+    // Ajouter le guildId aux options si disponible
+    if (guild?.id) {
+        finalOptions.guildId = guild.id;
+    }
+    
     const festival = new Festival(title, campNames, startDate, endDate, announcementChannelId, finalOptions);
     
     setCurrentFestival(festival, guild?.id);
@@ -984,10 +989,29 @@ async function activateFestivalNow(festival, client) {
             guild = client.guilds.cache.get(guildId);
             console.log(`🔍 Guild trouvée: ${guild ? guild.name : 'AUCUNE'}`);
         } else {
-            // Fallback : prendre la première guild si guildId n'est pas défini
-            guild = client.guilds.cache.first();
-            guildId = guild ? guild.id : null;
-            console.log(`🔍 Fallback vers première guild: ${guild ? guild.name : 'AUCUNE'}`);
+            // Si pas de guildId, essayer de trouver la guild par le canal d'annonce
+            console.log(`🔍 Recherche de la guild par canal d'annonce: ${festival.announcementChannelId}`);
+            for (const g of client.guilds.cache.values()) {
+                try {
+                    const channel = await g.channels.fetch(festival.announcementChannelId);
+                    if (channel) {
+                        guild = g;
+                        guildId = g.id;
+                        festival.guildId = g.id; // Assigner le guildId au festival
+                        console.log(`✅ Guild trouvée par canal: ${g.name} (${g.id})`);
+                        break;
+                    }
+                } catch (error) {
+                    // Canal pas dans cette guild, continuer
+                }
+            }
+            
+            // Fallback : prendre la première guild si aucune trouvée
+            if (!guild) {
+                guild = client.guilds.cache.first();
+                guildId = guild ? guild.id : null;
+                console.log(`🔍 Fallback vers première guild: ${guild ? guild.name : 'AUCUNE'}`);
+            }
         }
         
         if (!guild) {
