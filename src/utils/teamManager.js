@@ -223,13 +223,18 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
                     title: festivalData.title,
                     id: festivalData._id.toString()
                 };
+            } else {
+                console.log(`🔍 adapter.getFestival() n'a pas trouvé de festival, essai avec getCurrentFestival...`);
+                // Si pas de festival via adapter, essayer avec getCurrentFestival
+                const { getCurrentFestival } = require('./festivalManager');
+                currentFestival = await getCurrentFestival(guild.id);
             }
         }
     } catch (error) {
         console.error('Erreur lors de la récupération du festival pour l\'équipe:', error);
-        // Fallback vers la version sync
+        // Fallback vers la version async
         const { getCurrentFestival } = require('./festivalManager');
-        currentFestival = getCurrentFestival(guildId);
+        currentFestival = await getCurrentFestival(guildId);
     }
     
     console.log(`🔍 createTeam Debug:`);
