@@ -27,13 +27,21 @@ function getCurrentFestivalSync(guildId) {
         console.error('guildId requis pour getCurrentFestivalSync');
         return null;
     }
+    
     return festivalsByGuild.get(guildId) || null;
+    if (!festival) {
+        console.log(`🔄 Aucun festival en mémoire pour ${guildId}, tentative de rechargement...`);
+        // Note: Rechargement asynchrone dans getCurrentFestival
+    }
+    
+    return festival || null;
 }
 
 // Fonction pour définir le festival d'une guild
 function setCurrentFestival(festival, guildId) {
     if (!guildId) return;
     if (festival) {
+        console.log(`📝 setCurrentFestival: Associating festival "${festival.title}" with guild ${guildId}`);
         festivalsByGuild.set(guildId, festival);
     } else {
         festivalsByGuild.delete(guildId);
@@ -46,6 +54,16 @@ async function getCurrentFestival(guildId) {
         console.error('guildId requis pour getCurrentFestival');
         return null;
     }
+    
+    // Vérifier d'abord la mémoire
+    let festival = festivalsByGuild.get(guildId);
+    if (festival) {
+        console.log(`✅ Festival trouvé en mémoire: ${festival.title}`);
+        return festival;
+    }
+    
+    // Si pas en mémoire, recharger depuis la base
+    console.log(`🔄 Festival non trouvé en mémoire pour ${guildId}, rechargement depuis la base...`);
     
     try {
         const adapter = getDataAdapter(guildId);
@@ -520,7 +538,7 @@ async function resetFestivalData(guild) {
     console.log('🗑️ Réinitialisation des votes...');
     const { resetVotes } = require('./vote');
     try {
-        await resetVotes();
+        await resetVotes(guildId);
         console.log('✅ Votes réinitialisés');
     } catch (error) {
         console.error('❌ Erreur lors du reset des votes:', error);
@@ -822,11 +840,11 @@ async function deleteFestival(guildId) {
             return false;
         }
         
-        // Suppression du festival dans MongoDB via DataAdapter
-        const currentFestival = getCurrentFestivalSync(guildId);
-        if (currentFestival) {
-            const adapter = getDataAdapter(guildId);
+        // Suppression du festival dans MongoDB via DataAdapter (toujours, même si pas en mémoire)
+        const adapter = getDataAdapter(guildId);
+        if (adapter) {
             await adapter.deleteFestival(guildId);
+            console.log('✅ Festival supprimé de la base de données');
         }
         
         // Vidage de la variable festival pour cette guild

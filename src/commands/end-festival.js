@@ -18,13 +18,24 @@ module.exports = {
         try {
             const guildId = interaction.guild.id;
             
-            // Vérifier s'il y a un festival en cours
-            const festival = getCurrentFestival(guildId);
+            // Vérifier s'il y a un festival en cours (d'abord en mémoire, puis en base)
+            let festival = getCurrentFestival(guildId);
+            
+            // Si pas trouvé en mémoire, essayer de charger depuis la base de données
             if (!festival) {
-                return await safeEdit(interaction, {
-                    content: 'Aucun festival n\'est actif actuellement.',
-                    ephemeral: true
-                });
+                console.log('🔍 Festival non trouvé en mémoire, chargement depuis la base...');
+                const { loadFestival, setCurrentFestival } = require('../utils/festivalManager');
+                festival = await loadFestival(guildId);
+                
+                if (festival) {
+                    console.log('✅ Festival chargé depuis la base de données');
+                    setCurrentFestival(festival, guildId);
+                } else {
+                    return await safeEdit(interaction, {
+                        content: 'Aucun festival n\'est actif actuellement.',
+                        ephemeral: true
+                    });
+                }
             }
             
             // Récupérer la guild
