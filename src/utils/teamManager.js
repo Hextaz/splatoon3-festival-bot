@@ -218,11 +218,19 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
         if (guild) {
             const adapter = new DataAdapter(guild.id);
             const festivalData = await adapter.getFestival();
+            console.log(`🔍 adapter.getFestival() résultat:`, {
+                festivalData: festivalData ? 'trouvé' : 'null/undefined',
+                hasId: festivalData && festivalData._id ? 'oui' : 'non',
+                type: typeof festivalData,
+                keys: festivalData ? Object.keys(festivalData) : 'N/A'
+            });
+            
             if (festivalData && festivalData._id) {
                 currentFestival = {
                     title: festivalData.title,
                     id: festivalData._id.toString()
                 };
+                console.log(`✅ Festival trouvé via adapter: ${currentFestival.title} (${currentFestival.id})`);
             } else {
                 console.log(`🔍 adapter.getFestival() n'a pas trouvé de festival, essai avec getCurrentFestival...`);
                 // Si pas de festival via adapter, essayer avec getCurrentFestival
