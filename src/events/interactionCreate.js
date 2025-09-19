@@ -307,7 +307,7 @@ async function handleDocumentationSelect(interaction) {
     
     const section = interaction.values[0];
     const { getCurrentFestival } = require('../utils/festivalManager');
-    const festival = getCurrentFestival();
+    const festival = getCurrentFestival(interaction.guild.id);
     
     // NOUVEAU : Importer les fonctions directement depuis le module
     const {

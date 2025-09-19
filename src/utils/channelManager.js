@@ -267,7 +267,7 @@ async function updateTeamChannelPermissions(guild, team, newMemberId = null) {
         const { isTeamComplete } = require('./teamManager');
         if (isTeamComplete(team)) {
             const { getCurrentFestival } = require('./festivalManager');
-            const festival = getCurrentFestival();
+            const festival = getCurrentFestival(guild.id);
             const requiredSize = festival?.teamSize || 4;
             
             const embed = new EmbedBuilder()
