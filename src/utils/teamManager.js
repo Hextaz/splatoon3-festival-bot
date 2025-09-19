@@ -215,8 +215,8 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
     try {
         // Récupérer le festival actif depuis MongoDB pour avoir l'ID correct
         const DataAdapter = require('./dataAdapter');
-        if (guild) {
-            const adapter = new DataAdapter(guild.id);
+        if (guildId) {
+            const adapter = new DataAdapter(guildId);
             const festivalData = await adapter.getFestival();
             if (festivalData && festivalData._id) {
                 currentFestival = {
