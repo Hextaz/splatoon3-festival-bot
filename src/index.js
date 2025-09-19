@@ -401,7 +401,8 @@ function startPeriodicFestivalCheck() {
             // Vérifier tous les serveurs où le bot est présent
             for (const guild of client.guilds.cache.values()) {
                 try {
-                    const festival = await festivalManager.loadFestival(guild.id);
+                    const { getCurrentFestival, activateFestivalNow, checkAndCleanExpiredFestival } = require('./utils/festivalManager');
+                    const festival = await getCurrentFestival(guild.id);
                     if (!festival) continue;
                     
                     const now = new Date();
@@ -413,12 +414,12 @@ function startPeriodicFestivalCheck() {
                     // Vérifier si le festival doit commencer
                     if (now >= startDate && now <= endDate && !festival.isActive) {
                         console.log(`🎉 DÉMARRAGE AUTOMATIQUE: Festival "${festival.title}" sur ${guild.name}`);
-                        await festivalManager.activateFestivalNow(festival, client);
+                        await activateFestivalNow(festival, client);
                     }
                     // Vérifier si le festival est expiré
                     else if (endDate < now && festival.isActive) {
                         console.log(`🧹 NETTOYAGE AUTOMATIQUE: Festival "${festival.title}" expiré sur ${guild.name}`);
-                        const wasExpired = await festivalManager.checkAndCleanExpiredFestival(festival, client);
+                        const wasExpired = await checkAndCleanExpiredFestival(festival, client);
                         if (wasExpired) {
                             console.log('✅ Festival expiré détecté et nettoyé par vérification périodique');
                         }
