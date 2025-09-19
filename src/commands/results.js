@@ -37,7 +37,8 @@ module.exports = {
             }
             
             // Récupérer l'équipe adverse
-            const allTeams = await getAllTeams();
+            const guildId = interaction.guild.id;
+            const allTeams = getAllTeams(guildId);
             const opponentTeam = allTeams.find(t => t.name === userTeam.currentOpponent);
             if (!opponentTeam) {
                 return await interaction.editReply({

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { getCurrentFestivalAsync, saveFestival, loadFestival } = require('../utils/festivalManager');
 const { getAllTeams } = require('../utils/teamManager');
 const { getVotes } = require('../utils/vote');
@@ -25,7 +25,7 @@ module.exports = {
     
     async execute(interaction) {
     try {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         
         // Charger le festival directement depuis la base de données pour ce serveur
         const festival = await getCurrentFestivalAsync(interaction.guild.id);

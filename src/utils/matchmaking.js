@@ -3,9 +3,9 @@ const teamManager = require('./teamManager');
 const { finishMatch } = require('./matchSearch');
 
 // Récupérer un matchup pour une équipe
-function getMatchup(teamName) {
+function getMatchup(teamName, guildId) {
     // Trouver l'équipe dans la liste
-    const teams = teamManager.getAllTeams();
+    const teams = teamManager.getAllTeams(guildId);
     const team = teams.find(t => t.name === teamName);
     
     if (!team) {

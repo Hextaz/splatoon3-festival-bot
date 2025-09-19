@@ -63,7 +63,7 @@ function unlockTeam(teamName) {
 }
 
 // Fonction pour exécuter une opération sous verrou
-async function withTeamLock(teamNames, action, callback) {
+async function withTeamLock(teamNames, action, guildId, callback) {
     // Récupérer tous les verrous d'un coup pour éviter les deadlocks
     const locks = [];
     
@@ -99,7 +99,7 @@ async function withTeamLock(teamNames, action, callback) {
         
         // Phase 2: Exécution atomique avec l'état le plus à jour
         // Important: Recharger les équipes depuis la source pour avoir l'état le plus récent
-        const allTeams = getAllTeams();
+        const allTeams = getAllTeams(guildId);
         const teams = teamNames.map(name => allTeams.find(t => t.name === name)).filter(Boolean);
         
         // Vérifier que les équipes sont dans un état cohérent avant de continuer
@@ -218,7 +218,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     }
     
     // Vérifier immédiatement s'il y a déjà une équipe disponible
-    const match = findMatch(team);
+    const match = findMatch(team, guildId);
     
     if (match) {
         // Un match a été trouvé immédiatement
@@ -609,7 +609,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
     }
     
     // Utiliser le nouveau mécanisme de verrouillage avec les équipes mises à jour
-    return await withTeamLock([team1.name, team2.name], 'createMatch', async () => {
+    return await withTeamLock([team1.name, team2.name], 'createMatch', guildId, async () => {
         const allTeams = getAllTeams(guildId);
         const updatedTeam1 = allTeams.find(t => t.name === team1.name);
         const updatedTeam2 = allTeams.find(t => t.name === team2.name);
@@ -659,11 +659,11 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
 
         // NOUVEAU: Générer le BO3
         const festival = getCurrentFestival(guildId); // Récupérer le festival actuel
-        const bo3Generator = new BO3Generator(festival); // Passer le festival au générateur
+        const bo3Generator = new BO3Generator(festival, guildId); // Passer le festival et guildId au générateur
         let bo3Data = null;
         
         try {
-            bo3Data = await bo3Generator.generateBO3(updatedTeam1.name, updatedTeam2.name, guildId);
+            bo3Data = await bo3Generator.generateBO3(updatedTeam1.name, updatedTeam2.name);
             console.log(`BO3 généré pour ${updatedTeam1.name} vs ${updatedTeam2.name}:`, 
                 bo3Data.games.map(g => `${g.modeDisplayName} sur ${g.mapDisplayName}`).join(', '));
         } catch (error) {
@@ -882,7 +882,7 @@ setInterval(async () => {
 
 // Fonction pour terminer un match et libérer les équipes
 function finishMatch(team1Name, team2Name, guildId) {
-    return withTeamLock([team1Name, team2Name], 'finishMatch', () => {
+    return withTeamLock([team1Name, team2Name], 'finishMatch', guildId, () => {
         console.log(`[TRANSACTION] Début fin de match: ${team1Name} vs ${team2Name}`);
         
         const allTeams = getAllTeams(guildId);
@@ -992,7 +992,7 @@ function repairInconsistentStates(guildId) {
     }
     
     // Sinon, procéder avec le verrouillage et les réparations
-    return withTeamLock(allTeams.map(t => t.name), 'repairInconsistentStates', (teams) => {
+    return withTeamLock(allTeams.map(t => t.name), 'repairInconsistentStates', guildId, (teams) => {
         let repaired = 0;
         
         for (const team of teams) {
@@ -1044,7 +1044,8 @@ const initializeMatchCounters = async () => {
 async function verifyAndCleanupMatchChannels(guild) {
     console.log('🔍 Vérification des salons de match au démarrage...');
     
-    const allTeams = getAllTeams();
+    const guildId = guild.id;
+    const allTeams = getAllTeams(guildId);
     let channelsFound = 0;
     let channelsDeleted = 0;
     let teamsFixed = 0;
@@ -1171,7 +1172,8 @@ async function verifyAndCleanupMatchChannels(guild) {
 async function repairMatchStates(guild) {
     console.log('🔧 Réparation complète de l\'état des matchs...');
     
-    const allTeams = getAllTeams();
+    const guildId = guild.id;
+    const allTeams = getAllTeams(guildId);
     let repairs = 0;
     let issues = [];
     

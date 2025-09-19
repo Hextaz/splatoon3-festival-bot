@@ -13,7 +13,6 @@ const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtil
 
 // Global variables
 const pendingResultsByGuild = new Map(); // Map<guildId, Map<key, value>>
-const dataAdapter = new DataAdapter();
 
 // Fonction helper pour récupérer les résultats en attente d'une guilde
 function getPendingResultsForGuild(guildId) {
@@ -31,6 +30,7 @@ async function loadPendingResults(guildId) {
             return;
         }
 
+        const dataAdapter = new DataAdapter(guildId);
         const data = await dataAdapter.loadPendingResults(guildId);
         if (data) {
             const pendingResults = getPendingResultsForGuild(guildId);
@@ -57,6 +57,7 @@ async function savePendingResults(guildId) {
         const pendingResults = getPendingResultsForGuild(guildId);
         // Convertir la Map en objet pour la sérialisation JSON
         const dataToSave = Object.fromEntries(pendingResults);
+        const dataAdapter = new DataAdapter(guildId);
         await dataAdapter.savePendingResults(guildId, dataToSave);
     } catch (error) {
         console.error('Erreur lors de la sauvegarde des résultats en attente:', error);
@@ -604,7 +605,7 @@ const handleJoinTeamModal = async (interaction) => {
         }
         
         // Trouver l'équipe
-        const team = findTeamByName(teamName);
+        const team = findTeamByName(teamName, interaction.guild.id);
         if (!team) {
             throw new Error(`L'équipe "${teamName}" n'existe pas.`);
         }
@@ -637,7 +638,7 @@ const handleJoinTeamModal = async (interaction) => {
         }
         
         // Rejoindre l'équipe
-        joinTeam(teamName, interaction.user.id, code, interaction.guild);
+        joinTeam(teamName, interaction.user.id, interaction.guild.id, code, interaction.guild);
         
         // Obtenir le nom d'affichage du camp
         let campName;
@@ -708,7 +709,7 @@ const handleJoinTeamModal = async (interaction) => {
 // Gestion de la commande leave-team
 const handleLeaveTeam = async (interaction) => {
     try {
-        const result = leaveTeam(interaction.user.id, interaction.guild);
+        const result = leaveTeam(interaction.user.id, interaction.guild.id, interaction.guild);
         const guild = interaction.guild;
         
         // Retirer le rôle d'équipe
@@ -774,7 +775,7 @@ const handleKickMember = async (interaction) => {
     const memberToKick = interaction.options.getUser('member');
     
     try {
-        const team = kickMember(interaction.user.id, memberToKick.id, interaction.guild);
+        const team = kickMember(interaction.user.id, memberToKick.id, interaction.guild.id, interaction.guild);
         
         // Retirer le rôle d'équipe au membre expulsé
         const guild = interaction.guild;
@@ -798,7 +799,7 @@ const handleKickMember = async (interaction) => {
 
 // Gestion de la commande teams-list
 const handleTeamsList = async (interaction) => {
-    const teams = getAllTeams();
+    const teams = getAllTeams(interaction.guild.id);
     const festival = getCurrentFestival(interaction.guild.id);
     
     if (teams.length === 0) {
@@ -922,7 +923,8 @@ function createMatchId(team1Name, team2Name) {
 const handleMatchupInteraction = async (interaction) => {
     try {
         const teamName = interaction.options.getString('team_name');
-        const result = getMatchup(teamName);
+        const guildId = interaction.guild.id;
+        const result = getMatchup(teamName, guildId);
         
         if (result.alreadyMatched) {
             await safeReply(interaction, `Your team is already matched with: ${result.opponent.name}`);
@@ -966,12 +968,13 @@ const handleMatchupModal = async (interaction) => {
     const teamName = interaction.fields.getTextInputValue('teamNameInput');
     
     try {
-        const team = findTeamByName(teamName);
+        const guildId = interaction.guild.id;
+        const team = findTeamByName(teamName, guildId);
         if (!team) {
             throw new Error(`Team "${teamName}" not found.`);
         }
         
-        const result = getMatchup(teamName);
+        const result = getMatchup(teamName, guildId);
         
         const embed = new EmbedBuilder()
             .setColor('#0099ff')
@@ -1096,7 +1099,7 @@ const handleCancelSearchButton = async (interaction) => {
     const teamName = interaction.customId.split('_')[2];
     
     // Trouver l'équipe
-    const team = findTeamByName(teamName);
+    const team = findTeamByName(teamName, interaction.guild.id);
     if (!team) {
         return await safeEdit(interaction, {
             content: 'Équipe introuvable. La recherche a peut-être déjà été annulée.',
@@ -1411,11 +1414,11 @@ const handleConfirmButton = async (interaction) => {
         const pendingResult = pendingResults.get(matchId);
         
         // Récupérer les équipes
-        const team1 = findTeamByName(team1Name);
-        const team2 = findTeamByName(team2Name);
+        const team1 = findTeamByName(team1Name, interaction.guild.id);
+        const team2 = findTeamByName(team2Name, interaction.guild.id);
         
         // Vérifier si l'utilisateur est capitaine de l'équipe adverse
-        const userTeam = findTeamByMember(interaction.user.id);
+        const userTeam = findTeamByMember(interaction.user.id, interaction.guild.id);
         
         if (!userTeam || userTeam.name === pendingResult.declaringTeam) {
             return await safeReply(interaction, {
@@ -1580,7 +1583,7 @@ const handleRejectButton = async (interaction) => {
         const pendingResult = pendingResults.get(matchId);
         
         // Vérifier si l'utilisateur est capitaine de l'équipe adverse
-        const userTeam = findTeamByMember(interaction.user.id);
+        const userTeam = findTeamByMember(interaction.user.id, interaction.guild.id);
         
         if (!userTeam || userTeam.name === pendingResult.declaringTeam) {
             return await safeReply(interaction, {

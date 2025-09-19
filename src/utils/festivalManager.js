@@ -69,8 +69,6 @@ async function getCurrentFestival(guildId) {
         const adapter = getDataAdapter(guildId);
         const festivalData = await adapter.getFestival();
         
-        console.log(`🔍 Résultat getFestival() pour guild ${guildId}:`, festivalData ? 'données trouvées' : 'null/undefined');
-        
         // Mettre à jour le cache local ET convertir l'objet MongoDB en Festival
         if (festivalData) {
             // Convertir l'objet MongoDB en vraie instance de Festival
@@ -106,10 +104,8 @@ async function getCurrentFestival(guildId) {
             }
             
             setCurrentFestival(festival, guildId);
-            console.log(`✅ Festival chargé depuis base: ${festival.title} pour guild ${guildId}`);
             return festival;
         } else {
-            console.log(`⚠️ Aucun festival actif trouvé en base pour guild ${guildId}`);
             setCurrentFestival(null, guildId);
             return null;
         }
@@ -424,6 +420,12 @@ async function resetFestivalData(guild) {
     const matchHistoryManager = require('./matchHistoryManager');
     await matchHistoryManager.resetMatchHistory(guildId);
     console.log('Historique des matchs réinitialisé');
+    
+    // Réinitialiser les probabilités de cartes
+    console.log('🗑️ Reset des probabilités de cartes...');
+    const mapProbabilityManager = require('./mapProbabilityManager');
+    await mapProbabilityManager.resetProbabilities(guildId);
+    console.log('Probabilités de cartes réinitialisées');
     
     // Vérification des équipes disponibles
     console.log(`Nombre d'équipes à nettoyer: ${teams.length}`);
@@ -1030,8 +1032,9 @@ async function activateFestivalNow(festival, client) {
             
             // Fallback : prendre la première guild si aucune trouvée
             if (!guild) {
-                console.error(`❌ Impossible de trouver la guild pour le festival "${festival.title}" avec channelId ${festival.announcementChannelId}`);
-                return;
+                guild = client.guilds.cache.first();
+                guildId = guild ? guild.id : null;
+                console.log(`🔍 Fallback vers première guild: ${guild ? guild.name : 'AUCUNE'}`);
             }
         }
         

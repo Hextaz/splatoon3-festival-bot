@@ -22,7 +22,8 @@ module.exports = {
         
         const team1Name = interaction.options.getString('team1');
         const team2Name = interaction.options.getString('team2');
-        const allTeams = await getAllTeams();
+        const guildId = interaction.guild.id;
+        const allTeams = getAllTeams(guildId);
         
         if (team1Name && team2Name) {
             // Comparaison spécifique entre deux équipes

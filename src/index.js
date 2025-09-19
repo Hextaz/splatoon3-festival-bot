@@ -309,7 +309,7 @@ async function syncAllRoles() {
     
     const guild = client.guilds.cache.first();
     const teamManager = require('./utils/teamManager');
-    const teams = teamManager.getAllTeams();
+    const teams = teamManager.getAllTeams(guild.id);
     
     if (teams.length === 0) {
         console.log('Aucune équipe à synchroniser');
@@ -391,49 +391,28 @@ async function syncAllRoles() {
 // Le chargement des données se fait maintenant dans initializeManagersForGuild()
 // après que le guildId soit défini dans l'événement 'ready'
 
-// VÉRIFICATION PÉRIODIQUE AUTOMATIQUE DES FESTIVALS
+// VÉRIFICATION PÉRIODIQUE AUTOMATIQUE DES FESTIVALS EXPIRÉS
 function startPeriodicFestivalCheck() {
-    // Vérifier toutes les 10 minutes pour les démarrages et fins de festivals
+    // Vérifier toutes les heures
     setInterval(async () => {
         try {
-            console.log('🔍 Vérification périodique des festivals...');
+            if (!currentGuildId) return;
             
-            // Vérifier tous les serveurs où le bot est présent
-            for (const guild of client.guilds.cache.values()) {
-                try {
-                    const { getCurrentFestival, activateFestivalNow, checkAndCleanExpiredFestival } = require('./utils/festivalManager');
-                    const festival = await getCurrentFestival(guild.id);
-                    if (!festival) continue;
-                    
-                    const now = new Date();
-                    const startDate = new Date(festival.startDate);
-                    const endDate = new Date(festival.endDate);
-                    
-                    console.log(`🔍 ${guild.name}: Festival "${festival.title}" - Active: ${festival.isActive}, Maintenant: ${now.toISOString()}, Début: ${startDate.toISOString()}`);
-                    
-                    // Vérifier si le festival doit commencer
-                    if (now >= startDate && now <= endDate && !festival.isActive) {
-                        console.log(`🎉 DÉMARRAGE AUTOMATIQUE: Festival "${festival.title}" sur ${guild.name}`);
-                        await activateFestivalNow(festival, client);
-                    }
-                    // Vérifier si le festival est expiré
-                    else if (endDate < now && festival.isActive) {
-                        console.log(`🧹 NETTOYAGE AUTOMATIQUE: Festival "${festival.title}" expiré sur ${guild.name}`);
-                        const wasExpired = await checkAndCleanExpiredFestival(festival, client);
-                        if (wasExpired) {
-                            console.log('✅ Festival expiré détecté et nettoyé par vérification périodique');
-                        }
-                    }
-                } catch (error) {
-                    console.error(`❌ Erreur lors de la vérification du festival sur ${guild.name}:`, error);
-                }
+            const festival = await festivalManager.loadFestival(currentGuildId);
+            if (!festival) return;
+            
+            // Utiliser la nouvelle fonction de nettoyage automatique
+            const wasExpired = await festivalManager.checkAndCleanExpiredFestival(festival, client);
+            
+            if (wasExpired) {
+                console.log('✅ Festival expiré détecté et nettoyé par vérification périodique');
             }
         } catch (error) {
-            console.error('❌ Erreur lors de la vérification périodique des festivals:', error);
+            console.error('❌ Erreur lors de la vérification périodique du festival:', error);
         }
-    }, 10 * 60 * 1000); // Toutes les 10 minutes
+    }, 60 * 60 * 1000); // Toutes les heures
     
-    console.log('✅ Vérification périodique des festivals activée (toutes les 10 minutes)');
+    console.log('✅ Vérification périodique des festivals activée (toutes les heures)');
 }
 
 // Gestionnaire d'arrêt propre

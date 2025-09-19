@@ -20,7 +20,8 @@ module.exports = {
         
         try {
             // Utiliser le nouveau système MongoDB
-            const allTeams = await getAllTeams();
+            const guildId = interaction.guild.id;
+            const allTeams = getAllTeams(guildId);
             
             const team = allTeams.find(t => t.name.toLowerCase().includes(teamName.toLowerCase()));
             if (!team) {

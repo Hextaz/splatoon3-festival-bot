@@ -3,8 +3,9 @@ const { GAME_MODES, RANKED_MODES, MAPS, ALL_MAP_KEYS } = require('../data/mapsAn
 const mapProbabilityManager = require('./mapProbabilityManager');
 
 class BO3Generator {
-    constructor(festival = null) {
+    constructor(festival = null, guildId = null) {
         this.festival = festival;
+        this.guildId = guildId;
         this.usedModes = [];
         this.usedMaps = [];
     }
@@ -86,7 +87,7 @@ class BO3Generator {
     async generateBO3(team1Name, team2Name) {
         try {
             // Charger les probabilités si pas encore fait
-            await mapProbabilityManager.loadProbabilities();
+            await mapProbabilityManager.loadProbabilities(this.guildId);
             
             const modes = this.selectModes();
             const selectedMaps = [];
@@ -100,7 +101,7 @@ class BO3Generator {
             for (let i = 0; i < 3; i++) {
                 // Sélectionner une map en excluant celles déjà utilisées ET les bannies
                 const excludedMaps = [...selectedMaps, ...this.festival?.bannedMaps || []];
-                const mapKey = mapProbabilityManager.selectRandomMap(team1Name, team2Name, excludedMaps, availableMaps);
+                const mapKey = mapProbabilityManager.selectRandomMapWithProbabilities(team1Name, excludedMaps, this.guildId);
                 selectedMaps.push(mapKey);
                 
                 bo3.push({
@@ -114,7 +115,10 @@ class BO3Generator {
             }
             
             // Mettre à jour les probabilités après sélection
-            await mapProbabilityManager.updateProbabilitiesAfterBO3(team1Name, team2Name, selectedMaps);
+            for (const mapKey of selectedMaps) {
+                mapProbabilityManager.updateProbabilitiesAfterMapSelection(team1Name, mapKey, this.guildId);
+            }
+            await mapProbabilityManager.saveProbabilities(this.guildId);
             
             return {
                 team1: team1Name,

@@ -209,15 +209,33 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
     const team = new Team(name, leaderId, camp, isOpen, code);
     
     // Assigner le festivalId du festival actuel
+    const { getCurrentFestivalAsync } = require('./festivalManager');
     let currentFestival = null;
     
     try {
-        // Utiliser getCurrentFestival directement comme les autres systèmes
-        const { getCurrentFestival } = require('./festivalManager');
-        currentFestival = await getCurrentFestival(guildId);
-        console.log(`🔍 createTeam getCurrentFestival pour guild ${guildId}:`, currentFestival ? 'trouvé' : 'null');
+        // Récupérer le festival actif depuis MongoDB pour avoir l'ID correct
+        const DataAdapter = require('./dataAdapter');
+        if (guild) {
+            const adapter = new DataAdapter(guild.id);
+            const festivalData = await adapter.getFestival();
+            if (festivalData && festivalData._id) {
+                currentFestival = {
+                    title: festivalData.title,
+                    id: festivalData._id.toString()
+                };
+            }
+        }
     } catch (error) {
         console.error('Erreur lors de la récupération du festival pour l\'équipe:', error);
+        // Fallback vers la version async
+        const { getCurrentFestival } = require('./festivalManager');
+        try {
+            currentFestival = await getCurrentFestival(guildId);
+            console.log(`🔍 createTeam getCurrentFestival pour guild ${guildId ? 'true' : 'false'}: ${currentFestival ? 'trouvé' : 'null'}`);
+        } catch (fallbackError) {
+            console.error('Erreur aussi dans le fallback getCurrentFestival:', fallbackError);
+            currentFestival = null;
+        }
     }
     
     console.log(`🔍 createTeam Debug:`);
@@ -535,8 +553,8 @@ function leaveTeam(userId, guildId, guild = null) {
     return { team, removed: false, wasLeader, newLeader };
 }
 
-function kickMember(leaderId, memberId, guild = null) {
-    const team = findTeamByMember(leaderId);
+function kickMember(leaderId, memberId, guildId, guild = null) {
+    const team = findTeamByMember(leaderId, guildId);
     
     if (!team) {
         throw new Error("Vous n'êtes membre d'aucune équipe.");

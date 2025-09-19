@@ -33,7 +33,8 @@ module.exports = {
         const detailedScoring = interaction.options.getBoolean('detailed-scoring') ?? true;
         const simulateResults = interaction.options.getBoolean('simulate-results') ?? true;
         
-        const allTeams = await (await getAllTeams()).filter(t => t.isVirtual && t.members.length >= 4);
+        const guildId = interaction.guild.id;
+        const allTeams = getAllTeams(guildId).filter(t => t.isVirtual && t.members.length >= 4);
         
         if (allTeams.length < 8) {
             return await interaction.editReply({
