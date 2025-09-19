@@ -195,6 +195,8 @@ async function clearAllTeams(guildId) {
 
 // Fonction pour créer une équipe
 async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = null, guild = null) {
+    console.log(`🔍 createTeam appelé avec guildId: ${guildId}, type: ${typeof guildId}`);
+    
     // Vérifier si une équipe avec ce nom existe déjà
     const existingTeams = getTeamsForGuild(guildId);
     if (existingTeams.some(t => t.name.toLowerCase() === name.toLowerCase())) {

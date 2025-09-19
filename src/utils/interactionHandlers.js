@@ -563,6 +563,7 @@ const handleCreateTeamModal = async (interaction) => {
             teamName, 
             interaction.user.id, 
             camp, 
+            interaction.guild.id,
             isOpen, 
             code,
             interaction.guild
@@ -1055,6 +1056,7 @@ const handleTeamTypeButton = async (interaction) => {
             teamName, 
             interaction.user.id, 
             camp, 
+            interaction.guild.id,
             isOpen, 
             code,
             interaction.guild // Passer l'objet guild
