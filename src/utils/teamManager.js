@@ -209,40 +209,15 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
     const team = new Team(name, leaderId, camp, isOpen, code);
     
     // Assigner le festivalId du festival actuel
-    const { getCurrentFestivalAsync } = require('./festivalManager');
     let currentFestival = null;
     
     try {
-        // Récupérer le festival actif depuis MongoDB pour avoir l'ID correct
-        const DataAdapter = require('./dataAdapter');
-        if (guild) {
-            const adapter = new DataAdapter(guild.id);
-            const festivalData = await adapter.getFestival();
-            console.log(`🔍 adapter.getFestival() résultat:`, {
-                festivalData: festivalData ? 'trouvé' : 'null/undefined',
-                hasId: festivalData && festivalData._id ? 'oui' : 'non',
-                type: typeof festivalData,
-                keys: festivalData ? Object.keys(festivalData) : 'N/A'
-            });
-            
-            if (festivalData && festivalData._id) {
-                currentFestival = {
-                    title: festivalData.title,
-                    id: festivalData._id.toString()
-                };
-                console.log(`✅ Festival trouvé via adapter: ${currentFestival.title} (${currentFestival.id})`);
-            } else {
-                console.log(`🔍 adapter.getFestival() n'a pas trouvé de festival, essai avec getCurrentFestival...`);
-                // Si pas de festival via adapter, essayer avec getCurrentFestival
-                const { getCurrentFestival } = require('./festivalManager');
-                currentFestival = await getCurrentFestival(guild.id);
-            }
-        }
-    } catch (error) {
-        console.error('Erreur lors de la récupération du festival pour l\'équipe:', error);
-        // Fallback vers la version async
+        // Utiliser getCurrentFestival directement comme les autres systèmes
         const { getCurrentFestival } = require('./festivalManager');
         currentFestival = await getCurrentFestival(guildId);
+        console.log(`🔍 createTeam getCurrentFestival pour guild ${guildId}:`, currentFestival ? 'trouvé' : 'null');
+    } catch (error) {
+        console.error('Erreur lors de la récupération du festival pour l\'équipe:', error);
     }
     
     console.log(`🔍 createTeam Debug:`);
