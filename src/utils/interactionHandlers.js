@@ -945,7 +945,7 @@ const handleResultEntry = async (interaction) => {
 
     try {
         validateResults(team1Result, team2Result);
-        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name);
+        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, 1, interaction.guild.id);
         
         // Clear the matchup to make teams available again
         clearMatchup(team1Name, team2Name, interaction.guild.id);
@@ -1449,7 +1449,7 @@ const handleConfirmButton = async (interaction) => {
                            pendingResult.opponentTeamResult;
         
         // Mettre à jour les scores avec le multiplicateur
-        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, multiplier);
+        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, multiplier, interaction.guild.id);
         
         // Créer un message de résultat détaillé
         let resultMessage = `✅ **Résultat confirmé** : ${team1Name} - ${team1Result === 'V' ? 'Victoire' : 'Défaite'}, ${team2Name} - ${team2Result === 'V' ? 'Victoire' : 'Défaite'}`;

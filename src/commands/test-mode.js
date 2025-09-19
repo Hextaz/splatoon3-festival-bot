@@ -706,7 +706,7 @@ async function handleCleanup(interaction) {
     remainingTeams.forEach(team => teamManager.teams.push(team)); // Remplir avec les équipes non virtuelles
     
     // Sauvegarder les changements
-    await teamManager.saveTeams();
+    await teamManager.saveTeams(interaction.guild.id);
     
     // Nettoyer les salons de match qui n'ont pas été supprimés
     const matchChannels = guild.channels.cache.filter(channel => 

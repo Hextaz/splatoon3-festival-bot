@@ -31,7 +31,7 @@ async function getOrCreateTeamRole(guild, team) {
         if (team.roleId !== existingRoleByName.id) {
             team.roleId = existingRoleByName.id;
             const { saveTeams } = require('./teamManager');
-            saveTeams();
+            saveTeams(guild.id);
         }
         return existingRoleByName;
     }
@@ -56,7 +56,7 @@ async function getOrCreateTeamRole(guild, team) {
         if (roleByName) {
             team.roleId = roleByName.id;
             const { saveTeams } = require('./teamManager');
-            saveTeams();
+            saveTeams(guild.id);
             return roleByName;
         }
         
@@ -83,7 +83,7 @@ async function getOrCreateTeamRole(guild, team) {
         // Stocker l'ID du rôle et sauvegarder IMMÉDIATEMENT
         team.roleId = newRole.id;
         const { saveTeams } = require('./teamManager');
-        await saveTeams(); // Utiliser await pour s'assurer que la sauvegarde est terminée
+        await saveTeams(guild.id); // Utiliser await pour s'assurer que la sauvegarde est terminée
         
         return newRole;
     } catch (error) {

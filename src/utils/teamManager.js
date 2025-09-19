@@ -299,7 +299,7 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
                 await createTeamChannel(guild, team);
                 
                 // 5. Sauvegarder avec les IDs de rôles mis à jour
-                await saveTeams();
+                await saveTeams(guildId);
                 
             } catch (error) {
                 console.error(`Erreur lors de la configuration complète de l'équipe ${name}:`, error);
@@ -372,7 +372,7 @@ function joinTeam(teamName, userId, guildId, code = null, guild = null) {
     }
     
     // Sauvegarder les changements
-    saveTeams();
+    saveTeams(guildId);
     
     return team;
 }
@@ -476,7 +476,7 @@ function leaveTeam(userId, guildId, guild = null) {
         }
         
         // Sauvegarder les changements
-        saveTeams();
+        saveTeams(guildId);
         
         return { team: { name: teamName, channelId: team.channelId }, removed: true, wasLeader, newLeader };
     }
@@ -550,7 +550,7 @@ function leaveTeam(userId, guildId, guild = null) {
     }
     
     // Sauvegarder les changements
-    saveTeams();
+    saveTeams(guildId);
     
     return { team, removed: false, wasLeader, newLeader };
 }
@@ -618,7 +618,7 @@ function kickMember(leaderId, memberId, guildId, guild = null) {
     }
     
     // Sauvegarder les changements
-    saveTeams();
+    saveTeams(guildId);
     
     return team;
 }
