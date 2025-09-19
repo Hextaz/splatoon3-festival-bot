@@ -17,9 +17,14 @@ module.exports = {
         
         try {
             const guildId = interaction.guild.id;
+            console.log(`🔍 end-festival exécuté pour guild: ${guildId} (${interaction.guild.name})`);
             
             // Vérifier s'il y a un festival en cours (d'abord en mémoire, puis en base)
             let festival = getCurrentFestival(guildId);
+            
+            if (festival) {
+                console.log(`🎪 Festival trouvé: "${festival.title}" pour guildId: ${festival.guildId || 'NON_DEFINI'}`);
+            }
             
             // Si pas trouvé en mémoire, essayer de charger depuis la base de données
             if (!festival) {
