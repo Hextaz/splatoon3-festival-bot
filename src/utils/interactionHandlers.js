@@ -2278,5 +2278,6 @@ module.exports = {
     handleMapBanSelection,      // ← Ajouter
     handleFinalFestivalSetup,
     handleFestivalDuration,
-    createFinalFestival
+    createFinalFestival,
+    createMatchId               // ← Ajouter la fonction manquante
 };

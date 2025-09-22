@@ -817,14 +817,10 @@ class DataAdapter {
             const festival = await this.getFestival();
             if (!festival) throw new Error('No active festival');
             
-            // Supprimer les anciennes probabilités
-            await MapProbability.deleteMany({ 
-                guildId: this.guildId, 
-                festivalId: festival._id 
-            });
+            console.log(`🔍 saveMapProbabilities: Festival trouvé: ${festival.title} (ID: ${festival._id})`);
             
-            // Sauvegarder les nouvelles
-            const probDocs = [];
+            // Utiliser des opérations upsert pour éviter les erreurs de clés dupliquées
+            const operations = [];
             Object.entries(probData).forEach(([teamName, teamProbs]) => {
                 if (!teamName || teamName === 'null' || !teamProbs) {
                     console.warn(`⚠️ MapProbability: teamName ou teamProbs invalide`, { teamName, teamProbs });
@@ -835,18 +831,36 @@ class DataAdapter {
                         console.warn(`⚠️ MapProbability: mapKey ou probability invalide`, { teamName, mapKey, probability });
                         return;
                     }
-                    probDocs.push({
-                        guildId: this.guildId,
-                        festivalId: festival._id,
-                        teamName,
-                        mapKey,
-                        probability
+                    
+                    // Utiliser updateOne avec upsert pour éviter les doublons
+                    operations.push({
+                        updateOne: {
+                            filter: {
+                                guildId: this.guildId,
+                                festivalId: festival._id,
+                                teamName,
+                                mapKey
+                            },
+                            update: {
+                                $set: {
+                                    guildId: this.guildId,
+                                    festivalId: festival._id,
+                                    teamName,
+                                    mapKey,
+                                    probability,
+                                    lastUpdated: new Date()
+                                }
+                            },
+                            upsert: true
+                        }
                     });
                 });
             });
             
-            if (probDocs.length > 0) {
-                await MapProbability.insertMany(probDocs);
+            if (operations.length > 0) {
+                console.log(`📝 Sauvegarde de ${operations.length} probabilités via bulkWrite`);
+                const result = await MapProbability.bulkWrite(operations);
+                console.log(`✅ BulkWrite terminé: ${result.upsertedCount} créés, ${result.modifiedCount} modifiés`);
             }
             return probData;
         } else {
