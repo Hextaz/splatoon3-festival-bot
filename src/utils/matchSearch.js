@@ -655,7 +655,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         updatedTeam2.currentMatchMultiplier = multiplier;
         
         // 4. Sauvegarder immédiatement pour empêcher d'autres opérations de matchmaking
-        saveTeams();
+        saveTeams(guildId);
 
         // NOUVEAU: Générer le BO3
         const festival = getCurrentFestival(guildId); // Récupérer le festival actuel
@@ -758,7 +758,7 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         }
         
         // Sauvegarder les modifications des équipes
-        saveTeams();
+        saveTeams(guildId);
         console.log(`[TRANSACTION] Match créé avec succès: ${updatedTeam1.name} vs ${updatedTeam2.name}`);
         return true;
     });
@@ -920,7 +920,7 @@ function finishMatch(team1Name, team2Name, guildId) {
             }
         });
         
-        saveTeams();
+        saveTeams(guildId);
         console.log(`[TRANSACTION] Match terminé avec succès: ${team1Name} vs ${team2Name}`);
         return { team1, team2 };
     });
@@ -1028,7 +1028,7 @@ function repairInconsistentStates(guildId) {
         
         if (repaired > 0) {
             console.log(`${repaired} équipes avec des états incohérents ont été réparées`);
-            saveTeams();
+            saveTeams(guildId);
         }
         
         return repaired;
@@ -1146,7 +1146,7 @@ async function verifyAndCleanupMatchChannels(guild) {
         
         // 3. Sauvegarder les modifications si nécessaire
         if (teamsFixed > 0) {
-            saveTeams();
+            saveTeams(guildId);
             console.log(`💾 Modifications des équipes sauvegardées`);
         }
         
@@ -1242,7 +1242,7 @@ async function repairMatchStates(guild) {
         
         // 3. Sauvegarder si des réparations ont été effectuées
         if (repairs > 0) {
-            saveTeams();
+            saveTeams(guildId);
             console.log(`💾 ${repairs} réparations effectuées et sauvegardées`);
         }
         
