@@ -166,7 +166,60 @@ function getTeamHistory(teamName, guildId) {
     return history.get(teamName) || [];
 }
 
-// Réinitialiser l'historique
+// Calculer le score d'un adversaire pour le matchmaking
+function calculateOpponentScore(teamName, potentialOpponent, guildId) {
+    const history = getHistoryForGuild(guildId);
+    const counters = getCountersForGuild(guildId);
+    
+    const teamHistory = history.get(teamName) || [];
+    const currentMatchNumber = counters.get(teamName) || 0;
+    
+    let score = 100; // Score de base
+    
+    // Bonus pour les équipes d'un autre camp (avec lazy loading)
+    try {
+        const { getAllTeams } = require('./teamManager');
+        const allTeams = getAllTeams(guildId);
+        const team = allTeams.find(t => t.name === teamName);
+        const opponent = allTeams.find(t => t.name === potentialOpponent.name);
+        
+        if (team && opponent && team.camp !== opponent.camp) {
+            score += 50;
+        }
+    } catch (error) {
+        console.warn('Impossible de récupérer les équipes pour le calcul du score adversaire');
+    }
+    
+    // Pénalités basées sur la distance en nombre de matchs
+    const matchesAgainstOpponent = teamHistory.filter(match => match.opponent === potentialOpponent.name);
+    
+    if (matchesAgainstOpponent.length > 0) {
+        const lastMatchAgainst = matchesAgainstOpponent[matchesAgainstOpponent.length - 1];
+        const matchesSinceLastFaceOff = currentMatchNumber - lastMatchAgainst.matchNumber;
+        
+        if (matchesSinceLastFaceOff === 0) {
+            score -= 100;
+        } else if (matchesSinceLastFaceOff === 1) {
+            score -= 80;
+        } else if (matchesSinceLastFaceOff === 2) {
+            score -= 50;
+        } else if (matchesSinceLastFaceOff >= 3 && matchesSinceLastFaceOff <= 5) {
+            score -= 20;
+        }
+    } else {
+        score += 30; // Bonus pour jamais affronté
+    }
+    
+    // Bonus temps d'attente
+    if (potentialOpponent.waitTime) {
+        const waitMinutes = potentialOpponent.waitTime / (60 * 1000);
+        const waitBonus = Math.min(waitMinutes * 2, 20);
+        score += waitBonus;
+    }
+    
+    return Math.max(score, 1);
+}
+
 async function resetMatchHistory(guildId) {
     teamMatchHistoryByGuild.set(guildId, new Map());
     teamMatchCountersByGuild.set(guildId, new Map());
@@ -206,5 +259,6 @@ module.exports = {
     resetMatchHistory,
     cleanupHistory,
     getHistoryForGuild,
-    getCountersForGuild
+    getCountersForGuild,
+    calculateOpponentScore
 };

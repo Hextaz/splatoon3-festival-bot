@@ -33,7 +33,7 @@ module.exports = {
             .map(opponent => ({
                 name: opponent.name,
                 camp: opponent.camp,
-                score: calculateOpponentScore(team.name, opponent)
+                score: calculateOpponentScore(team.name, opponent, guildId)
             }))
             .sort((a, b) => b.score - a.score);
         

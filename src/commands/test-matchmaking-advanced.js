@@ -178,8 +178,11 @@ async function initiateStaggeredSearches(teams, experiment, interaction) {
         
         // Étaler les démarrages sur 30 secondes
         setTimeout(() => {
-            const { startVirtualTeamSearch } = require('../utils/matchSearch');
-            if (startVirtualTeamSearch(team, interaction.guild)) {
+            // FONCTION SUPPRIMÉE: startVirtualTeamSearch n'existe plus
+            // Cette fonctionnalité nécessite une réécriture pour le nouveau système d'isolation
+            console.log(`[STAGGER] Recherche automatique désactivée pour ${team.name} - startVirtualTeamSearch supprimée`);
+            
+            if (false) { // Désactivé temporairement
                 searchesStarted++;
                 console.log(`[STAGGER] ${team.name} a commencé sa recherche (${searchesStarted}/${teams.length})`);
                 
@@ -219,7 +222,7 @@ async function initiateStaggeredSearches(teams, experiment, interaction) {
 async function monitorMatchmakingState(experiment, teams, detailedScoring, interaction) {
     const now = Date.now();
     const { getSearchingTeams } = require('../utils/matchSearch');
-    const searchingTeams = getSearchingTeams();
+    const searchingTeams = getSearchingTeams(interaction.guild.id);
     
     // Compter les matchs actuels
     const currentMatches = teams.filter(t => t.busy && t.currentOpponent).length / 2; // Diviser par 2 car chaque match compte 2 équipes
@@ -242,7 +245,7 @@ async function monitorMatchmakingState(experiment, teams, detailedScoring, inter
     
     // Analyser les tentatives de match en cours
     if (searchingTeams.length >= 2) {
-        await analyzeCurrentMatchingAttempts(experiment, searchingTeams, detailedScoring);
+        await analyzeCurrentMatchingAttempts(experiment, searchingTeams, detailedScoring, interaction.guild.id);
     }
     
     // Log périodique
@@ -258,7 +261,7 @@ async function monitorMatchmakingState(experiment, teams, detailedScoring, inter
 }
 
 // Analyser les tentatives de matching actuelles
-async function analyzeCurrentMatchingAttempts(experiment, searchingTeams, detailedScoring) {
+async function analyzeCurrentMatchingAttempts(experiment, searchingTeams, detailedScoring, guildId) {
     for (let i = 0; i < searchingTeams.length - 1; i++) {
         for (let j = i + 1; j < searchingTeams.length; j++) {
             const team1 = searchingTeams[i].team;
@@ -268,8 +271,8 @@ async function analyzeCurrentMatchingAttempts(experiment, searchingTeams, detail
             const waitTime2 = Date.now() - searchingTeams[j].startTime;
             const avgWaitTime = (waitTime1 + waitTime2) / 2;
             
-            const score1to2 = calculateOpponentScore(team1.name, { ...team2, waitTime: waitTime2 });
-            const score2to1 = calculateOpponentScore(team2.name, { ...team1, waitTime: waitTime1 });
+            const score1to2 = calculateOpponentScore(team1.name, { ...team2, waitTime: waitTime2 }, guildId);
+            const score2to1 = calculateOpponentScore(team2.name, { ...team1, waitTime: waitTime1 }, guildId);
             
             // Analyser le pattern de rematch
             const rematchPattern = analyzeRematchPattern(team1.name, team2.name);

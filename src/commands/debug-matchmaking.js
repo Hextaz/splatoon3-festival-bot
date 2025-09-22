@@ -35,11 +35,11 @@ module.exports = {
             }
             
             // Calculer le score que team1 donnerait à team2
-            const score1to2 = calculateOpponentScore(team1.name, team2);
-            const score2to1 = calculateOpponentScore(team2.name, team1);
+            const score1to2 = calculateOpponentScore(team1.name, team2, guildId);
+            const score2to1 = calculateOpponentScore(team2.name, team1, guildId);
             
-            const history1 = getTeamMatchHistory(team1.name);
-            const history2 = getTeamMatchHistory(team2.name);
+            const history1 = getTeamMatchHistory(team1.name, guildId);
+            const history2 = getTeamMatchHistory(team2.name, guildId);
             
             // Trouver leur dernière confrontation
             const lastFaceOff1 = history1.recentHistory.find(h => h.opponent === team2.name);

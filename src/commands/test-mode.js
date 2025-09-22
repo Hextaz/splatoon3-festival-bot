@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const { getCurrentFestival } = require('../utils/festivalManager');
 const { createTeam, getAllTeams, saveTeams, findTeamByName, findTeamByMember } = require('../utils/teamManager');
 const { castVote } = require('../utils/vote');
-const { startMatchSearch, cleanupSearch, startVirtualTeamSearch, getSearchingTeams } = require('../utils/matchSearch');
+const { startMatchSearch, cleanupSearch, getSearchingTeams } = require('../utils/matchSearch');
 const scoreTracker = require('../utils/scoreTracker');
 const { createTeamChannel } = require('../utils/channelManager');
 const { createTeamRole } = require('../utils/interactionHandlers');
@@ -125,7 +125,7 @@ async function handleStatus(interaction, festival) {
     }
     
     // Récupérer les équipes en recherche
-    const searchingTeamsArray = require('../utils/matchSearch').getSearchingTeams();
+    const searchingTeamsArray = require('../utils/matchSearch').getSearchingTeams(guildId);
     
     // Analyse des équipes
     const campCounts = {
@@ -639,7 +639,7 @@ async function handleCleanup(interaction) {
     
     // 1. Nettoyer les recherches de match en cours
     const { getSearchingTeams, cleanupSearch } = require('../utils/matchSearch');
-    const searchingTeams = getSearchingTeams();
+    const searchingTeams = getSearchingTeams(guildId);
     
     for (const team of virtualTeams) {
         const inSearch = searchingTeams.some(entry => entry.team.name === team.name);
