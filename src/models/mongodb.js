@@ -56,6 +56,7 @@ const matchSchema = new mongoose.Schema({
     team2Name: { type: String, required: true },
     team1Camp: { type: String, required: true },
     team2Camp: { type: String, required: true },
+
     bo3: [{
         map: { type: String, required: true },
         mode: { type: String, required: true }
@@ -72,6 +73,7 @@ const matchSchema = new mongoose.Schema({
         enum: ['pending', 'in_progress', 'completed', 'cancelled'],
         default: 'pending'
     },
+    multiplier: { type: Number, default: 1 }, // Multiplicateur de points pour le match
     winnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
     winnerName: { type: String },
     finalScore: { type: String }, // "2-1", "2-0", etc.

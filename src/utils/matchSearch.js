@@ -1317,6 +1317,13 @@ async function repairMatchStates(guild) {
     }
 }
 
+// Fonction utilitaire pour créer un ID de match unique
+function createMatchId(team1Name, team2Name) {
+    const timestamp = Date.now();
+    const teams = [team1Name, team2Name].sort().join('_vs_');
+    return `match_${teams}_${timestamp}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+}
+
 // Ajouter au module.exports
 module.exports = {
     startMatchSearch,
@@ -1330,5 +1337,6 @@ module.exports = {
     calculateOpponentScore,
     initializeMatchCounters,
     verifyAndCleanupMatchChannels,
-    repairMatchStates // ← AJOUTER
+    repairMatchStates, // ← AJOUTER
+    createMatchId // ← AJOUTER la fonction createMatchId
 };

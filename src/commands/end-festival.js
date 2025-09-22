@@ -1,5 +1,3 @@
-// Modifier le code pour supprimer complètement le festival
-
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { getCurrentFestival, resetFestivalData, saveFestival, deleteFestival } = require('../utils/festivalManager');
 const scoreTracker = require('../utils/scoreTracker');
