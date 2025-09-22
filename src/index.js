@@ -226,6 +226,21 @@ async function initializeManagersForGuild(guildId) {
         
         console.log(`✅ Managers initialisés pour le serveur: ${guildId}`);
         
+        // 🔧 NOUVEAU: VÉRIFICATION ET RÉPARATION DES ÉTATS INCOHÉRENTS AU DÉMARRAGE
+        console.log('🔧 Vérification et réparation des états incohérents...');
+        try {
+            const matchSearch = require('./utils/matchSearch');
+            const repairResult = await matchSearch.repairInconsistentTeamStates(guildId);
+            
+            if (repairResult.repairedTeams > 0 || repairResult.deletedChannels > 0) {
+                console.log(`✅ Réparation terminée pour guild ${guildId}: ${repairResult.repairedTeams} équipe(s) + ${repairResult.deletedChannels} salon(s)`);
+            } else {
+                console.log(`✅ Aucune réparation nécessaire pour guild ${guildId}`);
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors de la réparation des états:', error);
+        }
+        
         // Démarrer le keep-alive permanent et le serveur de santé (une seule fois)
         if (!global.keepAliveStarted) {
             console.log('🔄 Démarrage du keep-alive permanent...');
