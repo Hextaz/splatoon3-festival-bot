@@ -9,7 +9,7 @@ module.exports = {
         // Initialiser les managers pour chaque serveur
         for (const guild of client.guilds.cache.values()) {
             if (global.initializeManagersForGuild) {
-                await global.initializeManagersForGuild(guild.id);
+                await global.initializeManagersForGuild(guild.id, guild);
             }
         }
     },

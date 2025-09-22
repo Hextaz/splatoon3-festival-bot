@@ -69,7 +69,7 @@ client.on('interactionCreate', interaction => {
 client.tempTeamData = {};
 
 // Fonction pour initialiser les managers avec guildId
-async function initializeManagersForGuild(guildId) {
+async function initializeManagersForGuild(guildId, guild = null) {
     console.log(`🔧 Initialisation des managers pour le serveur: ${guildId}`);
     
     try {
@@ -230,10 +230,23 @@ async function initializeManagersForGuild(guildId) {
         console.log('🔧 Vérification et réparation des états incohérents...');
         try {
             const matchSearch = require('./utils/matchSearch');
-            const repairResult = await matchSearch.repairInconsistentTeamStates(guildId);
             
-            if (repairResult.repairedTeams > 0 || repairResult.deletedChannels > 0) {
-                console.log(`✅ Réparation terminée pour guild ${guildId}: ${repairResult.repairedTeams} équipe(s) + ${repairResult.deletedChannels} salon(s)`);
+            // 1. Réparer les états des équipes
+            const repairedTeams = await matchSearch.repairInconsistentTeamStates(guildId);
+            
+            // 2. Nettoyer les salons orphelins si on a l'objet guild
+            let channelsDeleted = 0;
+            if (guild) {
+                const cleanupResult = await matchSearch.verifyAndCleanupMatchChannels(guild);
+                if (cleanupResult && cleanupResult.channelsDeleted) {
+                    channelsDeleted = cleanupResult.channelsDeleted;
+                }
+            } else {
+                console.warn(`⚠️ Objet guild non fourni, nettoyage des salons ignoré`);
+            }
+            
+            if (repairedTeams > 0 || channelsDeleted > 0) {
+                console.log(`✅ Réparation terminée pour guild ${guildId}: ${repairedTeams} équipe(s) + ${channelsDeleted} salon(s)`);
             } else {
                 console.log(`✅ Aucune réparation nécessaire pour guild ${guildId}`);
             }

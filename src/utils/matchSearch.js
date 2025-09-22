@@ -1352,7 +1352,6 @@ async function repairInconsistentTeamStates(guildId) {
     
     const allTeams = getAllTeams(guildId);
     let repairedCount = 0;
-    let channelsDeleted = 0;
     
     allTeams.forEach(team => {
         let needsRepair = false;
@@ -1393,17 +1392,6 @@ async function repairInconsistentTeamStates(guildId) {
         }
     });
     
-    // 🗑️ NOUVEAU: Nettoyer les salons de match orphelins
-    try {
-        const { verifyAndCleanupMatchChannels } = require('./matchSearch');
-        const cleanupResult = await verifyAndCleanupMatchChannels(guildId);
-        if (cleanupResult && cleanupResult.channelsDeleted) {
-            channelsDeleted = cleanupResult.channelsDeleted;
-        }
-    } catch (error) {
-        console.error('❌ Erreur lors du nettoyage des salons:', error);
-    }
-    
     if (repairedCount > 0) {
         saveTeams(guildId);
         console.log(`✅ ${repairedCount} équipe(s) réparée(s) pour guild ${guildId}`);
@@ -1411,11 +1399,7 @@ async function repairInconsistentTeamStates(guildId) {
         console.log(`✅ Aucune réparation d'équipe nécessaire pour guild ${guildId}`);
     }
     
-    if (channelsDeleted > 0) {
-        console.log(`🗑️ ${channelsDeleted} salon(s) de match orphelin(s) supprimé(s)`);
-    }
-    
-    return { repairedTeams: repairedCount, deletedChannels: channelsDeleted };
+    return repairedCount;
 }
 
 // Ajouter au module.exports
