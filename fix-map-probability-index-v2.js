@@ -3,10 +3,19 @@ const mongoose = require('mongoose');
 // Script pour corriger l'index MapProbability erroné
 async function fixMapProbabilityIndex() {
     try {
-        // Connexion à MongoDB
-        const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/splatoon3-festival';
+        // Charger les variables d'environnement
+        require('dotenv').config();
+        const mongoUri = process.env.DATABASE_URL || process.env.MONGODB_URI;
+        
+        if (!mongoUri) {
+            throw new Error('DATABASE_URL ou MONGODB_URI non défini dans les variables d\'environnement');
+        }
+        
+        console.log('🔗 Connexion à:', mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Masquer le mot de passe dans les logs
+        
+        // Connexion à MongoDB Atlas
         await mongoose.connect(mongoUri);
-        console.log('✅ Connexion MongoDB établie');
+        console.log('✅ Connexion MongoDB Atlas établie');
 
         const db = mongoose.connection.db;
         const collection = db.collection('mapprobabilities');
