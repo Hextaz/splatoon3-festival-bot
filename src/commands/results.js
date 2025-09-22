@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRow
 const scoreTracker = require('../utils/scoreTracker');
 const { findTeamByMember, getAllTeams, saveTeams } = require('../utils/teamManager');
 const { scheduleMatchChannelDeletion } = require('../utils/channelManager');
-const { pendingResults } = require('../utils/interactionHandlers');
+const { getPendingResultsForGuild, createMatchId } = require('../utils/interactionHandlers');
 const { safeReply } = require('../utils/responseUtils'); 
 
 module.exports = {
@@ -47,8 +47,10 @@ module.exports = {
             }
             
             // Créer un ID unique pour ce match
-            const { createMatchId } = require('../utils/interactionHandlers');
             const matchId = createMatchId(userTeam.name, opponentTeam.name);
+            
+            // Obtenir les résultats en attente pour cette guild
+            const pendingResults = getPendingResultsForGuild(guildId);
             
             // Vérifier si une déclaration est déjà en attente pour ce match
             if (pendingResults.has(matchId)) {

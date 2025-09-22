@@ -106,6 +106,9 @@ const mapProbabilitySchema = new mongoose.Schema({
     lastUpdated: { type: Date, default: Date.now }
 });
 
+// Index unique pour éviter les doublons
+mapProbabilitySchema.index({ guildId: 1, festivalId: 1, teamName: 1, mapKey: 1 }, { unique: true });
+
 // Schéma pour les résultats en attente
 const pendingResultSchema = new mongoose.Schema({
     guildId: { type: String, required: true },
