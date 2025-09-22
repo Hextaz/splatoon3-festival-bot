@@ -822,12 +822,12 @@ class DataAdapter {
             // Utiliser des opérations upsert pour éviter les erreurs de clés dupliquées
             const operations = [];
             Object.entries(probData).forEach(([teamName, teamProbs]) => {
-                if (!teamName || teamName === 'null' || !teamProbs) {
+                if (!teamName || teamName === 'null' || teamName === 'undefined' || !teamProbs) {
                     console.warn(`⚠️ MapProbability: teamName ou teamProbs invalide`, { teamName, teamProbs });
                     return;
                 }
                 Object.entries(teamProbs).forEach(([mapKey, probability]) => {
-                    if (!mapKey || mapKey === 'null' || probability === null || probability === undefined) {
+                    if (!mapKey || mapKey === 'null' || mapKey === 'undefined' || probability === null || probability === undefined) {
                         console.warn(`⚠️ MapProbability: mapKey ou probability invalide`, { teamName, mapKey, probability });
                         return;
                     }
@@ -838,16 +838,16 @@ class DataAdapter {
                             filter: {
                                 guildId: this.guildId,
                                 festivalId: festival._id,
-                                teamName,
-                                mapKey
+                                teamName: teamName,
+                                mapKey: mapKey
                             },
                             update: {
                                 $set: {
                                     guildId: this.guildId,
                                     festivalId: festival._id,
-                                    teamName,
-                                    mapKey,
-                                    probability,
+                                    teamName: teamName,
+                                    mapKey: mapKey,
+                                    probability: Number(probability),
                                     lastUpdated: new Date()
                                 }
                             },

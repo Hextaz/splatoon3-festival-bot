@@ -145,6 +145,15 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     // Vérifier si l'équipe est déjà en recherche
     const searchingTeams = getSearchingTeamsForGuild(guildId);
     const existingSearch = searchingTeams.find(entry => entry.team.name === team.name);
+    
+    // Vérifier si l'équipe est occupée (en match ou avec verrou)
+    if (team.busy || team.currentOpponent || teamLocks.has(team.name)) {
+        console.log(`❌ Équipe ${team.name} occupée: busy=${team.busy}, opponent=${team.currentOpponent}, locked=${teamLocks.has(team.name)}`);
+        return await safeReply(interaction, {
+            content: `Votre équipe ne peut pas rechercher de match actuellement. ${team.currentOpponent ? `En match contre ${team.currentOpponent}.` : 'Équipe occupée.'}`,
+            ephemeral: true
+        });
+    }
 
     // Vérifier si l'utilisateur est le leader de l'équipe (sauf en mode test)
     if (!isTestMode && !team.isLeader(interaction.user.id)) {
@@ -688,8 +697,8 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
                 team2Camp: updatedTeam2.camp,
                 multiplier: multiplier,
                 bo3: bo3Data ? bo3Data.games.map(game => ({
-                    map: game.mapKey,
-                    mode: game.modeKey
+                    map: game.map,
+                    mode: game.mode
                 })) : [],
                 status: 'in_progress',
                 createdAt: new Date(),
