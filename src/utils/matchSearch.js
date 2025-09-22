@@ -149,10 +149,23 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     // Vérifier si l'équipe est occupée (en match ou avec verrou)
     if (team.busy || team.currentOpponent || teamLocks.has(team.name)) {
         console.log(`❌ Équipe ${team.name} occupée: busy=${team.busy}, opponent=${team.currentOpponent}, locked=${teamLocks.has(team.name)}`);
-        return await safeReply(interaction, {
-            content: `Votre équipe ne peut pas rechercher de match actuellement. ${team.currentOpponent ? `En match contre ${team.currentOpponent}.` : 'Équipe occupée.'}`,
-            ephemeral: true
-        });
+        
+        // 🔧 RÉPARATION AUTOMATIQUE: Si busy=true mais pas d'adversaire, corriger l'état
+        if (team.busy && !team.currentOpponent) {
+            console.warn(`🔧 RÉPARATION: Équipe ${team.name} marquée busy sans adversaire, correction automatique...`);
+            team.busy = false;
+            team.currentMatchMultiplier = null;
+            team.currentMatchId = null;
+            team.currentBO3 = null;
+            saveTeams(guildId);
+            console.log(`✅ État de l'équipe ${team.name} réparé`);
+            // Continuer avec la recherche normale après réparation
+        } else {
+            return await safeReply(interaction, {
+                content: `Votre équipe ne peut pas rechercher de match actuellement. ${team.currentOpponent ? `En match contre ${team.currentOpponent}.` : 'Équipe occupée.'}`,
+                ephemeral: true
+            });
+        }
     }
 
     // Vérifier si l'utilisateur est le leader de l'équipe (sauf en mode test)
@@ -1333,6 +1346,78 @@ function createMatchId(team1Name, team2Name) {
     return `match_${teams}_${timestamp}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
 }
 
+// Fonction pour réparer les états incohérents des équipes
+async function repairInconsistentTeamStates(guildId) {
+    console.log(`🔧 Vérification et réparation des états incohérents pour guild ${guildId}...`);
+    
+    const allTeams = getAllTeams(guildId);
+    let repairedCount = 0;
+    let channelsDeleted = 0;
+    
+    allTeams.forEach(team => {
+        let needsRepair = false;
+        
+        // Cas 1: busy=true mais pas d'adversaire
+        if (team.busy && !team.currentOpponent) {
+            console.warn(`🔧 RÉPARATION: Équipe ${team.name} busy sans adversaire`);
+            team.busy = false;
+            team.currentMatchMultiplier = null;
+            team.currentMatchId = null;
+            team.currentBO3 = null;
+            needsRepair = true;
+        }
+        
+        // Cas 2: adversaire défini mais pas busy
+        if (team.currentOpponent && !team.busy) {
+            console.warn(`🔧 RÉPARATION: Équipe ${team.name} a un adversaire mais n'est pas busy`);
+            team.busy = true;
+            needsRepair = true;
+        }
+        
+        // Cas 3: adversaire qui n'existe plus
+        if (team.currentOpponent) {
+            const opponent = allTeams.find(t => t.name === team.currentOpponent);
+            if (!opponent) {
+                console.warn(`🔧 RÉPARATION: Équipe ${team.name} a un adversaire inexistant ${team.currentOpponent}`);
+                team.busy = false;
+                team.currentOpponent = null;
+                team.currentMatchMultiplier = null;
+                team.currentMatchId = null;
+                team.currentBO3 = null;
+                needsRepair = true;
+            }
+        }
+        
+        if (needsRepair) {
+            repairedCount++;
+        }
+    });
+    
+    // 🗑️ NOUVEAU: Nettoyer les salons de match orphelins
+    try {
+        const { verifyAndCleanupMatchChannels } = require('./matchSearch');
+        const cleanupResult = await verifyAndCleanupMatchChannels(guildId);
+        if (cleanupResult && cleanupResult.channelsDeleted) {
+            channelsDeleted = cleanupResult.channelsDeleted;
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du nettoyage des salons:', error);
+    }
+    
+    if (repairedCount > 0) {
+        saveTeams(guildId);
+        console.log(`✅ ${repairedCount} équipe(s) réparée(s) pour guild ${guildId}`);
+    } else {
+        console.log(`✅ Aucune réparation d'équipe nécessaire pour guild ${guildId}`);
+    }
+    
+    if (channelsDeleted > 0) {
+        console.log(`🗑️ ${channelsDeleted} salon(s) de match orphelin(s) supprimé(s)`);
+    }
+    
+    return { repairedTeams: repairedCount, deletedChannels: channelsDeleted };
+}
+
 // Ajouter au module.exports
 module.exports = {
     startMatchSearch,
@@ -1347,5 +1432,6 @@ module.exports = {
     initializeMatchCounters,
     verifyAndCleanupMatchChannels,
     repairMatchStates, // ← AJOUTER
-    createMatchId // ← AJOUTER la fonction createMatchId
+    createMatchId, // ← AJOUTER la fonction createMatchId
+    repairInconsistentTeamStates // ← NOUVELLE fonction de réparation
 };
