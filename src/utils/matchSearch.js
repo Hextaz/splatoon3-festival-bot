@@ -6,6 +6,7 @@ const scoreTracker = require('./scoreTracker');
 const BO3Generator = require('./bo3Generator');
 const matchHistoryManager = require('./matchHistoryManager');
 const { safeUpdate, safeReply } = require('../utils/responseUtils');
+const DataAdapter = require('./dataAdapter');
 
 // File d'attente pour les équipes en recherche par guild
 const searchingTeamsByGuild = new Map(); // guildId -> Array<searchEntry>
@@ -676,7 +677,36 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
             updatedTeam1.currentBO3 = bo3Data;
             updatedTeam2.currentBO3 = bo3Data;
         }
-        
+
+        // 🎯 NOUVEAU: Sauvegarder le match dans la base de données
+        try {
+            const adapter = new DataAdapter(guildId);
+            const matchData = {
+                team1Name: updatedTeam1.name,
+                team2Name: updatedTeam2.name,
+                team1Camp: updatedTeam1.camp,
+                team2Camp: updatedTeam2.camp,
+                multiplier: multiplier,
+                bo3: bo3Data ? bo3Data.games.map(game => ({
+                    map: game.mapKey,
+                    mode: game.modeKey
+                })) : [],
+                status: 'in_progress',
+                createdAt: new Date(),
+                guildId: guildId
+            };
+            
+            const savedMatch = await adapter.saveMatch(matchData);
+            console.log(`💾 Match sauvegardé dans la BD avec ID: ${savedMatch._id}`);
+            
+            // Stocker l'ID du match dans les équipes pour référence future
+            updatedTeam1.currentMatchId = savedMatch._id.toString();
+            updatedTeam2.currentMatchId = savedMatch._id.toString();
+        } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde du match:', error);
+            // Le match peut continuer même si la sauvegarde échoue
+        }
+
         // Sauvegarder immédiatement
         saveTeams(guildId);
         
@@ -882,12 +912,31 @@ setInterval(async () => {
 
 // Fonction pour terminer un match et libérer les équipes
 function finishMatch(team1Name, team2Name, guildId) {
-    return withTeamLock([team1Name, team2Name], 'finishMatch', guildId, () => {
+    return withTeamLock([team1Name, team2Name], 'finishMatch', guildId, async () => {
         console.log(`[TRANSACTION] Début fin de match: ${team1Name} vs ${team2Name}`);
         
         const allTeams = getAllTeams(guildId);
         const team1 = allTeams.find(t => t.name === team1Name);
         const team2 = allTeams.find(t => t.name === team2Name);
+        
+        // 🎯 NOUVEAU: Mettre à jour le statut du match dans la BD
+        try {
+            const adapter = new DataAdapter(guildId);
+            const currentMatches = await adapter.getMatches();
+            const match = currentMatches.find(m => 
+                (m.team1Name === team1Name && m.team2Name === team2Name) ||
+                (m.team1Name === team2Name && m.team2Name === team1Name)
+            );
+            
+            if (match) {
+                match.status = 'completed';
+                match.completedAt = new Date();
+                await adapter.saveMatch(match);
+                console.log(`💾 Statut du match mis à jour: completed`);
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors de la mise à jour du match:', error);
+        }
         
         // Timestamp de fin
         const now = Date.now();
@@ -898,12 +947,16 @@ function finishMatch(team1Name, team2Name, guildId) {
             team1.busy = false;
             team1.currentOpponent = null;
             team1.currentMatchMultiplier = null;
+            team1.currentMatchId = null; // Nettoyer l'ID du match
+            team1.currentBO3 = null; // Nettoyer le BO3
         }
         
         if (team2) {
             team2.busy = false;
             team2.currentOpponent = null;
             team2.currentMatchMultiplier = null;
+            team2.currentMatchId = null; // Nettoyer l'ID du match
+            team2.currentBO3 = null; // Nettoyer le BO3
         }
         
         // Nettoyer l'historique ancien (optionnel, pour éviter l'accumulation)
