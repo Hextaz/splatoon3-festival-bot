@@ -1506,23 +1506,13 @@ const handleConfirmButton = async (interaction) => {
         let matchChannelId = null;
         if (team1.matchChannelId) {
             matchChannelId = team1.matchChannelId;
-            team1.matchChannelId = null;
         } else if (team2.matchChannelId) {
             matchChannelId = team2.matchChannelId;
-            team2.matchChannelId = null;
         }
         
-        // Terminer le match (libérer les équipes)
-        team1.busy = false;
-        team1.currentOpponent = null;
-        team1.currentMatchMultiplier = null;
-        
-        team2.busy = false;
-        team2.currentOpponent = null;
-        team2.currentMatchMultiplier = null;
-        
-        // Sauvegarder les modifications
-        saveTeams(guildId);
+        // Terminer le match proprement (libérer les équipes + mettre à jour le statut BD)
+        const { finishMatch } = require('./matchSearch');
+        await finishMatch(team1Name, team2Name, guildId);
         
         // Programmer la suppression du salon de match s'il existe
         if (matchChannelId) {

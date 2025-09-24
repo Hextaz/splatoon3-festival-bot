@@ -173,17 +173,19 @@ function updateScores(camp1Result, camp2Result, camp1Name, camp2Name, guildId, m
             camp: team2.camp,
             result: camp2Result
         },
-        winner: camp1Result === 'win' ? team1.camp : team2.camp,
+        winner: camp1Result === 'V' ? team1.camp : team2.camp,
         team1Camp: team1.camp,
         team2Camp: team2.camp,
         multiplier: multiplier
     });
 
     // Attribuer les points au camp gagnant
-    if (camp1Result === 'win') {
+    if (camp1Result === 'V') {
         scoreTracker.scores[team1.camp] += pointsToAward;
-    } else if (camp2Result === 'win') {
+        console.log(`📊 Points ajoutés: ${pointsToAward} pour ${team1.camp} (${camp1Name} victoire)`);
+    } else if (camp2Result === 'V') {
         scoreTracker.scores[team2.camp] += pointsToAward;
+        console.log(`📊 Points ajoutés: ${pointsToAward} pour ${team2.camp} (${camp2Name} victoire)`);
     }
 
     // Sauvegarder les scores

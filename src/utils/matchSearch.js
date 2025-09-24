@@ -890,70 +890,12 @@ function cleanupSearch(teamName, guildId) {
     return false;
 }
 
-// Complètement repenser l'intervalle de recherche de match
-let searchProcessRunning = false;
-let lastQueueLog = 0;
-let lastQueueSize = 0;
+// Variables du système automatique supprimé (conservées pour éviter les erreurs)
+// Le matchmaking utilise maintenant exclusivement le système de scores avec findMatch()
 
-setInterval(async () => {
-    // Ne pas lancer plusieurs processus de recherche simultanément
-    if (searchProcessRunning) return;
-    
-    try {
-        searchProcessRunning = true;
-        
-        // Traiter chaque guilde séparément
-        const guilds = searchingTeamsByGuild.keys();
-        
-        for (const guildId of guilds) {
-            const searchingTeams = getSearchingTeamsForGuild(guildId);
-            
-            // Log seulement si la taille a changé ou après au moins 5 minutes
-            const now = Date.now();
-            const fiveMinutes = 5 * 60 * 1000;
-            if (searchingTeams.length > 0 && 
-                (searchingTeams.length !== lastQueueSize || now - lastQueueLog > fiveMinutes)) {
-                console.log(`[Guild ${guildId}] État de la file d'attente: ${searchingTeams.length} équipes en recherche`);
-                lastQueueLog = now;
-                lastQueueSize = searchingTeams.length;
-            }
-            
-            // Vérifier s'il y a au moins 2 équipes en recherche
-            if (searchingTeams.length < 2) {
-                continue;
-            }
-            
-            // Prendre simplement les deux premières équipes et essayer de les mettre en match
-            const entry1 = searchingTeams[0];
-            const entry2 = searchingTeams[1];
-            
-            // Vérifier si les équipes existent toujours et ne sont pas déjà en match
-            const teams = getAllTeams(guildId);
-            const team1 = teams.find(t => t.name === entry1.team.name);
-            const team2 = teams.find(t => t.name === entry2.team.name);
-            
-            if (!team1 || !team2 || team1.busy || team2.busy || 
-                team1.currentOpponent || team2.currentOpponent) {
-                // Si l'une des équipes n'est pas disponible, la retirer de la file d'attente
-                if (!team1 || team1.busy || team1.currentOpponent) {
-                    searchingTeams.splice(0, 1);
-                }
-                if (!team2 || team2.busy || team2.currentOpponent) {
-                    const index2 = searchingTeams.indexOf(entry2);
-                    if (index2 !== -1) searchingTeams.splice(index2, 1);
-                }
-                continue;
-            }
-            
-            // Créer le match (avec le nouveau mécanisme de verrouillage)
-            console.log(`Tentative de match entre ${team1.name} et ${team2.name}`);
-            await createMatch(entry1.interaction, team1, team2);
-        }
-        
-    } finally {
-        searchProcessRunning = false;
-    }
-}, 3000); // Vérifier plus fréquemment (toutes les 3 secondes)
+// ANCIEN SYSTÈME AUTOMATIQUE SUPPRIMÉ
+// Le matchmaking se fait maintenant exclusivement via le système de scores (setInterval précédent)
+// qui utilise findMatch() avec calcul anti-répétition
 
 // Fonction pour terminer un match et libérer les équipes
 function finishMatch(team1Name, team2Name, guildId) {
