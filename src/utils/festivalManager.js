@@ -1096,11 +1096,29 @@ async function deactivateFestivalNow(festival, client) {
                 console.log('🧹 DÉBUT DU NETTOYAGE AUTOMATIQUE DE FIN DE FESTIVAL');
                 
                 try {
+                    // 🛡️ PROTECTION: Vérifier qu'il n'y a pas de matchs en cours avant nettoyage
+                    const teamManager = require('./teamManager');
+                    const allTeams = teamManager.getAllTeams(guild.id);
+                    const teamsInMatch = allTeams.filter(team => team.busy || team.currentOpponent);
+                    
+                    if (teamsInMatch.length > 0) {
+                        console.warn(`⚠️ NETTOYAGE RETARDÉ: ${teamsInMatch.length} équipe(s) encore en match`);
+                        teamsInMatch.forEach(team => {
+                            console.log(`  🎮 ${team.name} vs ${team.currentOpponent || 'inconnu'}`);
+                        });
+                        
+                        // Reporter le nettoyage de 2 minutes
+                        console.log('⏰ Nouveau délai: 2 minutes...');
+                        setTimeout(arguments.callee, 120000); // Se rappeler récursivement
+                        return;
+                    }
+                    
+                    console.log('✅ Aucun match en cours, procédure de nettoyage...');
+                    
                     // Nettoyage complet
                     await resetFestivalData(guild);
                     
                     // S'assurer que le système d'équipes est bien nettoyé
-                    const teamManager = require('./teamManager');
                     await teamManager.clearAllTeams(guild.id);
                     
                     // Supprimer complètement le festival

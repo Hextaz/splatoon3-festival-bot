@@ -279,6 +279,32 @@ class DataAdapter {
         }
     }
 
+    // 🎯 NOUVELLE MÉTHODE: Récupérer les matchs actifs (en cours)
+    async getActiveMatches() {
+        if (isMongoDBAvailable()) {
+            const festival = await this.getFestival();
+            if (!festival) return [];
+
+            // Chercher les matchs avec status 'in_progress' pour ce serveur et ce festival
+            const activeMatches = await Match.find({
+                guildId: this.guildId,
+                festivalId: festival._id,
+                status: 'in_progress'
+            }).lean(); // .lean() pour obtenir des objets JS simples
+
+            console.log(`🔍 getActiveMatches: ${activeMatches.length} match(s) actif(s) trouvé(s) pour guild ${this.guildId}`);
+            activeMatches.forEach(match => {
+                console.log(`  📋 Match: ${match.team1Name} vs ${match.team2Name} (ID: ${match._id})`);
+            });
+
+            return activeMatches;
+        } else {
+            // Mode JSON: chercher les matchs non terminés
+            const matches = await this.getMatches();
+            return matches.filter(match => match.status === 'in_progress' || !match.status);
+        }
+    }
+
     async clearAllMatches() {
         if (isMongoDBAvailable()) {
             const result = await Match.deleteMany({ guildId: this.guildId });

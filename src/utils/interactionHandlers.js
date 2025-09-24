@@ -1252,6 +1252,12 @@ const handleResultButton = async (interaction) => {
         // Déterminer si c'est la première déclaration ou une confirmation
         const pendingResults = getPendingResultsForGuild(guildId);
         if (!pendingResults.has(matchId)) {
+            // 🔍 LOGGING: Première déclaration de résultat
+            console.log(`📝 DÉCLARATION RÉSULTAT: ${matchId}`);
+            console.log(`  👤 Déclarant: ${interaction.user.tag} (${interaction.user.id})`);
+            console.log(`  🏆 Résultat: ${userTeam.name} - ${result === 'win' ? 'VICTOIRE' : 'DÉFAITE'}`);
+            console.log(`  ⏰ Timestamp: ${new Date().toISOString()}`);
+            
             // Première déclaration
             const userResult = result === 'win' ? 'V' : 'D';
             const opponentResult = userResult === 'V' ? 'D' : 'V';
@@ -1262,7 +1268,9 @@ const handleResultButton = async (interaction) => {
                 declaringTeamResult: userResult,
                 opponentTeam: opponentTeam.name,
                 opponentTeamResult: opponentResult,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                declaringUserId: interaction.user.id, // 🛡️ Traçabilité utilisateur
+                matchChannelId: userTeam.matchChannelId || opponentTeam.matchChannelId
             });
 
             await savePendingResults(guildId);
@@ -1514,7 +1522,7 @@ const handleConfirmButton = async (interaction) => {
         team2.currentMatchMultiplier = null;
         
         // Sauvegarder les modifications
-        saveTeams();
+        saveTeams(guildId);
         
         // Programmer la suppression du salon de match s'il existe
         if (matchChannelId) {

@@ -111,6 +111,43 @@ async function loadTeams(guildId) {
             console.log(`🔍 loadTeams: currentFestival = ${currentFestival ? currentFestival.title : 'null'}`);
             console.log(`🔍 loadTeams: Équipes totales en base avant filtrage: ${allTeamsFromDB.length}`);
             
+            // 🛡️ PROTECTION: Détecter et nettoyer les doublons d'équipes
+            const teamNamesCount = {};
+            const duplicates = [];
+            allTeamsFromDB.forEach(team => {
+                const key = `${team.name}_${team.guildId}`;
+                if (!teamNamesCount[key]) {
+                    teamNamesCount[key] = [];
+                }
+                teamNamesCount[key].push(team);
+            });
+            
+            // Identifier les doublons
+            for (const [key, teams] of Object.entries(teamNamesCount)) {
+                if (teams.length > 1) {
+                    console.warn(`🚨 DOUBLON DÉTECTÉ: ${teams.length} équipes "${teams[0].name}" trouvées`);
+                    duplicates.push(...teams.slice(1)); // Garder le premier, marquer les autres comme doublons
+                }
+            }
+            
+            // Supprimer les doublons de la base de données
+            if (duplicates.length > 0) {
+                console.log(`🧹 Nettoyage de ${duplicates.length} équipe(s) en doublon...`);
+                for (const duplicate of duplicates) {
+                    try {
+                        await adapter.deleteTeam(duplicate.id || duplicate._id);
+                        console.log(`✅ Équipe doublon "${duplicate.name}" (${duplicate.id || duplicate._id}) supprimée`);
+                    } catch (error) {
+                        console.error(`❌ Erreur suppression doublon "${duplicate.name}":`, error);
+                    }
+                }
+                // Recharger les données après nettoyage
+                const cleanedTeamsData = await adapter.getTeams();
+                allTeamsFromDB.length = 0;
+                allTeamsFromDB.push(...Object.values(cleanedTeamsData || {}));
+                console.log(`✅ ${duplicates.length} doublon(s) nettoyé(s), ${allTeamsFromDB.length} équipes restantes`);
+            }
+            
             let filteredTeams = allTeamsFromDB;
             
             // Si un festival est actif, ne charger que les équipes de ce festival

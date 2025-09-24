@@ -631,6 +631,12 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         return false;
     }
     
+    // 🔍 LOGGING DÉTAILLÉ pour traçabilité
+    const matchId = createMatchId(team1.name, team2.name);
+    console.log(`🎯 CRÉATION MATCH: ${matchId} - Guild: ${guildId}`);
+    console.log(`  📊 Équipe 1: ${team1.name} (busy: ${team1.busy}, opponent: ${team1.currentOpponent})`);
+    console.log(`  📊 Équipe 2: ${team2.name} (busy: ${team2.busy}, opponent: ${team2.currentOpponent})`);
+    
     // Utiliser le nouveau mécanisme de verrouillage avec les équipes mises à jour
     return await withTeamLock([team1.name, team2.name], 'createMatch', guildId, async () => {
         const allTeams = getAllTeams(guildId);
@@ -639,12 +645,12 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
 
         // Ajouter une vérification de sécurité :
         if (!updatedTeam1 || !updatedTeam2) {
-            console.error(`ERREUR: Équipe(s) introuvable(s): ${team1.name}, ${team2.name}`);
+            console.error(`❌ MATCH ${matchId} ANNULÉ: Équipe(s) introuvable(s): ${team1.name}, ${team2.name}`);
             return false;
         }
         
         if (updatedTeam1.name === updatedTeam2.name) {
-            console.error(`ERREUR: Tentative de match d'une équipe avec elle-même: ${updatedTeam1.name}`);
+            console.error(`❌ MATCH ${matchId} ANNULÉ: Tentative de match d'une équipe avec elle-même: ${updatedTeam1.name}`);
             return false;
         }
         
@@ -739,6 +745,23 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
             // Stocker l'ID du salon de match dans les deux équipes
             team1.matchChannelId = matchChannel.id;
             team2.matchChannelId = matchChannel.id;
+            
+            // 🛡️ IMPORTANT: Mettre à jour le match en BD avec l'ID du salon
+            try {
+                const adapter = new DataAdapter(guildId);
+                const savedMatch = await adapter.getMatches();
+                const currentMatch = savedMatch.find(m => m._id?.toString() === team1.currentMatchId);
+                
+                if (currentMatch) {
+                    currentMatch.matchChannelId = matchChannel.id;
+                    await adapter.saveMatch(currentMatch);
+                    console.log(`💾 Match mis à jour avec matchChannelId: ${matchChannel.id}`);
+                } else {
+                    console.warn(`⚠️ Match non trouvé pour mise à jour du matchChannelId`);
+                }
+            } catch (error) {
+                console.error('❌ Erreur mise à jour matchChannelId:', error);
+            }
         }
         
         // Récupérer les rôles pour les mentions
@@ -1207,8 +1230,28 @@ async function verifyAndCleanupMatchChannels(guild) {
         );
         
         for (const [channelId, channel] of matchChannels) {
-            // Un salon est orphelin seulement s'il n'est ni référencé ni utilisé par un match actif
-            const isOrphan = !referencedChannelIds.has(channelId) && !activeMatchChannelIds.has(channelId);
+            // 🛡️ AMÉLIORATION: Analyser le nom du salon pour identifier les équipes potentielles
+            const channelName = channel.name;
+            const teamNamesFromChannel = extractTeamNamesFromChannelName(channelName);
+            
+            // Vérifier si les équipes du salon existent et étaient potentiellement en match
+            let wasActiveMatch = false;
+            if (teamNamesFromChannel.length === 2) {
+                const [team1Name, team2Name] = teamNamesFromChannel;
+                const team1 = allTeams.find(t => t.name === team1Name);
+                const team2 = allTeams.find(t => t.name === team2Name);
+                
+                // Si les deux équipes existent, c'était potentiellement un match actif
+                if (team1 && team2) {
+                    console.log(`🔍 Salon ${channelName}: équipes ${team1Name} et ${team2Name} trouvées`);
+                    wasActiveMatch = true;
+                }
+            }
+            
+            // Un salon est orphelin seulement s'il n'est ni référencé, ni utilisé par un match actif, ET n'était pas un match interrompu
+            const isOrphan = !referencedChannelIds.has(channelId) && 
+                           !activeMatchChannelIds.has(channelId) && 
+                           !wasActiveMatch;
             
             if (isOrphan) {
                 console.log(`🧹 Salon de match orphelin détecté: ${channel.name}, suppression...`);
@@ -1226,6 +1269,14 @@ async function verifyAndCleanupMatchChannels(guild) {
                 }
             } else if (activeMatchChannelIds.has(channelId)) {
                 console.log(`🎮 Salon de match actif préservé: ${channel.name} (match en cours)`);
+            } else if (wasActiveMatch) {
+                console.log(`⚠️ Salon de match interrompu préservé: ${channel.name} (équipes ${teamNamesFromChannel.join(' vs ')} trouvées)`);
+                // Optionnel: Informer les joueurs de la situation
+                try {
+                    await channel.send(`⚠️ **Match interrompu détecté**\nCe salon sera préservé car les équipes ${teamNamesFromChannel.join(' et ')} existent toujours. Vous pouvez continuer votre match ou contacter un admin.`);
+                } catch (error) {
+                    console.error(`Erreur lors de l'envoi du message dans ${channel.name}:`, error);
+                }
             }
         }
         
@@ -1349,6 +1400,24 @@ async function repairMatchStates(guild) {
     }
 }
 
+// Fonction utilitaire pour extraire les noms d'équipes du nom d'un salon de match
+function extractTeamNamesFromChannelName(channelName) {
+    // Format attendu: "match-team1-vs-team2" ou "match-team1-team2"
+    const match = channelName.match(/^match-(.+?)-vs-(.+?)$/) || channelName.match(/^match-(.+?)-(.+?)$/);
+    if (match) {
+        return [match[1], match[2]];
+    }
+    
+    // Fallback: essayer de détecter le pattern avec "vs" n'importe où
+    const vsMatch = channelName.replace(/^match-/, '').split('-vs-');
+    if (vsMatch.length === 2) {
+        return vsMatch;
+    }
+    
+    console.warn(`⚠️ Impossible d'extraire les noms d'équipes du salon: ${channelName}`);
+    return [];
+}
+
 // Fonction utilitaire pour créer un ID de match unique
 function createMatchId(team1Name, team2Name) {
     const timestamp = Date.now();
@@ -1357,23 +1426,80 @@ function createMatchId(team1Name, team2Name) {
 }
 
 // Fonction pour réparer les états incohérents des équipes
-async function repairInconsistentTeamStates(guildId) {
+async function repairInconsistentTeamStates(guildId, guild = null) {
     console.log(`🔧 Vérification et réparation des états incohérents pour guild ${guildId}...`);
     
     const allTeams = getAllTeams(guildId);
     let repairedCount = 0;
     
-    allTeams.forEach(team => {
+    for (const team of allTeams) {
         let needsRepair = false;
         
-        // Cas 1: busy=true mais pas d'adversaire
+        // Cas 1: busy=true mais pas d'adversaire - ESSAYER DE RECONSTITUER LE MATCH
         if (team.busy && !team.currentOpponent) {
             console.warn(`🔧 RÉPARATION: Équipe ${team.name} busy sans adversaire`);
-            team.busy = false;
-            team.currentMatchMultiplier = null;
-            team.currentMatchId = null;
-            team.currentBO3 = null;
-            needsRepair = true;
+            
+            // 🎯 NOUVELLE LOGIQUE: Reconstituer le match depuis la base de données Match
+            let matchReconstituted = false;
+            
+            try {
+                const DataAdapter = require('./dataAdapter');
+                const adapter = new DataAdapter(guildId);
+                
+                // Chercher les matchs en cours où cette équipe participe
+                const activeMatches = await adapter.getActiveMatches(); // Nouvelle méthode à créer
+                const teamMatch = activeMatches.find(match => 
+                    match.team1Name === team.name || match.team2Name === team.name
+                );
+                
+                if (teamMatch) {
+                    const opponentName = teamMatch.team1Name === team.name ? teamMatch.team2Name : teamMatch.team1Name;
+                    const opponent = allTeams.find(t => t.name === opponentName);
+                    
+                    if (opponent) {
+                        console.log(`🔄 RECONSTITUTION DEPUIS BD: Match ${team.name} vs ${opponentName} (ID: ${teamMatch._id})`);
+                        
+                        // Reconstituer le match des deux côtés
+                        team.currentOpponent = opponentName;
+                        team.currentMatchId = teamMatch._id.toString();
+                        team.currentMatchMultiplier = teamMatch.multiplier || 1;
+                        
+                        opponent.currentOpponent = team.name;
+                        opponent.busy = true;
+                        opponent.currentMatchId = teamMatch._id.toString();
+                        opponent.currentMatchMultiplier = teamMatch.multiplier || 1;
+                        
+                        // Reconstituer les IDs de salon si disponibles
+                        if (teamMatch.matchChannelId) {
+                            team.matchChannelId = teamMatch.matchChannelId;
+                            opponent.matchChannelId = teamMatch.matchChannelId;
+                        }
+                        
+                        matchReconstituted = true;
+                        needsRepair = true;
+                        
+                        console.log(`✅ Match BD reconstitué: ${team.name} vs ${opponentName} (Match ID: ${teamMatch._id})`);
+                    } else {
+                        console.warn(`⚠️ Adversaire ${opponentName} introuvable pour reconstitution BD`);
+                    }
+                } else {
+                    console.log(`🔍 Aucun match actif trouvé en BD pour ${team.name}`);
+                }
+                
+            } catch (error) {
+                console.error(`❌ Erreur lors de la reconstitution BD pour ${team.name}:`, error);
+            }
+            
+            // Si reconstitution échouée, remettre à zéro
+            if (!matchReconstituted) {
+                console.warn(`❌ Impossible de reconstituer le match pour ${team.name}, remise à zéro`);
+                team.busy = false;
+                team.currentMatchMultiplier = null;
+                team.currentMatchId = null;
+                team.currentBO3 = null;
+                team.matchChannelId = null;
+                needsRepair = true;
+            }
         }
         
         // Cas 2: adversaire défini mais pas busy
@@ -1397,10 +1523,26 @@ async function repairInconsistentTeamStates(guildId) {
             }
         }
         
+        // 🛡️ NOUVEAU Cas 4: Salon de match référencé mais n'existe plus
+        if (team.matchChannelId) {
+            // Vérifier si le salon existe encore (sera vérifié lors du nettoyage des salons)
+            // Pour l'instant, on log juste pour surveillance
+            console.log(`🔍 Équipe ${team.name} référence le salon ${team.matchChannelId}`);
+        }
+        
+        // 🛡️ NOUVEAU Cas 5: Équipe avec des propriétés de match incohérentes  
+        if ((team.currentMatchId || team.currentMatchMultiplier || team.currentBO3) && !team.busy) {
+            console.warn(`🔧 RÉPARATION: Équipe ${team.name} a des propriétés de match mais n'est pas busy`);
+            team.currentMatchId = null;
+            team.currentMatchMultiplier = null;
+            team.currentBO3 = null;  
+            needsRepair = true;
+        }
+        
         if (needsRepair) {
             repairedCount++;
         }
-    });
+    }
     
     if (repairedCount > 0) {
         saveTeams(guildId);

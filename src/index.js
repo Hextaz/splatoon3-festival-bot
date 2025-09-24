@@ -232,7 +232,7 @@ async function initializeManagersForGuild(guildId, guild = null) {
             const matchSearch = require('./utils/matchSearch');
             
             // 1. Réparer les états des équipes
-            const repairedTeams = await matchSearch.repairInconsistentTeamStates(guildId);
+            const repairedTeams = await matchSearch.repairInconsistentTeamStates(guildId, guild);
             
             // 2. Nettoyer les salons orphelins si on a l'objet guild
             let channelsDeleted = 0;
