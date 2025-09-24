@@ -143,7 +143,16 @@ function updateScores(camp1Result, camp2Result, camp1Name, camp2Name, guildId, m
     const team2 = allTeams.find(t => t.name === camp2Name);
     
     if (!team1 || !team2) {
-        throw new Error("Team not found");
+        console.error('❌ Debug scoreTracker - Team not found:', {
+            guildId,
+            camp1Name,
+            camp2Name,
+            availableTeams: allTeams.map(t => t.name),
+            totalTeams: allTeams.length,
+            team1Found: !!team1,
+            team2Found: !!team2
+        });
+        throw new Error(`Team not found: ${!team1 ? camp1Name : ''} ${!team2 ? camp2Name : ''} - Available teams: ${allTeams.map(t => t.name).join(', ')}`);
     }
 
     const basePoints = 1; // Points de base par victoire

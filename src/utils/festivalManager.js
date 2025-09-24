@@ -4,7 +4,7 @@ const Festival = require('../models/Festival');
 // const { teams, leaveTeam } = require('./teamManager'); // Import circulaire - utiliser require() dynamique
 const scoreTracker = require('./scoreTracker');
 const scheduler = require('node-schedule');
-const { ChannelType } = require('discord.js');
+const { ChannelType, EmbedBuilder } = require('discord.js');
 const { loadConfig } = require('../commands/config');
 const { getGuildDatabase } = require('./database');
 const DataAdapter = require('./dataAdapter');
@@ -439,10 +439,10 @@ async function resetFestivalData(guild) {
     if (allTeams.length > 0 && guild) {
         
         // Utiliser le gestionnaire centralisé pour le rôle Team Leader
-        const { getOrCreateTeamLeaderRole } = require('./teamLeaderRoleManager');
+        const { ensureTeamLeaderRole } = require('./teamLeaderRoleManager');
         let leaderRole = null;
         try {
-            leaderRole = await getOrCreateTeamLeaderRole(guild);
+            leaderRole = await ensureTeamLeaderRole(guild);
         } catch (error) {
             console.error('❌ Erreur récupération rôle Team Leader:', error);
         }

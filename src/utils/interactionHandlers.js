@@ -720,10 +720,10 @@ const handleLeaveTeam = async (interaction) => {
         }
         
         // Utiliser le gestionnaire centralisé pour le rôle Team Leader
-        const { getOrCreateTeamLeaderRole } = require('./teamLeaderRoleManager');
+        const { ensureTeamLeaderRole } = require('./teamLeaderRoleManager');
         let leaderRole = null;
         try {
-            leaderRole = await getOrCreateTeamLeaderRole(guild);
+            leaderRole = await ensureTeamLeaderRole(guild);
         } catch (error) {
             console.error('❌ Erreur récupération rôle Team Leader:', error);
         }
@@ -1414,6 +1414,26 @@ const handleConfirmButton = async (interaction) => {
         // Récupérer les équipes
         const team1 = findTeamByName(team1Name, interaction.guild.id);
         const team2 = findTeamByName(team2Name, interaction.guild.id);
+        
+        // Vérifier que les équipes existent encore
+        if (!team1 || !team2) {
+            console.error('❌ Teams not found during confirmation:', {
+                team1Name,
+                team2Name,
+                team1Found: !!team1,
+                team2Found: !!team2,
+                guildId: interaction.guild.id
+            });
+            
+            // Nettoyer le résultat en attente puisque les équipes n'existent plus
+            pendingResults.delete(matchId);
+            await savePendingResults(guildId);
+            
+            return await safeReply(interaction, {
+                content: `❌ Impossible de confirmer le résultat : une ou plusieurs équipes n'existent plus.\n\n**Équipes recherchées:**\n- ${team1Name}: ${team1 ? '✅ Trouvée' : '❌ Introuvable'}\n- ${team2Name}: ${team2 ? '✅ Trouvée' : '❌ Introuvable'}\n\nLe résultat en attente a été supprimé.`,
+                ephemeral: true
+            });
+        }
         
         // Vérifier si l'utilisateur est capitaine de l'équipe adverse
         const userTeam = findTeamByMember(interaction.user.id, interaction.guild.id);
