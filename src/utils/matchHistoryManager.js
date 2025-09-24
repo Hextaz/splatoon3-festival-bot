@@ -231,7 +231,7 @@ function calculateOpponentScore(teamName, potentialOpponent, guildId) {
         }
     } else {
         score += 30; // Bonus pour jamais affronté
-        console.log(`🔍 Anti-répétition ${teamName} vs ${potentialOpponent.name}: ✅ Jamais affrontés (+30)`);}
+        console.log(`🔍 Anti-répétition ${teamName} vs ${potentialOpponent.name}: ✅ Jamais affrontés (+30)`);
     }
     
     // Bonus temps d'attente
