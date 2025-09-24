@@ -446,18 +446,26 @@ function findMatch(team, guildId) {
         const searchEntry = searchingTeams.find(entry => entry.team.name === t.name);
         const waitTime = searchEntry ? (Date.now() - searchEntry.startTime) : 0;
         
+        // CORRECTION: Calculer les scores dans les deux sens pour des logs complets
+        const scoreAvsB = calculateOpponentScore(team.name, { ...t, waitTime }, guildId);
+        const scoreBvsA = calculateOpponentScore(t.name, { ...team, waitTime: 0 }, guildId);
+        
         return {
             ...t,
             waitTime: waitTime,
-            score: calculateOpponentScore(team.name, { ...t, waitTime }, guildId)
+            score: scoreAvsB,
+            reverseScore: scoreBvsA  // Score dans l'autre sens
         };
     });
     
     // Trier par score décroissant (meilleur score en premier)
     availableTeamsWithScores.sort((a, b) => b.score - a.score);
     
-    console.log(`Scores de matchmaking pour ${team.name}:`, 
-        availableTeamsWithScores.slice(0, 3).map(t => `${t.name}: ${t.score}`).join(', '));
+    // AMÉLIORATION: Logs bidirectionnels pour debug complet
+    console.log(`📊 Scores de matchmaking pour ${team.name}:`);
+    availableTeamsWithScores.slice(0, 3).forEach(t => {
+        console.log(`  ${team.name} vs ${t.name}: ${t.score.toFixed(1)} | ${t.name} vs ${team.name}: ${t.reverseScore.toFixed(1)}`);
+    });
     
     // Système de sélection pondérée intelligente
     return selectOpponentWithWeighting(team, availableTeamsWithScores, guildId);
@@ -563,8 +571,14 @@ function selectOpponentWithWeighting(team, availableTeamsWithScores, guildId) {
     for (const { pool, name } of allPools) {
         if (pool.length > 0) {
             pool.sort((a, b) => b.waitTime - a.waitTime);
-            console.log(`${team.name} vs ${pool[0].name} - Pool: ${name}, Score: ${pool[0].score}, Attente: ${Math.round(pool[0].waitTime/1000)}s`);
-            return pool[0];
+            // AMÉLIORATION: Afficher les scores bidirectionnels dans la sélection finale
+            const selected = pool[0];
+            console.log(`🎯 SÉLECTION: ${team.name} vs ${selected.name}`);
+            console.log(`   📊 Pool: ${name}`);
+            console.log(`   📈 Score ${team.name}→${selected.name}: ${selected.score.toFixed(1)}`);
+            console.log(`   📈 Score ${selected.name}→${team.name}: ${selected.reverseScore ? selected.reverseScore.toFixed(1) : 'N/A'}`);
+            console.log(`   ⏱️ Attente: ${Math.round(selected.waitTime/1000)}s`);
+            return selected;
         }
     }
     
@@ -947,18 +961,25 @@ function finishMatch(team1Name, team2Name, guildId) {
         }
         
         // Nettoyer l'historique ancien (optionnel, pour éviter l'accumulation)
-        const cleanupThreshold = Date.now() - (24 * 60 * 60 * 1000); // 24 heures
-        
-        [team1Name, team2Name].forEach(teamName => {
-            const history = matchHistoryManager.teamMatchHistory.get(teamName);
-            if (history) {
-                const filteredHistory = history.filter(match => match.timestamp > cleanupThreshold);
-                if (filteredHistory.length !== history.length) {
-                    matchHistoryManager.teamMatchHistory.set(teamName, filteredHistory);
-                    console.log(`Historique nettoyé pour ${teamName}: ${history.length - filteredHistory.length} anciens matchs supprimés`);
+        try {
+            const cleanupThreshold = Date.now() - (24 * 60 * 60 * 1000); // 24 heures
+            
+            [team1Name, team2Name].forEach(teamName => {
+                // Vérifier que matchHistoryManager et sa propriété existent
+                if (matchHistoryManager && matchHistoryManager.teamMatchHistory) {
+                    const history = matchHistoryManager.teamMatchHistory.get(teamName);
+                    if (history) {
+                        const filteredHistory = history.filter(match => match.timestamp > cleanupThreshold);
+                        if (filteredHistory.length !== history.length) {
+                            matchHistoryManager.teamMatchHistory.set(teamName, filteredHistory);
+                            console.log(`Historique nettoyé pour ${teamName}: ${history.length - filteredHistory.length} anciens matchs supprimés`);
+                        }
+                    }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.warn('⚠️ Erreur lors du nettoyage de l\'historique:', error.message);
+        }
         
         saveTeams(guildId);
         console.log(`[TRANSACTION] Match terminé avec succès: ${team1Name} vs ${team2Name}`);

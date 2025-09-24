@@ -122,13 +122,23 @@ function addMatchToHistory(team1Name, team2Name, guildId) {
         history.set(team2Name, []);
     }
     
-    // Ajouter les adversaires
-    history.get(team1Name).push(team2Name);
-    history.get(team2Name).push(team1Name);
+    // Obtenir les numéros de match actuels AVANT l'incrémentation
+    const team1MatchNumber = (counters.get(team1Name) || 0) + 1;
+    const team2MatchNumber = (counters.get(team2Name) || 0) + 1;
     
-    // Incrémenter les compteurs
-    counters.set(team1Name, (counters.get(team1Name) || 0) + 1);
-    counters.set(team2Name, (counters.get(team2Name) || 0) + 1);
+    // CORRECTION: Ajouter les adversaires avec le FORMAT CORRECT (objet avec opponent et matchNumber)
+    history.get(team1Name).push({
+        opponent: team2Name,
+        matchNumber: team1MatchNumber
+    });
+    history.get(team2Name).push({
+        opponent: team1Name,
+        matchNumber: team2MatchNumber
+    });
+    
+    // Incrémenter les compteurs APRÈS avoir utilisé les valeurs
+    counters.set(team1Name, team1MatchNumber);
+    counters.set(team2Name, team2MatchNumber);
     
     // Limiter l'historique pour éviter qu'il devienne trop grand
     const MAX_HISTORY = 10;
@@ -197,17 +207,31 @@ function calculateOpponentScore(teamName, potentialOpponent, guildId) {
         const lastMatchAgainst = matchesAgainstOpponent[matchesAgainstOpponent.length - 1];
         const matchesSinceLastFaceOff = currentMatchNumber - lastMatchAgainst.matchNumber;
         
+        // DEBUG: Afficher les détails du calcul anti-répétition
+        console.log(`🔍 Anti-répétition ${teamName} vs ${potentialOpponent.name}:`);
+        console.log(`   📊 Matchs historiques: ${matchesAgainstOpponent.length}`);
+        console.log(`   🎯 Dernier affrontement au match #${lastMatchAgainst.matchNumber}`);
+        console.log(`   📈 Match actuel: #${currentMatchNumber}`);
+        console.log(`   📏 Distance: ${matchesSinceLastFaceOff} matchs`);
+        
         if (matchesSinceLastFaceOff === 0) {
             score -= 100;
+            console.log(`   ❌ Pénalité: -100 (affrontement immédiat)`);
         } else if (matchesSinceLastFaceOff === 1) {
             score -= 80;
+            console.log(`   ❌ Pénalité: -80 (1 match d'écart)`);
         } else if (matchesSinceLastFaceOff === 2) {
             score -= 50;
+            console.log(`   ⚠️ Pénalité: -50 (2 matchs d'écart)`);
         } else if (matchesSinceLastFaceOff >= 3 && matchesSinceLastFaceOff <= 5) {
             score -= 20;
+            console.log(`   ⚠️ Pénalité: -20 (3-5 matchs d'écart)`);
+        } else {
+            console.log(`   ✅ Aucune pénalité (${matchesSinceLastFaceOff} matchs d'écart)`);
         }
     } else {
         score += 30; // Bonus pour jamais affronté
+        console.log(`🔍 Anti-répétition ${teamName} vs ${potentialOpponent.name}: ✅ Jamais affrontés (+30)`);}
     }
     
     // Bonus temps d'attente
