@@ -1197,24 +1197,24 @@ const handleResultButton = async (interaction) => {
         const userTeam = findTeamByMember(interaction.user.id, guildId);
         
         if (!userTeam) {
-            return await safeReply(interaction, {
+            return await safeEdit(interaction, {
                 content: "Vous n'êtes membre d'aucune équipe.",
-                ephemeral: true
+                components: []
             });
         }
         
         if (!userTeam.isLeader(interaction.user.id)) {
-            return await safeReply(interaction, {
+            return await safeEdit(interaction, {
                 content: "Seul le capitaine peut déclarer les résultats.",
-                ephemeral: true
+                components: []
             });
         }
         
         // Vérifier si l'équipe est en match
         if (!userTeam.currentOpponent) {
-            return await safeReply(interaction, {
+            return await safeEdit(interaction, {
                 content: "Votre équipe n'est pas actuellement en match.",
-                ephemeral: true
+                components: []
             });
         }
         
@@ -1334,7 +1334,57 @@ const handleResultButton = async (interaction) => {
                     // Pas de salon de match, envoi des notifications dans les canaux d'équipe à la place
                     console.log('Aucun salon de match trouvé pour ce match, utilisation des canaux d\'équipe');
                     
-                    // Le reste du code de fallback...
+                    // Fallback: envoyer dans le canal de l'équipe adverse
+                    const opponentTeamName = userTeam.name === team1Name ? team2Name : team1Name;
+                    const opponentTeamObj = userTeam.name === team1Name ? team2 : team1;
+                    
+                    if (opponentTeamObj && opponentTeamObj.channelId) {
+                        try {
+                            const opponentChannel = await interaction.guild.channels.fetch(opponentTeamObj.channelId).catch(() => null);
+                            if (opponentChannel) {
+                                const opponentCaptain = opponentTeamObj.leader;
+                                
+                                // Créer l'embed de confirmation pour le canal d'équipe
+                                const embed = new EmbedBuilder()
+                                    .setColor('#FFA500')
+                                    .setTitle('⚠️ Confirmation de résultat de match requise')
+                                    .setDescription(`L'équipe **${userTeam.name}** a déclaré une **${userResult === 'V' ? 'victoire' : 'défaite'}**.`)
+                                    .addFields(
+                                        { name: 'Résultat déclaré', value: `${userTeam.name}: ${userResult === 'V' ? 'Victoire' : 'Défaite'}\n${opponentTeamName}: ${opponentResult === 'V' ? 'Victoire' : 'Défaite'}` },
+                                        { name: 'Action requise', value: `Le capitaine <@${opponentCaptain}> doit confirmer ou contester ce résultat.` },
+                                        { name: 'Note', value: 'Seul le capitaine peut utiliser les boutons ci-dessous.' }
+                                    )
+                                    .setTimestamp();
+                                    
+                                await opponentChannel.send({
+                                    content: `<@${opponentCaptain}> 🚨 **Confirmation de résultat requise !**`,
+                                    embeds: [embed],
+                                    components: [row]
+                                });
+                                
+                                console.log(`✅ Message de confirmation envoyé dans le canal de ${opponentTeamName}`);
+                            } else {
+                                console.warn(`❌ Canal de l'équipe ${opponentTeamName} introuvable`);
+                                // Fallback: notifier l'utilisateur qu'il doit contacter l'autre équipe
+                                await safeFollowUp(interaction, {
+                                    content: `⚠️ Impossible de notifier automatiquement l'équipe adverse. Veuillez contacter le capitaine de **${opponentTeamName}** pour confirmer le résultat.`,
+                                    ephemeral: true
+                                });
+                            }
+                        } catch (channelError) {
+                            console.error('Erreur lors de l\'envoi dans le canal d\'équipe:', channelError);
+                            await safeFollowUp(interaction, {
+                                content: `⚠️ Erreur lors de la notification automatique. Veuillez contacter le capitaine de **${opponentTeamName}** pour confirmer le résultat.`,
+                                ephemeral: true
+                            });
+                        }
+                    } else {
+                        console.warn(`❌ Équipe adverse ${opponentTeamName} n'a pas de canal d'équipe`);
+                        await safeFollowUp(interaction, {
+                            content: `⚠️ L'équipe adverse n'a pas de canal d'équipe configuré. Veuillez contacter le capitaine de **${opponentTeamName}** pour confirmer le résultat.`,
+                            ephemeral: true
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('Erreur lors de la demande de confirmation:', error);
@@ -1346,9 +1396,9 @@ const handleResultButton = async (interaction) => {
         }
     } catch (error) {
         console.error('Erreur dans handleResultButton:', error);
-        await safeReply(interaction, {
+        await safeEdit(interaction, {
             content: `Une erreur s'est produite: ${error.message}`,
-            ephemeral: true
+            components: []
         });
     }
 };

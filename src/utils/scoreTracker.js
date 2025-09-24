@@ -100,7 +100,7 @@ async function loadScores(guildId) {
             console.log(`✅ Scores chargés avec DataAdapter:`, scoreTracker.scores);
         } else {
             scoreTracker.scores = { camp1: 0, camp2: 0, camp3: 0 };
-            console.log('✅ Aucun score trouvé dans MongoDB');
+            console.log('✅ Aucun score trouvé dans MongoDB, initialisation à zéro');
         }
         
         // Charger l'historique des matchs
@@ -115,6 +115,8 @@ async function loadScores(guildId) {
     }
 }
 
+
+
     // Générer un multiplicateur aléatoire pour un match
 function generateMultiplier() {
     const rand = Math.random() * 100;
@@ -124,7 +126,7 @@ function generateMultiplier() {
     return 1; // 84% de chance pour x1
 }
 
-function updateScores(camp1Result, camp2Result, camp1Name, camp2Name, guildId, multiplier = 1) {
+async function updateScores(camp1Result, camp2Result, camp1Name, camp2Name, guildId, multiplier = 1) {
     if (camp1Result === camp2Result) {
         throw new Error("Both teams cannot have the same result. Please enter different results.");
     }
@@ -188,8 +190,17 @@ function updateScores(camp1Result, camp2Result, camp1Name, camp2Name, guildId, m
         console.log(`📊 Points ajoutés: ${pointsToAward} pour ${team2.camp} (${camp2Name} victoire)`);
     }
 
-    // Sauvegarder les scores
-    saveScores(guildId);
+    // Sauvegarder les scores de manière synchrone pour éviter la perte de données
+    try {
+        await saveScores(guildId);
+        console.log('✅ Scores sauvegardés avec succès après le match');
+    } catch (error) {
+        console.error('❌ ÉCHEC CRITIQUE de sauvegarde des scores:', error);
+        console.error('Stack:', error.stack);
+        // La sauvegarde a échoué, mais MongoDB garde les données cohérentes
+        // Si MongoDB est down, le DataAdapter utilise déjà un fallback JSON
+        throw error; // Laisser l'erreur remonter pour diagnostic
+    }
     
     return scoreTracker.scores;
 }

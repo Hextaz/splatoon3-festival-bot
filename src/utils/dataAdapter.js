@@ -301,6 +301,7 @@ class DataAdapter {
         } else {
             // Mode JSON: chercher les matchs non terminés
             const matches = await this.getMatches();
+            if (!Array.isArray(matches)) return [];
             return matches.filter(match => match.status === 'in_progress' || !match.status);
         }
     }
