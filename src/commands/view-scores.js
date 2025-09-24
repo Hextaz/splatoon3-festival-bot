@@ -55,7 +55,7 @@ module.exports = {
                     },
                     {
                         name: 'Total des points',
-                        value: `**${totalPoints}** points marqués dans ${scoreTracker.getMatchHistory().length} matchs`
+                        value: `**${totalPoints}** points marqués dans ${scoreTracker.getMatchHistory(interaction.guild.id).length} matchs`
                     }
                 )
                 .setTimestamp();

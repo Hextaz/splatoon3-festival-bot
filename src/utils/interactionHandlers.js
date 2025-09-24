@@ -943,6 +943,11 @@ const handleResultEntry = async (interaction) => {
         validateResults(team1Result, team2Result);
         scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, 1, interaction.guild.id);
         
+        // MAINTENANT ajouter le match à l'historique (seulement quand les résultats sont soumis)
+        const { addMatchToHistory } = require('./matchHistoryManager');
+        addMatchToHistory(team1Name, team2Name, interaction.guild.id);
+        console.log(`✅ Match ajouté à l'historique après soumission directe: ${team1Name} vs ${team2Name}`);
+        
         // Clear the matchup to make teams available again
         clearMatchup(team1Name, team2Name, interaction.guild.id);
         
@@ -1466,6 +1471,11 @@ const handleConfirmButton = async (interaction) => {
         
         // Mettre à jour les scores avec le multiplicateur
         scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, multiplier, interaction.guild.id);
+        
+        // MAINTENANT ajouter le match à l'historique (seulement quand les résultats sont confirmés)
+        const { addMatchToHistory } = require('./matchHistoryManager');
+        addMatchToHistory(team1Name, team2Name, interaction.guild.id);
+        console.log(`✅ Match ajouté à l'historique après confirmation: ${team1Name} vs ${team2Name}`);
         
         // Créer un message de résultat détaillé
         let resultMessage = `✅ **Résultat confirmé** : ${team1Name} - ${team1Result === 'V' ? 'Victoire' : 'Défaite'}, ${team2Name} - ${team2Result === 'V' ? 'Victoire' : 'Défaite'}`;

@@ -663,8 +663,8 @@ async function createMatch(interaction, team1, team2, onMatchCreated = null) {
         const searchIndex2 = searchingTeams.findIndex(entry => entry.team.name === updatedTeam2.name);
         if (searchIndex2 !== -1) searchingTeams.splice(searchIndex2, 1);
         
-        // AJOUTER L'HISTORIQUE DU MATCH
-        addMatchToHistory(updatedTeam1.name, updatedTeam2.name, guildId);
+        // L'HISTORIQUE DU MATCH SERA AJOUTÉ SEULEMENT QUAND LES RÉSULTATS SERONT CONFIRMÉS
+        // addMatchToHistory(updatedTeam1.name, updatedTeam2.name, guildId); // DÉPLACÉ vers la confirmation des résultats
         
         // 2. Marquer les équipes comme occupées
         updatedTeam1.busy = true;
@@ -1192,7 +1192,7 @@ async function verifyAndCleanupMatchChannels(guild) {
             }
         }
         
-        // 2. Chercher les salons de match orphelins (qui ne sont référencés par aucune équipe)
+        // 2. Chercher les salons de match orphelins (qui ne sont référencés par aucune équipe OU dont les équipes ne sont plus en match)
         const matchChannels = guild.channels.cache.filter(channel => 
             channel.name.startsWith('match-') && channel.type === 0 // GuildText
         );
@@ -1201,8 +1201,16 @@ async function verifyAndCleanupMatchChannels(guild) {
             allTeams.filter(t => t.matchChannelId).map(t => t.matchChannelId)
         );
         
+        // Nouveau: obtenir les salons d'équipes actuellement en match (busy=true)
+        const activeMatchChannelIds = new Set(
+            allTeams.filter(t => t.busy && t.matchChannelId).map(t => t.matchChannelId)
+        );
+        
         for (const [channelId, channel] of matchChannels) {
-            if (!referencedChannelIds.has(channelId)) {
+            // Un salon est orphelin seulement s'il n'est ni référencé ni utilisé par un match actif
+            const isOrphan = !referencedChannelIds.has(channelId) && !activeMatchChannelIds.has(channelId);
+            
+            if (isOrphan) {
                 console.log(`🧹 Salon de match orphelin détecté: ${channel.name}, suppression...`);
                 
                 try {
@@ -1216,6 +1224,8 @@ async function verifyAndCleanupMatchChannels(guild) {
                 } catch (error) {
                     console.error(`Erreur lors de la suppression du salon orphelin ${channel.name}:`, error);
                 }
+            } else if (activeMatchChannelIds.has(channelId)) {
+                console.log(`🎮 Salon de match actif préservé: ${channel.name} (match en cours)`);
             }
         }
         
