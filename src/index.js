@@ -194,8 +194,8 @@ async function initializeManagersForGuild(guildId, guild = null) {
                 
                 // Nettoyage global des équipes et suppression du festival
                 const teamManager = require('./utils/teamManager');
-                await teamManager.clearAllTeams();
-                await festivalManager.deleteFestival();
+                await teamManager.clearAllTeams(guildId);
+                await festivalManager.deleteFestival(guildId);
                 
                 console.log('🎯 NETTOYAGE AUTOMATIQUE TERMINÉ - Festival et données supprimés');
                 

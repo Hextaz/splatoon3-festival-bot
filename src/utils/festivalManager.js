@@ -964,8 +964,8 @@ function scheduleActivation(festival, client) {
                 // Nettoyage immédiat et forcé
                 await resetFestivalData(guild);
                 const teamManager = require('./teamManager');
-                await teamManager.clearAllTeams();
-                await deleteFestival();
+                await teamManager.clearAllTeams(guild.id);
+                await deleteFestival(guild.id);
                 
                 console.log('✅ Festival expiré nettoyé avec succès');
             }
@@ -1101,10 +1101,10 @@ async function deactivateFestivalNow(festival, client) {
                     
                     // S'assurer que le système d'équipes est bien nettoyé
                     const teamManager = require('./teamManager');
-                    await teamManager.clearAllTeams();
+                    await teamManager.clearAllTeams(guild.id);
                     
                     // Supprimer complètement le festival
-                    await deleteFestival();
+                    await deleteFestival(guild.id);
                     
                     console.log('✅ Festival automatiquement nettoyé avec succès');
                     
@@ -1301,8 +1301,8 @@ async function checkAndCleanExpiredFestival(festival, client) {
         
         // Nettoyage global des équipes et suppression du festival
         const teamManager = require('./teamManager');
-        await teamManager.clearAllTeams();
-        await deleteFestival();
+        await teamManager.clearAllTeams(guildId);
+        await deleteFestival(guildId);
         
         console.log('✅ Festival expiré nettoyé automatiquement');
         return true;
