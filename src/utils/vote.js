@@ -57,6 +57,24 @@ async function saveVotes(guildId) {
     }
 }
 
+// Fonction pour sauvegarder un seul vote (évite les doublons)
+async function saveSingleVote(userId, camp, guildId) {
+    try {
+        const adapter = getDataAdapter(guildId);
+        
+        if (!adapter) {
+            throw new Error('DataAdapter non disponible - Guild ID manquant');
+        }
+
+        console.log(`💾 Sauvegarde du vote de ${userId} pour ${camp}`);
+        await adapter.saveVote(userId, camp);
+        console.log(`✅ Vote de ${userId} sauvegardé`);
+    } catch (error) {
+        console.error('❌ ERREUR lors de la sauvegarde du vote:', error);
+        throw error;
+    }
+}
+
 // Fonction pour charger les votes (MongoDB uniquement)
 async function loadVotes(guildId) {
     try {
@@ -97,11 +115,29 @@ async function loadVotes(guildId) {
     }
 }
 
-// Fonction pour voter, modifiée pour sauvegarder après chaque vote
+// Fonction pour voter, modifiée pour sauvegarder seulement le vote actuel
 function castVote(camp, userId = null, guildId) {
     const voteInstance = getVotesForGuild(guildId);
     const result = voteInstance.castVote(camp, userId);
-    saveVotes(guildId);
+    
+    // Sauvegarder seulement le vote actuel au lieu de tous les votes
+    if (userId) {
+        saveSingleVote(userId, camp, guildId);
+    }
+    
+    return result;
+}
+
+// Fonction spéciale pour forcer le changement de vote (admins uniquement)
+function forceVote(camp, userId, guildId) {
+    const voteInstance = getVotesForGuild(guildId);
+    const result = voteInstance.forceChangeVote(camp, userId);
+    
+    // Sauvegarder le vote forcé
+    if (userId) {
+        saveSingleVote(userId, camp, guildId);
+    }
+    
     return result;
 }
 
@@ -153,6 +189,7 @@ async function resetVotes(guildId) {
 
 module.exports = {
     castVote,
+    forceVote,
     getVotes,
     getWinningCamp,
     loadVotes,

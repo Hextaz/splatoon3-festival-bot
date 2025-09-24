@@ -876,12 +876,8 @@ const createTeamRole = async (interaction, team) => {
         // Utiliser la fonction centralisée 
         const teamRole = await getOrCreateTeamRole(guild, team);
         
-        // Utiliser le gestionnaire centralisé pour le rôle Team Leader
-        const { assignTeamLeaderRole } = require('./teamLeaderRoleManager');
-        
-        // Ajouter les rôles au créateur de l'équipe
+        // Ajouter le rôle d'équipe au créateur (le rôle Team Leader sera attribué par teamManager.js)
         await interaction.member.roles.add(teamRole);
-        await assignTeamLeaderRole(interaction.member, guild);
         
         return teamRole;
     } catch (error) {
@@ -941,7 +937,7 @@ const handleResultEntry = async (interaction) => {
 
     try {
         validateResults(team1Result, team2Result);
-        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, 1, interaction.guild.id);
+        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, interaction.guild.id, 1);
         
         // MAINTENANT ajouter le match à l'historique (seulement quand les résultats sont soumis)
         const { addMatchToHistory } = require('./matchHistoryManager');
@@ -1470,7 +1466,7 @@ const handleConfirmButton = async (interaction) => {
                            pendingResult.opponentTeamResult;
         
         // Mettre à jour les scores avec le multiplicateur
-        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, multiplier, interaction.guild.id);
+        scoreTracker.updateScores(team1Result, team2Result, team1Name, team2Name, interaction.guild.id, multiplier);
         
         // MAINTENANT ajouter le match à l'historique (seulement quand les résultats sont confirmés)
         const { addMatchToHistory } = require('./matchHistoryManager');

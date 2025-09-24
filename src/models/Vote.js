@@ -15,9 +15,9 @@ class Vote {
             // Si l'ID de l'utilisateur est fourni, vérifier s'il a déjà voté
             if (userId && this.userVotes.has(userId)) {
                 const previousCamp = this.userVotes.get(userId);
-                // Si l'utilisateur a voté pour un camp différent, décrémenter son vote précédent
+                // NOUVEAU : Empêcher tout changement de vote
                 if (previousCamp !== camp) {
-                    this.votes[previousCamp]--;
+                    throw new Error(`Vous avez déjà voté pour le camp ${previousCamp.replace('camp', '')}. Vous ne pouvez pas changer votre vote.`);
                 } else {
                     // L'utilisateur vote pour le même camp, pas de changement
                     return this.votes;
@@ -74,6 +74,33 @@ class Vote {
     // Restaurer les votes par utilisateur à partir d'un objet
     setUserVotes(userVotesObj) {
         this.userVotes = new Map(Object.entries(userVotesObj));
+    }
+
+    // Méthode spéciale pour forcer le changement de vote (admins uniquement)
+    forceChangeVote(camp, userId) {
+        if (!this.votes.hasOwnProperty(camp)) {
+            throw new Error("Invalid camp");
+        }
+
+        // Si l'utilisateur avait déjà voté, décrémenter son ancien vote
+        if (userId && this.userVotes.has(userId)) {
+            const previousCamp = this.userVotes.get(userId);
+            if (previousCamp !== camp) {
+                this.votes[previousCamp]--;
+            } else {
+                // Même camp, pas de changement nécessaire
+                return this.votes;
+            }
+        }
+
+        this.votes[camp]++;
+        
+        // Enregistrer le nouveau vote
+        if (userId) {
+            this.userVotes.set(userId, camp);
+        }
+
+        return this.votes;
     }
 }
 

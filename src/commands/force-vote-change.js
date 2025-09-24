@@ -1,7 +1,7 @@
 // src/commands/force-vote-change.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getCurrentFestival } = require('../utils/festivalManager');
-const { castVote } = require('../utils/vote');
+const { forceVote } = require('../utils/vote');
 const { safeReply } = require('../utils/responseUtils');
 
 module.exports = {
@@ -69,8 +69,8 @@ module.exports = {
             
             await member.roles.add(newCampRole);
             
-            // 3. Mettre à jour le vote dans le système
-            castVote(newCampId, targetUser.id, interaction.guild.id);
+            // 3. Mettre à jour le vote dans le système (forcer le changement)
+            forceVote(newCampId, targetUser.id, interaction.guild.id);
             
             // 4. Vérifier si l'utilisateur était dans une équipe incompatible
             const { findTeamByMember } = require('../utils/teamManager');
