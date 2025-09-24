@@ -269,17 +269,8 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
                 // 1. Créer ou récupérer les rôles
                 const teamRole = await getOrCreateTeamRole(guild, team);
                 
-                // 2. Créer ou récupérer le rôle Team Leader
-                let leaderRole = guild.roles.cache.find(role => role.name === 'Team Leader');
-                if (!leaderRole) {
-                    leaderRole = await guild.roles.create({
-                        name: 'Team Leader',
-                        color: '#FFD700', // Or
-                        permissions: [],
-                        reason: 'Rôle pour les capitaines d\'équipe'
-                    });
-                    console.log('Rôle Team Leader créé');
-                }
+                // 2. Utiliser le gestionnaire centralisé pour le rôle Team Leader
+                const { assignTeamLeaderRole } = require('./teamLeaderRoleManager');
                 
                 // 3. Attribuer les rôles au leader
                 const member = await guild.members.fetch(leaderId);
@@ -289,10 +280,8 @@ async function createTeam(name, leaderId, camp, guildId, isOpen = true, code = n
                         console.log(`Rôle d'équipe ${teamRole.name} attribué à ${member.user.username}`);
                     }
                     
-                    if (leaderRole) {
-                        await member.roles.add(leaderRole);
-                        console.log(`Rôle Team Leader attribué à ${member.user.username}`);
-                    }
+                    // Attribuer le rôle Team Leader avec le gestionnaire centralisé
+                    await assignTeamLeaderRole(member, guild);
                 }
                 
                 // 4. Créer le salon d'équipe

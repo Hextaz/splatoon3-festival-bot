@@ -719,8 +719,14 @@ const handleLeaveTeam = async (interaction) => {
             await interaction.member.roles.remove(teamRole);
         }
         
-        // Gérer le rôle de leader
-        const leaderRole = guild.roles.cache.find(role => role.name === 'Team Leader');
+        // Utiliser le gestionnaire centralisé pour le rôle Team Leader
+        const { getOrCreateTeamLeaderRole } = require('./teamLeaderRoleManager');
+        let leaderRole = null;
+        try {
+            leaderRole = await getOrCreateTeamLeaderRole(guild);
+        } catch (error) {
+            console.error('❌ Erreur récupération rôle Team Leader:', error);
+        }
         
         if (result.removed) {
             // Si l'équipe a été supprimée car vide
@@ -870,22 +876,12 @@ const createTeamRole = async (interaction, team) => {
         // Utiliser la fonction centralisée 
         const teamRole = await getOrCreateTeamRole(guild, team);
         
-        // Vérifier si le rôle Leader existe déjà
-        let leaderRole = guild.roles.cache.find(role => role.name === 'Team Leader');
-        
-        if (!leaderRole) {
-            // Créer un nouveau rôle Leader
-            leaderRole = await guild.roles.create({
-                name: 'Team Leader',
-                color: '#FFCC00', // Couleur dorée pour les leaders
-                permissions: [],
-                reason: 'Role for team leaders'
-            });
-        }
+        // Utiliser le gestionnaire centralisé pour le rôle Team Leader
+        const { assignTeamLeaderRole } = require('./teamLeaderRoleManager');
         
         // Ajouter les rôles au créateur de l'équipe
         await interaction.member.roles.add(teamRole);
-        await interaction.member.roles.add(leaderRole);
+        await assignTeamLeaderRole(interaction.member, guild);
         
         return teamRole;
     } catch (error) {

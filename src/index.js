@@ -346,20 +346,14 @@ async function syncAllRoles() {
     
     console.log(`Synchronisation de ${teams.length} équipes...`);
     
-    // Récupérer ou créer le rôle Team Leader
-    let leaderRole = guild.roles.cache.find(role => role.name === 'Team Leader');
-    if (!leaderRole) {
-        try {
-            leaderRole = await guild.roles.create({
-                name: 'Team Leader',
-                color: '#FFD700',
-                permissions: [],
-                reason: 'Création du rôle Team Leader au redémarrage'
-            });
-            console.log('✅ Rôle Team Leader créé');
-        } catch (error) {
-            console.error('❌ Erreur création rôle Team Leader:', error);
-        }
+    // Utiliser le gestionnaire centralisé pour le rôle Team Leader
+    const { ensureTeamLeaderRole } = require('./utils/teamLeaderRoleManager');
+    let leaderRole;
+    try {
+        leaderRole = await ensureTeamLeaderRole(guild);
+    } catch (error) {
+        console.error('❌ Erreur récupération rôle Team Leader:', error);
+        return;
     }
     
     // Synchroniser chaque équipe
@@ -387,16 +381,13 @@ async function syncAllRoles() {
                             console.log(`➕ Rôle d'équipe ajouté à ${member.user.username}`);
                         }
                         
-                        // Ajouter le rôle de leader si c'est le capitaine
-                        if (team.isLeader(memberId) && leaderRole && !member.roles.cache.has(leaderRole.id)) {
-                            await member.roles.add(leaderRole);
-                            console.log(`👑 Rôle Team Leader ajouté à ${member.user.username}`);
-                        }
+                        // Gestion du rôle Team Leader avec le gestionnaire centralisé
+                        const { assignTeamLeaderRole, removeTeamLeaderRole } = require('./utils/teamLeaderRoleManager');
                         
-                        // Retirer le rôle de leader si ce n'est plus le capitaine
-                        if (!team.isLeader(memberId) && leaderRole && member.roles.cache.has(leaderRole.id)) {
-                            await member.roles.remove(leaderRole);
-                            console.log(`👑 Rôle Team Leader retiré de ${member.user.username}`);
+                        if (team.isLeader(memberId)) {
+                            await assignTeamLeaderRole(member, guild);
+                        } else if (member.roles.cache.has(leaderRole.id)) {
+                            await removeTeamLeaderRole(member, guild);
                         }
                     }
                 } catch (memberError) {

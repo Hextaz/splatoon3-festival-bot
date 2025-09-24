@@ -69,8 +69,13 @@ async function saveProbabilities(guildId) {
             dataToSave[teamName] = Object.fromEntries(teamMaps);
         }
         
+        console.log(`💾 Sauvegarde probabilités pour ${Object.keys(dataToSave).length} équipes:`);
+        Object.keys(dataToSave).forEach(teamName => {
+            console.log(`   - ${teamName}: ${Object.keys(dataToSave[teamName]).length} maps`);
+        });
+        
         await adapter.saveMapProbabilities(dataToSave);
-        console.log('Probabilités de cartes sauvegardées');
+        console.log('✅ Probabilités de cartes sauvegardées');
     } catch (error) {
         console.error('Erreur lors de la sauvegarde des probabilités:', error);
     }
@@ -105,6 +110,8 @@ function getTeamProbabilities(teamName, guildId) {
 function updateProbabilitiesAfterMapSelection(teamName, selectedMap, guildId) {
     const teamMaps = getTeamProbabilities(teamName, guildId);
     
+    console.log(`🔍 Avant mise à jour ${teamName}: ${teamMaps.size} maps en mémoire`);
+    
     // Réduire la probabilité de la carte sélectionnée
     const currentProb = teamMaps.get(selectedMap) || DEFAULT_PROBABILITY;
     teamMaps.set(selectedMap, Math.max(currentProb - PROBABILITY_DECAY, 0.1));
@@ -116,7 +123,8 @@ function updateProbabilitiesAfterMapSelection(teamName, selectedMap, guildId) {
         }
     }
     
-    console.log(`Probabilités mises à jour pour ${teamName} après sélection de ${selectedMap}`);
+    console.log(`📊 Probabilités mises à jour pour ${teamName} après sélection de ${selectedMap}`);
+    console.log(`🔍 Après mise à jour ${teamName}: ${teamMaps.size} maps en mémoire`);
 }
 
 // Sélectionner une carte avec probabilités pondérées

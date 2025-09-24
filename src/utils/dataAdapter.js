@@ -26,6 +26,9 @@ class DataAdapter {
 
     async saveFestival(festivalData) {
         if (isMongoDBAvailable()) {
+            console.log(`🔍 DataAdapter.saveFestival - this.guildId: ${this.guildId}`);
+            console.log(`🔍 DataAdapter.saveFestival - festivalData:`, festivalData);
+            
             // Supprimer complètement tous les anciens festivals pour un reset complet
             await Festival.deleteMany({ guildId: this.guildId });
             console.log('Anciens festivals supprimés pour reset complet');
@@ -36,7 +39,11 @@ class DataAdapter {
                 guildId: this.guildId,
                 isActive: true
             });
-            return await festival.save();
+            console.log(`🔍 Objet Festival créé avec guildId: ${festival.guildId}`);
+            
+            const savedFestival = await festival.save();
+            console.log(`🔍 Festival sauvegardé avec _id: ${savedFestival._id}`);
+            return savedFestival;
         } else {
             return this._saveJSONData('festivals.json', festivalData);
         }
@@ -55,8 +62,15 @@ class DataAdapter {
 
     async deleteFestival(guildId) {
         if (isMongoDBAvailable()) {
-            return await Festival.deleteMany({ guildId: guildId });
+            console.log(`🗑️ Tentative de suppression Festival pour guildId: ${guildId}`);
+            const result = await Festival.deleteMany({ guildId: guildId });
+            console.log(`📊 Résultat suppression Festival:`, {
+                acknowledged: result.acknowledged,
+                deletedCount: result.deletedCount
+            });
+            return result;
         } else {
+            console.log(`🗑️ Suppression Festival JSON pour guildId: ${guildId}`);
             return this._saveJSONData('festivals.json', null);
         }
     }

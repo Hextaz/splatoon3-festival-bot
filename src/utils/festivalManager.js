@@ -230,12 +230,15 @@ async function loadFestival(guildId = null) {
 // Sauvegarder le festival dans la base de données spécifique au serveur
 async function saveFestival(festival, guildId = null) {
     try {
+        console.log(`🔍 saveFestival appelé avec guildId: ${guildId}`);
         if (!guildId) {
-            console.warn('Aucun guildId fourni pour saveFestival');
+            console.warn('❌ Aucun guildId fourni pour saveFestival');
             return;
         }
         
+        console.log(`🔍 Récupération DataAdapter pour guildId: ${guildId}`);
         const adapter = getDataAdapter(guildId);
+        console.log(`🔍 DataAdapter récupéré:`, adapter ? 'OUI' : 'NON');
         
         // Convertir l'objet Festival vers le format DataAdapter COMPLET
         const festivalData = {
@@ -435,8 +438,14 @@ async function resetFestivalData(guild) {
     
     if (allTeams.length > 0 && guild) {
         
-        // Récupérer le rôle de leader une fois pour toute
-        const leaderRole = guild.roles.cache.find(role => role.name === 'Team Leader');
+        // Utiliser le gestionnaire centralisé pour le rôle Team Leader
+        const { getOrCreateTeamLeaderRole } = require('./teamLeaderRoleManager');
+        let leaderRole = null;
+        try {
+            leaderRole = await getOrCreateTeamLeaderRole(guild);
+        } catch (error) {
+            console.error('❌ Erreur récupération rôle Team Leader:', error);
+        }
         
         for (const team of allTeams) {
             console.log(`Traitement de l'équipe: ${team.name}, Membres: ${team.members.length}`);
@@ -624,44 +633,9 @@ async function resetFestivalData(guild) {
             console.error('Erreur générale lors de la suppression des rôles d\'équipe:', error);
         }
 
-        // NOUVEAU : Nettoyer le rôle Team Leader de tous les membres
-        try {
-            console.log('Nettoyage du rôle Team Leader...');
-            const leaderRole = guild.roles.cache.find(role => role.name === 'Team Leader');
-            
-            if (leaderRole) {
-                // Retirer le rôle de tous les membres qui l'ont
-                const membersWithLeaderRole = guild.members.cache.filter(member => 
-                    member.roles.cache.has(leaderRole.id)
-                );
-                
-                console.log(`Membres avec le rôle Team Leader trouvés: ${membersWithLeaderRole.size}`);
-                
-                for (const [memberId, member] of membersWithLeaderRole) {
-                    try {
-                        await member.roles.remove(leaderRole);
-                        console.log(`Rôle Team Leader retiré du membre ${member.user.username} (${memberId})`);
-                    } catch (e) {
-                        console.error(`Erreur lors du retrait du rôle Team Leader pour ${memberId}:`, e);
-                    }
-                    
-                    // Petite pause
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                }
-                
-                // Option 1: Supprimer complètement le rôle Team Leader
-                try {
-                    await leaderRole.delete('Fin du festival - suppression du rôle Team Leader');
-                    console.log('Rôle Team Leader supprimé complètement');
-                } catch (e) {
-                    console.error('Erreur lors de la suppression du rôle Team Leader:', e);
-                }
-            } else {
-                console.log('Aucun rôle Team Leader trouvé');
-            }
-        } catch (error) {
-            console.error('Erreur lors du nettoyage du rôle Team Leader:', error);
-        }
+        // Utiliser le gestionnaire centralisé pour nettoyer le rôle Team Leader
+        const { cleanupTeamLeaderRole } = require('./teamLeaderRoleManager');
+        await cleanupTeamLeaderRole(guild);
     }
     
     // Supprimer UNIQUEMENT les rôles de camp si une guild est fournie
@@ -842,24 +816,30 @@ function createEndEmbed(festival, guildId) {
 async function deleteFestival(guildId) {
     try {
         if (!guildId) {
-            console.error('guildId requis pour deleteFestival');
+            console.error('❌ guildId requis pour deleteFestival');
             return false;
         }
+        
+        console.log(`🗑️ === DÉBUT SUPPRESSION FESTIVAL pour guildId: ${guildId} ===`);
         
         // Suppression du festival dans MongoDB via DataAdapter (toujours, même si pas en mémoire)
         const adapter = getDataAdapter(guildId);
         if (adapter) {
-            await adapter.deleteFestival(guildId);
-            console.log('✅ Festival supprimé de la base de données');
+            console.log(`🔄 Appel adapter.deleteFestival...`);
+            const result = await adapter.deleteFestival(guildId);
+            console.log('✅ Festival supprimé de la base de données:', result);
+        } else {
+            console.error('❌ Aucun adapter trouvé pour guildId:', guildId);
         }
         
         // Vidage de la variable festival pour cette guild
+        console.log(`🔄 Mise à null du festival en mémoire...`);
         setCurrentFestival(null, guildId);
         
-        console.log('Festival supprimé avec succès');
+        console.log('✅ === Festival supprimé avec succès ===');
         return true;
     } catch (error) {
-        console.error('Erreur lors de la suppression du festival:', error);
+        console.error('❌ === Erreur lors de la suppression du festival ===', error);
         return false;
     }
 }

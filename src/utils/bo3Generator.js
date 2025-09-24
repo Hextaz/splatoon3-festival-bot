@@ -114,10 +114,14 @@ class BO3Generator {
                 });
             }
             
-            // Mettre à jour les probabilités après sélection
+            // Mettre à jour les probabilités après sélection pour LES DEUX ÉQUIPES
             for (const mapKey of selectedMaps) {
+                // Mise à jour pour team1
                 mapProbabilityManager.updateProbabilitiesAfterMapSelection(team1Name, mapKey, this.guildId);
+                // Mise à jour pour team2 (car elles jouent ensemble sur les mêmes maps)
+                mapProbabilityManager.updateProbabilitiesAfterMapSelection(team2Name, mapKey, this.guildId);
             }
+            console.log(`📊 Probabilités mises à jour pour les deux équipes: ${team1Name} et ${team2Name}`);
             await mapProbabilityManager.saveProbabilities(this.guildId);
             
             return {

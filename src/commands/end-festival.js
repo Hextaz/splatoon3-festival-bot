@@ -21,7 +21,7 @@ module.exports = {
             let festival = getCurrentFestival(guildId);
             
             if (festival) {
-                console.log(`🎪 Festival trouvé: "${festival.title}" pour guildId: ${festival.guildId || 'NON_DEFINI'}`);
+                console.log(`🎪 Festival trouvé: "${festival.title}" pour guildId: ${guildId}`);
             }
             
             // Si pas trouvé en mémoire, essayer de charger depuis la base de données
@@ -90,27 +90,43 @@ module.exports = {
             }
             
             // Envoyer l'annonce dans le canal d'annonce du festival
+            console.log(`🔍 Tentative d'envoi d'annonce de fin de festival...`);
+            console.log(`📢 Festival announcementChannelId: ${festival.announcementChannelId}`);
+            
             if (festival.announcementChannelId) {
                 try {
+                    console.log(`🔍 Récupération du canal d'annonce: ${festival.announcementChannelId}`);
                     const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
+                    
                     if (channel) {
+                        console.log(`✅ Canal d'annonce trouvé: ${channel.name} (${channel.id})`);
+                        
                         // Charger la configuration pour obtenir le rôle à mentionner
                         const config = await loadConfig(interaction.guild.id);
+                        console.log(`🔍 Configuration chargée, announcementRoleId: ${config.announcementRoleId || 'AUCUN'}`);
                         
                         const mentionText = config.announcementRoleId ? 
                             `<@&${config.announcementRoleId}> ` : '';
                         
+                        console.log(`📤 Envoi du message d'annonce de fin...`);
                         await channel.send({ 
                             content: `${mentionText}🏆 **Le Festival "${festival.title}" a été terminé manuellement!** 🏆`,
                             embeds: [embed] 
                         });
+                        console.log(`✅ Message d'annonce de fin envoyé avec succès`);
                         
                         // Annoncer la dissolution des équipes
+                        console.log(`📤 Envoi du message de dissolution...`);
                         await channel.send("Le festival a été terminé manuellement. Toutes les équipes seront dissoutes dans 30 secondes.");
+                        console.log(`✅ Message de dissolution envoyé avec succès`);
+                    } else {
+                        console.error(`❌ Canal d'annonce non trouvé avec l'ID: ${festival.announcementChannelId}`);
                     }
                 } catch (channelError) {
-                    console.warn('Impossible d\'envoyer l\'annonce dans le canal:', channelError.message);
+                    console.error('❌ Erreur lors de l\'envoi de l\'annonce dans le canal:', channelError);
                 }
+            } else {
+                console.warn('⚠️ Aucun canal d\'annonce configuré pour ce festival');
             }
             
             // Répondre à l'administrateur qui a exécuté la commande
@@ -119,18 +135,45 @@ module.exports = {
                 ephemeral: true
             });
             
-            /// Attendre 30 secondes puis réinitialiser les données et supprimer le festival
+            // Attendre 30 secondes puis réinitialiser les données et supprimer le festival
+            console.log(`⏰ Programmation du nettoyage automatique dans 30 secondes...`);
             setTimeout(async () => {
-                await resetFestivalData(guild);
+                try {
+                    console.log(`🧹 Début du nettoyage automatique pour guild: ${guildId}`);
+                    
+                    console.log(`🔄 Appel de resetFestivalData...`);
+                    await resetFestivalData(guild);
+                    console.log(`✅ resetFestivalData terminé`);
 
-                // S'assurer que le système d'équipes est bien nettoyé
-                const teamManager = require('../utils/teamManager');
-                await teamManager.clearAllTeams(guildId);
-                
-                // Supprimer complètement le festival
-                await deleteFestival(guildId);
-                
-                console.log('Festival supprimé avec succès après 30 secondes');
+                    // S'assurer que le système d'équipes est bien nettoyé
+                    console.log(`🔄 Nettoyage des équipes via teamManager...`);
+                    const teamManager = require('../utils/teamManager');
+                    await teamManager.clearAllTeams(guildId);
+                    console.log(`✅ clearAllTeams terminé`);
+                    
+                    // Supprimer complètement le festival
+                    console.log(`🗑️ Suppression du festival de la base de données...`);
+                    await deleteFestival(guildId);
+                    console.log(`✅ deleteFestival terminé`);
+                    
+                    console.log(`🎉 Festival supprimé avec succès après 30 secondes pour guild: ${guildId}`);
+                    
+                    // Envoyer une confirmation dans le canal d'annonce si possible
+                    if (festival.announcementChannelId) {
+                        try {
+                            const channel = await interaction.client.channels.fetch(festival.announcementChannelId);
+                            if (channel) {
+                                await channel.send("✅ **Nettoyage terminé !** Toutes les équipes et rôles ont été supprimés.");
+                                console.log(`✅ Message de confirmation de nettoyage envoyé`);
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Impossible d\'envoyer la confirmation de nettoyage:', e.message);
+                        }
+                    }
+                    
+                } catch (cleanupError) {
+                    console.error(`❌ Erreur lors du nettoyage automatique:`, cleanupError);
+                }
             }, 30 * 1000); // 30 secondes
             
         } catch (error) {
