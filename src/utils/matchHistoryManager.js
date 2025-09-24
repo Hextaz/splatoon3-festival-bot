@@ -221,10 +221,23 @@ function calculateOpponentScore(teamName, potentialOpponent, guildId) {
 }
 
 async function resetMatchHistory(guildId) {
+    // Vider la mémoire
     teamMatchHistoryByGuild.set(guildId, new Map());
     teamMatchCountersByGuild.set(guildId, new Map());
-    await saveMatchHistory(guildId);
-    console.log(`Historique des matchs réinitialisé pour guild ${guildId}`);
+    
+    // Supprimer directement de la base de données
+    const adapter = getDataAdapter(guildId);
+    if (adapter) {
+        try {
+            await adapter.clearAllMatchHistory();
+            console.log(`✅ Historique des matchs réinitialisé pour guild ${guildId} (mémoire + DB)`);
+        } catch (error) {
+            console.error('❌ Erreur lors du nettoyage DB de l\'historique:', error);
+            console.log(`⚠️ Historique des matchs réinitialisé pour guild ${guildId} (mémoire uniquement)`);
+        }
+    } else {
+        console.log(`⚠️ Pas d'adapter disponible - Historique des matchs réinitialisé pour guild ${guildId} (mémoire uniquement)`);
+    }
 }
 
 // Nettoyer l'historique des équipes qui n'existent plus

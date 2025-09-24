@@ -158,9 +158,22 @@ function selectRandomMapWithProbabilities(teamName, bannedMaps = [], guildId) {
 
 // Réinitialiser les probabilités
 async function resetProbabilities(guildId) {
+    // Vider la mémoire
     teamMapProbabilitiesByGuild.set(guildId, new Map());
-    await saveProbabilities(guildId);
-    console.log(`Probabilités réinitialisées pour guild ${guildId}`);
+    
+    // Supprimer directement de la base de données (ne nécessite pas de festival actif)
+    const adapter = getDataAdapter(guildId);
+    if (adapter) {
+        try {
+            await adapter.clearAllMapProbabilities();
+            console.log(`✅ Probabilités réinitialisées pour guild ${guildId} (mémoire + DB)`);
+        } catch (error) {
+            console.error('❌ Erreur lors du nettoyage DB des probabilités:', error);
+            console.log(`⚠️ Probabilités réinitialisées pour guild ${guildId} (mémoire uniquement)`);
+        }
+    } else {
+        console.log(`⚠️ Pas d'adapter disponible - Probabilités réinitialisées pour guild ${guildId} (mémoire uniquement)`);
+    }
 }
 
 module.exports = {
