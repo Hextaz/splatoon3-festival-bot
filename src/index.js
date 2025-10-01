@@ -7,7 +7,7 @@ const deployCommands = require('./deploy-commands');
 const interactionCreateEvent = require('./events/interactionCreate');
 const readyEvent = require('./events/ready');
 // Managers seront chargés dynamiquement après la configuration du guildId
-const { SimpleKeepAlive } = require('./utils/simpleKeepAlive');
+const { RobustKeepAlive } = require('./utils/robustKeepAlive');
 const { HealthServer } = require('./utils/healthServer');
 const { guildDataManager, connectMongoDB } = require('./utils/database');
 
@@ -26,12 +26,12 @@ global.client = client;
 // Variable pour stocker le guild ID actuel
 let currentGuildId = null;
 
-// Initialiser le keep-alive simple et le serveur de santé
-const simpleKeepAlive = new SimpleKeepAlive();
+// Initialiser le keep-alive robuste et le serveur de santé
+const robustKeepAlive = new RobustKeepAlive();
 const healthServer = new HealthServer();
 
 // Rendre les instances disponibles globalement  
-global.simpleKeepAlive = simpleKeepAlive;
+global.robustKeepAlive = robustKeepAlive;
 global.healthServer = healthServer;
 global.guildDataManager = guildDataManager;
 
@@ -256,10 +256,10 @@ async function initializeManagersForGuild(guildId, guild = null) {
         
         // Démarrer le keep-alive permanent et le serveur de santé (une seule fois)
         if (!global.keepAliveStarted) {
-            console.log('🔄 Démarrage du keep-alive permanent...');
+            console.log('🔄 Démarrage du keep-alive robuste...');
             healthServer.start();
-            simpleKeepAlive.start();
-            console.log('✅ Bot configuré pour rester actif H24 - Réactivité maximale');
+            robustKeepAlive.start();
+            console.log('✅ Bot configuré pour rester actif H24 - Surveillance automatique');
             global.keepAliveStarted = true;
         }
         
@@ -437,8 +437,8 @@ function startPeriodicFestivalCheck() {
 // Gestionnaire d'arrêt propre
 process.on('SIGINT', () => {
     console.log('🛑 Arrêt du bot détecté...');
-    if (global.simpleKeepAlive) {
-        global.simpleKeepAlive.stop();
+    if (global.robustKeepAlive) {
+        global.robustKeepAlive.stop();
     }
     if (global.healthServer) {
         global.healthServer.stop();
@@ -449,8 +449,8 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
     console.log('🛑 Arrêt du bot détecté (SIGTERM)...');
-    if (global.simpleKeepAlive) {
-        global.simpleKeepAlive.stop();
+    if (global.robustKeepAlive) {
+        global.robustKeepAlive.stop();
     }
     if (global.healthServer) {
         global.healthServer.stop();
