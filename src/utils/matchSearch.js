@@ -513,13 +513,12 @@ function selectOpponentWithWeighting(team, availableTeamsWithScores, guildId) {
     // 7. PRIORITÉ MINIMALE : Équipes affrontées au dernier match (score < 50)
     const lastResortTeams = availableTeamsWithScores.filter(t => t.score < 50);
     
-    // NOUVEAU : Temps d'attente minimum pour éviter les revendications rapides
-    // Note: Cette fonction nécessiterait un guildId pour fonctionner correctement
-    // Pour l'instant, on utilise une approche de fallback
-    let teamWaitTime = 0;
-    // TODO: Passer guildId à cette fonction pour une isolation complète
+    // CORRIGÉ : Calcul correct du temps d'attente de l'équipe demandeuse
+    const searchingTeams = getSearchingTeamsForGuild(guildId);
+    const teamSearchEntry = searchingTeams.find(entry => entry.team.name === team.name);
+    const teamWaitTime = teamSearchEntry ? (Date.now() - teamSearchEntry.startTime) : 0;
     
-    console.log(`${team.name} attend depuis un temps indéterminé (fonction à mettre à jour)`);
+    console.log(`${team.name} attend depuis ${Math.round(teamWaitTime/1000)}s (${Math.round(teamWaitTime/60000)}min)`);
     
     // Si l'équipe attend depuis MOINS de 1 minute, être plus sélectif
     const waitTimeMinutes = teamWaitTime / (60 * 1000);

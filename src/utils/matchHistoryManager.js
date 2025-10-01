@@ -41,7 +41,7 @@ async function loadMatchHistory(guildId) {
             return;
         }
 
-        const data = await adapter.getMatchHistory();
+        const data = await adapter.loadTeamMatchHistory(guildId);
         if (data) {
             // Convertir les données en Maps
             const history = new Map();
@@ -102,7 +102,7 @@ async function saveMatchHistory(guildId) {
             }
         }
         
-        await adapter.saveMatchHistory(dataToSave);
+        await adapter.saveTeamMatchHistory(guildId, dataToSave);
         console.log('Historique des matchs sauvegardé');
     } catch (error) {
         console.error('Erreur lors de la sauvegarde de l\'historique:', error);
@@ -150,6 +150,11 @@ function addMatchToHistory(team1Name, team2Name, guildId) {
     }
     
     console.log(`Match ajouté à l'historique: ${team1Name} vs ${team2Name}`);
+    
+    // Sauvegarder automatiquement après chaque ajout
+    saveMatchHistory(guildId).catch(error => {
+        console.error('❌ Erreur lors de la sauvegarde automatique de l\'historique:', error);
+    });
 }
 
 // Vérifier si deux équipes ont joué récemment
@@ -254,6 +259,7 @@ async function resetMatchHistory(guildId) {
     if (adapter) {
         try {
             await adapter.clearAllMatchHistory();
+            await adapter.clearAllTeamMatchHistory(guildId);
             console.log(`✅ Historique des matchs réinitialisé pour guild ${guildId} (mémoire + DB)`);
         } catch (error) {
             console.error('❌ Erreur lors du nettoyage DB de l\'historique:', error);

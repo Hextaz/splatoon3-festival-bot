@@ -944,6 +944,35 @@ const handleResultEntry = async (interaction) => {
         addMatchToHistory(team1Name, team2Name, interaction.guild.id);
         console.log(`✅ Match ajouté à l'historique après soumission directe: ${team1Name} vs ${team2Name}`);
         
+        // Sauvegarder le match complet dans la collection Match
+        try {
+            const DataAdapter = require('./dataAdapter');
+            const adapter = new DataAdapter(interaction.guild.id);
+            const { findTeamByName } = require('./teamManager');
+            
+            const team1 = findTeamByName(team1Name, interaction.guild.id);
+            const team2 = findTeamByName(team2Name, interaction.guild.id);
+            
+            if (team1 && team2) {
+                const matchData = {
+                    team1: { name: team1Name, camp: team1.camp },
+                    team2: { name: team2Name, camp: team2.camp },
+                    winner: team1Result === 'V' ? team1Name : team2Name,
+                    multiplier: 1,
+                    pointsAwarded: 1,
+                    status: 'completed',
+                    completedAt: new Date(),
+                    submittedBy: interaction.user.id
+                };
+                
+                const savedMatch = await adapter.saveMatch(matchData);
+                console.log(`💾 Match complet sauvegardé dans la collection Match avec ID: ${savedMatch._id}`);
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde du match complet:', error);
+            // Ne pas faire échouer la soumission pour autant
+        }
+        
         // Clear the matchup to make teams available again
         clearMatchup(team1Name, team2Name, interaction.guild.id);
         
@@ -1530,6 +1559,30 @@ const handleConfirmButton = async (interaction) => {
         const { addMatchToHistory } = require('./matchHistoryManager');
         addMatchToHistory(team1Name, team2Name, interaction.guild.id);
         console.log(`✅ Match ajouté à l'historique après confirmation: ${team1Name} vs ${team2Name}`);
+        
+        // Sauvegarder le match complet dans la collection Match
+        try {
+            const DataAdapter = require('./dataAdapter');
+            const adapter = new DataAdapter(interaction.guild.id);
+            
+            const matchData = {
+                team1: { name: team1Name, camp: team1.camp },
+                team2: { name: team2Name, camp: team2.camp },
+                winner: team1Result === 'V' ? team1Name : team2Name,
+                multiplier: multiplier,
+                pointsAwarded: multiplier,
+                status: 'completed',
+                completedAt: new Date(),
+                confirmedBy: interaction.user.id,
+                bo3Maps: pendingResult.bo3Maps || []
+            };
+            
+            const savedMatch = await adapter.saveMatch(matchData);
+            console.log(`💾 Match complet sauvegardé dans la collection Match avec ID: ${savedMatch._id}`);
+        } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde du match complet:', error);
+            // Ne pas faire échouer la confirmation pour autant
+        }
         
         // Créer un message de résultat détaillé
         let resultMessage = `✅ **Résultat confirmé** : ${team1Name} - ${team1Result === 'V' ? 'Victoire' : 'Défaite'}, ${team2Name} - ${team2Result === 'V' ? 'Victoire' : 'Défaite'}`;

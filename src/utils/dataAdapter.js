@@ -247,7 +247,8 @@ class DataAdapter {
                 festivalId: festival._id 
             }).populate('team1Id team2Id');
         } else {
-            return this._getJSONData('matchHistory.json') || [];
+            const data = this._getJSONData('matches.json');
+            return Array.isArray(data) ? data : [];
         }
     }
 
@@ -271,11 +272,11 @@ class DataAdapter {
                 return await match.save();
             }
         } else {
-            const matches = await this.getMatches();
+            const matches = await this.getMatches() || [];
             const matchId = matchData.id || Date.now().toString();
             matchData.id = matchId;
             matches.push(matchData);
-            return this._saveJSONData('matchHistory.json', matches);
+            return this._saveJSONData('matches.json', matches);
         }
     }
 
@@ -312,7 +313,7 @@ class DataAdapter {
             console.log(`🗑️ ${result.deletedCount} matchs supprimés de MongoDB pour le serveur ${this.guildId}`);
             return result;
         } else {
-            await this._saveJSONData('matchHistory.json', []);
+            await this._saveJSONData('matches.json', []);
             console.log('🗑️ Tous les matchs supprimés du fichier JSON');
         }
     }
@@ -332,7 +333,7 @@ class DataAdapter {
             // Convertir en format attendu
             const scoresObj = {};
             scores.forEach(score => {
-                scoresObj[score.camp] = score.points;
+                scoresObj[score.camp] = score.totalPoints || score.points || 0; // ✅ CORRIGÉ: lire le bon champ
             });
             return scoresObj;
         } else {
@@ -351,13 +352,42 @@ class DataAdapter {
                 festivalId: festival._id 
             });
 
-            // Sauvegarder les nouveaux scores
-            const scoresDocs = Object.entries(scoresData).map(([camp, points]) => ({
-                guildId: this.guildId,
-                festivalId: festival._id,
-                camp,
-                points
-            }));
+            // Calculer les métadonnées pour chaque camp
+            const scoresDocs = [];
+            
+            for (const [camp, points] of Object.entries(scoresData)) {
+                // Compter les équipes de ce camp
+                const teams = await this.getTeams();
+                const teamsCount = teams.filter(team => team.camp === camp).length;
+                
+                // Compter les votes de ce camp  
+                const votes = await this.getVotes();
+                const votesCount = votes[camp] || 0;
+                
+                // Calculer les matchs gagnés/perdus depuis l'historique des matchs
+                const matches = await this.getMatches();
+                const matchesWon = matches.filter(m => 
+                    m.status === 'completed' && 
+                    ((m.team1Camp === camp && m.winner === camp) || (m.team2Camp === camp && m.winner === camp))
+                ).length;
+                
+                const matchesLost = matches.filter(m => 
+                    m.status === 'completed' && 
+                    ((m.team1Camp === camp && m.winner !== camp) || (m.team2Camp === camp && m.winner !== camp))
+                ).length;
+                
+                scoresDocs.push({
+                    guildId: this.guildId,
+                    festivalId: festival._id,
+                    camp,
+                    totalPoints: points,
+                    matchesWon,
+                    matchesLost,
+                    teamsCount,
+                    votesCount,
+                    lastUpdated: new Date()
+                });
+            }
 
             if (scoresDocs.length > 0) {
                 await CampScore.insertMany(scoresDocs);
@@ -406,6 +436,11 @@ class DataAdapter {
         }
     }
 
+    // Nouvelle méthode pour charger l'historique organisé par équipe
+    async loadTeamMatchHistory(guildId) {
+        return this._getJSONData(`guilds/${guildId}/teamMatchHistory.json`);
+    }
+
     async saveMatchHistory(guildId, historyData) {
         if (isMongoDBAvailable()) {
             const festival = await this.getFestival();
@@ -438,6 +473,16 @@ class DataAdapter {
         } else {
             return this._saveJSONData(`guilds/${guildId}/matchHistory.json`, historyData);
         }
+    }
+
+    // Nouvelle méthode pour sauvegarder l'historique organisé par équipe
+    async saveTeamMatchHistory(guildId, teamHistoryData) {
+        // Pour l'instant, on utilise le fallback JSON car c'est un format spécifique
+        return this._saveJSONData(`guilds/${guildId}/teamMatchHistory.json`, teamHistoryData);
+    }
+
+    async clearAllTeamMatchHistory(guildId) {
+        return this._saveJSONData(`guilds/${guildId}/teamMatchHistory.json`, {});
     }
 
     async clearAllMatchHistory() {

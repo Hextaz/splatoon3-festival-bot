@@ -179,6 +179,7 @@ const guildConfigSchema = new mongoose.Schema({
 // Index pour optimiser les requêtes
 festivalSchema.index({ guildId: 1, isActive: 1 });
 teamSchema.index({ guildId: 1, festivalId: 1 });
+teamSchema.index({ guildId: 1, festivalId: 1, name: 1 }, { unique: true }); // UNIQUE: Empêcher les doublons d'équipes
 voteSchema.index({ guildId: 1, festivalId: 1, userId: 1 }, { unique: true });
 matchSchema.index({ guildId: 1, festivalId: 1 });
 campScoreSchema.index({ guildId: 1, festivalId: 1, camp: 1 }, { unique: true });

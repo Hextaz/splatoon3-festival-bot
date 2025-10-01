@@ -42,9 +42,11 @@ async function loadProbabilities(guildId) {
                 probabilities.set(teamName, new Map(Object.entries(teamData)));
             }
             teamMapProbabilitiesByGuild.set(guildId, probabilities);
-            console.log(`Probabilités de cartes chargées pour ${probabilities.size} équipes`);
+            // Log seulement si beaucoup d'équipes (pour debug)
+            if (probabilities.size > 5) {
+                console.log(`Probabilités de cartes chargées pour ${probabilities.size} équipes`);
+            }
         } else {
-            console.log('Aucune probabilité trouvée, initialisation par défaut');
             teamMapProbabilitiesByGuild.set(guildId, new Map());
         }
     } catch (error) {
@@ -69,10 +71,8 @@ async function saveProbabilities(guildId) {
             dataToSave[teamName] = Object.fromEntries(teamMaps);
         }
         
-        console.log(`💾 Sauvegarde probabilités pour ${Object.keys(dataToSave).length} équipes:`);
-        Object.keys(dataToSave).forEach(teamName => {
-            console.log(`   - ${teamName}: ${Object.keys(dataToSave[teamName]).length} maps`);
-        });
+        // Log simplifié pour la sauvegarde
+        console.log(`💾 Sauvegarde probabilités pour ${Object.keys(dataToSave).length} équipes`);
         
         await adapter.saveMapProbabilities(dataToSave);
         console.log('✅ Probabilités de cartes sauvegardées');
@@ -91,7 +91,7 @@ function initializeTeamProbabilities(teamName, guildId) {
             teamMaps.set(mapKey, DEFAULT_PROBABILITY);
         }
         probabilities.set(teamName, teamMaps);
-        console.log(`Probabilités initialisées pour l'équipe ${teamName}`);
+        // Log supprimé pour réduire le bruit - probabilités initialisées silencieusement
     }
 }
 
@@ -110,8 +110,6 @@ function getTeamProbabilities(teamName, guildId) {
 function updateProbabilitiesAfterMapSelection(teamName, selectedMap, guildId) {
     const teamMaps = getTeamProbabilities(teamName, guildId);
     
-    console.log(`🔍 Avant mise à jour ${teamName}: ${teamMaps.size} maps en mémoire`);
-    
     // Réduire la probabilité de la carte sélectionnée
     const currentProb = teamMaps.get(selectedMap) || DEFAULT_PROBABILITY;
     teamMaps.set(selectedMap, Math.max(currentProb - PROBABILITY_DECAY, 0.1));
@@ -123,8 +121,8 @@ function updateProbabilitiesAfterMapSelection(teamName, selectedMap, guildId) {
         }
     }
     
-    console.log(`📊 Probabilités mises à jour pour ${teamName} après sélection de ${selectedMap}`);
-    console.log(`🔍 Après mise à jour ${teamName}: ${teamMaps.size} maps en mémoire`);
+    // Log simplifié - uniquement si nécessaire pour debug
+    // console.log(`📊 Probabilités mises à jour pour ${teamName} après sélection de ${selectedMap}`);
 }
 
 // Sélectionner une carte avec probabilités pondérées
