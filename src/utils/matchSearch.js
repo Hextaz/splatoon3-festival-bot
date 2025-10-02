@@ -40,6 +40,14 @@ const COOLDOWN_AFTER_MATCH = 3000;
 
 const MATCHMAKING_TIMEOUT = 5 * 60 * 1000; // 5 minutes en millisecondes
 
+// 🎯 NOUVEAU SYSTÈME : Période d'observation intelligente
+const MINIMUM_WAIT_TIME = 15000; // 15 secondes minimum pour toutes les équipes
+const EXTENDED_WAIT_TIME = 30000; // 30 secondes pour scores corrects
+const MAXIMUM_WAIT_TIME = 45000; // 45 secondes pour scores médiocres
+const EXCELLENT_SCORE_THRESHOLD = 130; // Score excellent (camps différents, jamais joué)
+const GOOD_SCORE_THRESHOLD = 80; // Score correct (acceptable)
+const POOR_SCORE_THRESHOLD = 50; // Score médiocre (dernier recours)
+
 const teamLocks = new Map(); // Map pour suivre les équipes en cours de traitement
 
 // Fonction pour acquérir un verrou sur une équipe
@@ -136,6 +144,18 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
         if (interaction) {
             await safeReply(interaction, {
                 content: "Aucun festival actif actuellement. Les matchs seront disponibles quand un festival démarrera.",
+                ephemeral: true
+            });
+        }
+        return false;
+    }
+
+    // 🎯 NOUVEAU: Vérifier si le festival est en cours de fermeture
+    if (festival.isClosing) {
+        console.log(`❌ Tentative de recherche bloquée: festival "${festival.title}" en cours de fermeture`);
+        if (interaction) {
+            await safeReply(interaction, {
+                content: "🏁 **Le festival se termine !** Plus de nouveaux matchs possibles.\n⚡ Les matchs en cours peuvent continuer jusqu'à leur fin.",
                 ephemeral: true
             });
         }
@@ -240,17 +260,7 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
         });
     }
     
-    // Vérifier immédiatement s'il y a déjà une équipe disponible
-    const match = findMatch(team, guildId);
-    
-    if (match) {
-        // Un match a été trouvé immédiatement
-        await safeReply(interaction, {
-            content: "Un adversaire a été trouvé immédiatement! Création du match en cours...",
-            ephemeral: true
-        });
-        return await createMatch(interaction, team, match);
-    }
+    // 🎯 NOUVEAU : Pas de matchmaking immédiat - toutes les équipes entrent en période d'observation
     
     // Pas de match immédiat, ajouter à la file d'attente
     const searchEntry = {
@@ -300,20 +310,20 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
     
     // Informer l'utilisateur que la recherche commence avec un message éphémère
     await safeReply(interaction, {
-        content: `La recherche de match a commencé pour votre équipe. Un message a été envoyé dans le salon d'équipe.`,
+        content: `🧠 Recherche intelligente démarrée! Le système va analyser les adversaires potentiels pendant 15-45 secondes pour vous trouver le meilleur match possible.`,
         ephemeral: true
     });
     
     // Créer un embed pour le salon d'équipe
     const teamEmbed = new EmbedBuilder()
         .setColor('#0099FF')
-        .setTitle(`🔍 Recherche de match en cours`)
-        .setDescription(`L'équipe **${team.name}** est en recherche d'un adversaire.`)
+        .setTitle(`🧠 Recherche intelligente en cours`)
+        .setDescription(`L'équipe **${team.name}** analyse les adversaires potentiels.`)
         .addFields(
-            { name: 'Statut', value: 'En attente d\'un adversaire...' },
+            { name: '🎯 Système intelligent', value: 'Le matchmaking va privilégier les équipes de camps différents et éviter les répétitions récentes.' },
+            { name: '⏱️ Période d\'observation', value: '15-45 secondes selon la qualité des adversaires disponibles' },
             { name: 'Démarré par', value: `<@${interaction.user.id}>` },
-            { name: 'Temps maximum', value: 'La recherche sera automatiquement annulée après 5 minutes.' },
-            { name: 'Note', value: 'Si le bouton d\'annulation ne répond pas, utilisez à nouveau la commande `/search-match` et cliquez sur le nouveau bouton.' }
+            { name: 'Temps maximum', value: 'La recherche sera automatiquement annulée après 5 minutes.' }
         )
         .setFooter({ text: `La recherche a commencé à ${new Date().toLocaleTimeString()}` })
         .setTimestamp();
@@ -345,14 +355,93 @@ async function startMatchSearch(interaction, team, isTestMode = false) {
         console.error('Erreur lors de l\'envoi dans le salon d\'équipe:', error);
     }
     
-    // Planifier la notification après 30 secondes
-    setTimeout(() => checkWaitingTeam(searchEntry, guildId), 30000);
+    // 🎯 NOUVEAU : Démarrer la période d'observation intelligente
+    setTimeout(() => checkWaitingTeamIntelligent(searchEntry, guildId), MINIMUM_WAIT_TIME);
 }
 
 // Commencer la recherche de match sans nécessiter d'interaction (pour les équipes virtuelles)
 // Fonction supprimée: startVirtualTeamSearch - tests virtuels retirés
 
-// Vérifier une équipe après son temps d'attente minimum
+// 🎯 NOUVEAU : Système d'observation intelligente avec délais adaptatifs
+async function checkWaitingTeamIntelligent(searchEntry, guildId) {
+    // Vérifier si l'équipe est toujours en recherche
+    const searchingTeams = getSearchingTeamsForGuild(guildId);
+    const index = searchingTeams.findIndex(entry => entry.team.name === searchEntry.team.name);
+    if (index === -1) return; // L'équipe n'est plus en recherche
+
+    const elapsedTime = Date.now() - searchEntry.startTime;
+    console.log(`🧠 OBSERVATION: ${searchEntry.team.name} - ${Math.round(elapsedTime/1000)}s écoulées`);
+
+    // Chercher le meilleur match disponible
+    const match = findMatch(searchEntry.team, guildId);
+    
+    if (match) {
+        const score = calculateOpponentScore(searchEntry.team.name, match, guildId);
+        console.log(`🎯 CANDIDAT trouvé: ${match.name} (score: ${score.toFixed(1)})`);
+        
+        // Décision basée sur le score et le temps écoulé
+        const shouldMatch = decideMatchTiming(score, elapsedTime);
+        
+        if (shouldMatch) {
+            console.log(`✅ MATCH ACCEPTÉ: ${searchEntry.team.name} vs ${match.name} (score: ${score.toFixed(1)})`);
+            createMatch(searchEntry.interaction, searchEntry.team, match);
+            return;
+        } else {
+            console.log(`⏳ ATTENTE PROLONGÉE: Score ${score.toFixed(1)} insuffisant, attente de ${getNextWaitDelay(score, elapsedTime)/1000}s`);
+        }
+    } else {
+        console.log(`🔍 OBSERVATION: Aucun candidat pour ${searchEntry.team.name}, attente continue`);
+    }
+    
+    // Programmer la prochaine vérification
+    const nextDelay = getNextWaitDelay(match ? calculateOpponentScore(searchEntry.team.name, match, guildId) : 0, elapsedTime);
+    if (elapsedTime + nextDelay < MATCHMAKING_TIMEOUT) {
+        setTimeout(() => checkWaitingTeamIntelligent(searchEntry, guildId), nextDelay);
+    }
+}
+
+// Décide si un match doit être créé maintenant selon le score et le temps écoulé
+function decideMatchTiming(score, elapsedTime) {
+    // Excellent score (camps différents, jamais joué) : accepter après délai minimum
+    if (score >= EXCELLENT_SCORE_THRESHOLD && elapsedTime >= MINIMUM_WAIT_TIME) {
+        return true;
+    }
+    
+    // Bon score : accepter après délai étendu  
+    if (score >= GOOD_SCORE_THRESHOLD && elapsedTime >= EXTENDED_WAIT_TIME) {
+        return true;
+    }
+    
+    // Score médiocre : accepter après délai maximum
+    if (score >= POOR_SCORE_THRESHOLD && elapsedTime >= MAXIMUM_WAIT_TIME) {
+        return true;
+    }
+    
+    // Dernier recours : accepter n'importe quoi après beaucoup d'attente
+    if (elapsedTime >= MAXIMUM_WAIT_TIME * 1.5) {
+        return true;
+    }
+    
+    return false;
+}
+
+// Calcule le prochain délai d'attente selon la qualité du match potentiel
+function getNextWaitDelay(score, elapsedTime) {
+    // Si excellent candidat, vérifier fréquemment
+    if (score >= EXCELLENT_SCORE_THRESHOLD) {
+        return 5000; // 5 secondes
+    }
+    
+    // Si bon candidat, vérifier modérément
+    if (score >= GOOD_SCORE_THRESHOLD) {
+        return 10000; // 10 secondes  
+    }
+    
+    // Sinon, vérifier moins fréquemment
+    return 15000; // 15 secondes
+}
+
+// Vérifier une équipe après son temps d'attente minimum (ANCIENNE FONCTION - gardée pour compatibilité)
 async function checkWaitingTeam(searchEntry, guildId) {
     // Vérifier si l'équipe est toujours en recherche
     const searchingTeams = getSearchingTeamsForGuild(guildId);

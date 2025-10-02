@@ -139,22 +139,20 @@ module.exports = {
             console.log(`⏰ Programmation du nettoyage automatique dans 30 secondes...`);
             setTimeout(async () => {
                 try {
-                    console.log(`🧹 Début du nettoyage automatique pour guild: ${guildId}`);
+                    console.log(`🧹 Début du nettoyage ROBUSTE pour guild: ${guildId}`);
                     
-                    console.log(`🔄 Appel de resetFestivalData...`);
+                    // 🎯 NOUVEAU: Nettoyage robuste anti-duplication
+                    const RobustCleaner = require('../utils/robustCleaner');
+                    const cleaner = new RobustCleaner(guildId);
+                    
+                    console.log(`🔄 Nettoyage robuste en cours...`);
+                    const results = await cleaner.cleanupGuild();
+                    console.log(`✅ Nettoyage robuste terminé:`, results);
+
+                    // Nettoyage traditionnel en complément (pour la mémoire)
+                    console.log(`� Appel de resetFestivalData...`);
                     await resetFestivalData(guild);
                     console.log(`✅ resetFestivalData terminé`);
-
-                    // S'assurer que le système d'équipes est bien nettoyé
-                    console.log(`🔄 Nettoyage des équipes via teamManager...`);
-                    const teamManager = require('../utils/teamManager');
-                    await teamManager.clearAllTeams(guildId);
-                    console.log(`✅ clearAllTeams terminé`);
-                    
-                    // Supprimer complètement le festival
-                    console.log(`🗑️ Suppression du festival de la base de données...`);
-                    await deleteFestival(guildId);
-                    console.log(`✅ deleteFestival terminé`);
                     
                     console.log(`🎉 Festival supprimé avec succès après 30 secondes pour guild: ${guildId}`);
                     

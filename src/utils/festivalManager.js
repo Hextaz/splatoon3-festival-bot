@@ -961,11 +961,18 @@ function scheduleActivation(festival, client) {
                     console.error('❌ Erreur envoi annonce nettoyage forcé:', error);
                 }
                 
-                // Nettoyage immédiat et forcé
+                // 🎯 NOUVEAU: Nettoyage immédiat et forcé ROBUSTE
+                const RobustCleaner = require('./robustCleaner');
+                const cleaner = new RobustCleaner(guild.id);
+                
+                console.log('🔄 Nettoyage robuste forcé en cours...');
+                const results = await cleaner.cleanupGuild();
+                console.log('✅ Nettoyage robuste forcé terminé:', results);
+                
+                // Nettoyage traditionnel complémentaire
                 await resetFestivalData(guild);
                 const teamManager = require('./teamManager');
                 await teamManager.clearAllTeams(guild.id);
-                await deleteFestival(guild.id);
                 
                 console.log('✅ Festival expiré nettoyé avec succès');
             }
@@ -1056,16 +1063,23 @@ async function activateFestivalNow(festival, client) {
 
 async function deactivateFestivalNow(festival, client) {
     try {
-        console.log('🏁 DÉSACTIVATION DU FESTIVAL EN COURS...');
+        console.log('🏁 DÉBUT DE LA FERMETURE PROGRESSIVE DU FESTIVAL...');
         
-        // Désactiver le festival
-        festival.deactivate();
-        
-        // Récupérer le guildId pour sauvegarder le festival
+        // 🎯 NOUVEAU: Utiliser la fermeture progressive au lieu de la désactivation immédiate
         const guild = client.guilds.cache.first();
         const guildId = guild ? guild.id : festival.guildId;
-        await saveFestival(festival, guildId);
         
+        // Démarrer la fermeture progressive
+        const ProgressiveCloser = require('./progressiveCloser');
+        const closer = new ProgressiveCloser(guildId);
+        
+        await closer.startProgressiveClosing(festival, client);
+        
+        // 🎯 La suite (nettoyage) est maintenant gérée par ProgressiveCloser
+        return;
+        
+        // 🎯 DÉSACTIVÉ: L'ancien système immédiat est remplacé par la fermeture progressive
+        /*
         // Envoyer l'annonce de fin
         if (client.guilds.cache.size > 0) {
             try {
@@ -1088,72 +1102,11 @@ async function deactivateFestivalNow(festival, client) {
                 }
             } catch (error) {
                 console.error('❌ Erreur envoi annonce fin:', error);
-            }
-            
-            // NOUVEAU : Programmer le nettoyage automatique dans 30 secondes
-            console.log('⏰ Programmation du nettoyage automatique dans 30 secondes...');
-            setTimeout(async () => {
-                console.log('🧹 DÉBUT DU NETTOYAGE AUTOMATIQUE DE FIN DE FESTIVAL');
-                
-                try {
-                    // 🛡️ PROTECTION: Vérifier qu'il n'y a pas de matchs en cours avant nettoyage
-                    const teamManager = require('./teamManager');
-                    const allTeams = teamManager.getAllTeams(guild.id);
-                    const teamsInMatch = allTeams.filter(team => team.busy || team.currentOpponent);
-                    
-                    if (teamsInMatch.length > 0) {
-                        console.warn(`⚠️ NETTOYAGE RETARDÉ: ${teamsInMatch.length} équipe(s) encore en match`);
-                        teamsInMatch.forEach(team => {
-                            console.log(`  🎮 ${team.name} vs ${team.currentOpponent || 'inconnu'}`);
-                        });
-                        
-                        // Reporter le nettoyage de 2 minutes
-                        console.log('⏰ Nouveau délai: 2 minutes...');
-                        setTimeout(arguments.callee, 120000); // Se rappeler récursivement
-                        return;
-                    }
-                    
-                    console.log('✅ Aucun match en cours, procédure de nettoyage...');
-                    
-                    // Nettoyage complet
-                    await resetFestivalData(guild);
-                    
-                    // S'assurer que le système d'équipes est bien nettoyé
-                    await teamManager.clearAllTeams(guild.id);
-                    
-                    // Supprimer complètement le festival
-                    await deleteFestival(guild.id);
-                    
-                    console.log('✅ Festival automatiquement nettoyé avec succès');
-                    
-                    // Optionnel : Envoyer une confirmation finale
-                    try {
-                        const channel = await guild.channels.fetch(festival.announcementChannelId);
-                        if (channel) {
-                            await channel.send("✅ **Nettoyage terminé.** Toutes les équipes et données du festival ont été supprimées. Merci à tous les participants !");
-                        }
-                    } catch (error) {
-                        console.error('Erreur envoi confirmation finale:', error);
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ ERREUR lors du nettoyage automatique:', error);
-                    
-                    // En cas d'erreur, essayer de notifier
-                    try {
-                        const channel = await guild.channels.fetch(festival.announcementChannelId);
-                        if (channel) {
-                            await channel.send("❌ **Erreur lors du nettoyage automatique.** Un administrateur doit utiliser `/end-festival` pour nettoyer manuellement.");
-                        }
-                    } catch (notifyError) {
-                        console.error('Erreur notification échec:', notifyError);
-                    }
-                }
-            }, 30000); // 30 secondes
-        }
+            // 🎯 Tout l'ancien système de nettoyage immédiat est désormais remplacé par ProgressiveCloser
+            */
         
     } catch (error) {
-        console.error('❌ Erreur lors de la désactivation du festival:', error);
+        console.error('❌ Erreur lors de la fermeture progressive du festival:', error);
     }
 }
 
@@ -1309,9 +1262,16 @@ async function checkAndCleanExpiredFestival(festival, client) {
                     });
                 }
                 
-                // Nettoyer les données sur ce serveur
+                // 🎯 NOUVEAU: Nettoyer les données avec le système robuste
+                const RobustCleaner = require('./robustCleaner');
+                const cleaner = new RobustCleaner(guildToClean.id);
+                
+                console.log(`🔄 Nettoyage robuste expiré pour ${guildToClean.name}...`);
+                const results = await cleaner.cleanupGuild();
+                console.log(`✅ Nettoyage robuste expiré terminé pour ${guildToClean.name}:`, results);
+                
+                // Nettoyage traditionnel complémentaire
                 await resetFestivalData(guildToClean);
-                console.log(`✅ Données festival nettoyées sur ${guildToClean.name}`);
             } catch (error) {
                 console.error(`❌ Erreur nettoyage sur ${guildToClean.name}:`, error);
             }

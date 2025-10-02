@@ -171,23 +171,29 @@ async function initializeManagersForGuild(guildId, guild = null) {
                     }
                 }
                 
-                // NETTOYAGE IMMÉDIAT ET FORCÉ (pas de délai)
-                console.log('🧹 DÉBUT DU NETTOYAGE AUTOMATIQUE IMMÉDIAT (festival expiré)');
+                // 🎯 NOUVEAU: NETTOYAGE ROBUSTE IMMÉDIAT ET FORCÉ
+                console.log('🧹 DÉBUT DU NETTOYAGE ROBUSTE IMMÉDIAT (festival expiré)');
                 
-                // Nettoyage sur TOUS les serveurs applicables
+                // Nettoyage robuste sur TOUS les serveurs applicables
                 for (const guild of guildsToNotify) {
                     try {
+                        const RobustCleaner = require('./utils/robustCleaner');
+                        const cleaner = new RobustCleaner(guild.id);
+                        
+                        console.log(`🔄 Nettoyage robuste immédiat pour ${guild.name}...`);
+                        const results = await cleaner.cleanupGuild();
+                        console.log(`✅ Nettoyage robuste immédiat terminé pour ${guild.name}:`, results);
+                        
+                        // Nettoyage traditionnel complémentaire
                         await festivalManager.resetFestivalData(guild);
-                        console.log(`✅ Données festival nettoyées sur ${guild.name}`);
                     } catch (error) {
-                        console.error(`❌ Erreur nettoyage festival sur ${guild.name}:`, error);
+                        console.error(`❌ Erreur nettoyage robuste sur ${guild.name}:`, error);
                     }
                 }
                 
-                // Nettoyage global des équipes et suppression du festival
+                // Nettoyage global final
                 const teamManager = require('./utils/teamManager');
                 await teamManager.clearAllTeams(guildId);
-                await festivalManager.deleteFestival(guildId);
                 
                 console.log('🎯 NETTOYAGE AUTOMATIQUE TERMINÉ - Festival et données supprimés');
                 

@@ -8,6 +8,7 @@ class Festival {
         this.endDate = endDate; // Date en format ISO
         this.announcementChannelId = announcementChannelId;
         this.isActive = false;
+        this.isClosing = false; // 🎯 NOUVEAU: État de fermeture progressive
         this.scheduledStartJobId = null;
         this.scheduledEndJobId = null;
         
@@ -19,10 +20,18 @@ class Festival {
 
     activate() {
         this.isActive = true;
+        this.isClosing = false;
     }
 
     deactivate() {
         this.isActive = false;
+        this.isClosing = false;
+    }
+
+    // 🎯 NOUVEAU: Commencer la fermeture progressive
+    startClosing() {
+        this.isClosing = true;
+        // Reste actif pour les matchs en cours, mais bloque les nouveaux
     }
 
     toJSON() {
@@ -35,6 +44,7 @@ class Festival {
             endDate: this.endDate,
             announcementChannelId: this.announcementChannelId,
             isActive: this.isActive,
+            isClosing: this.isClosing || false,  // 🎯 NOUVEAU: État fermeture
             teamSize: this.teamSize || 4,        // Valeur par défaut
             gameMode: this.gameMode || 'mixed',  // Valeur par défaut
             bannedMaps: this.bannedMaps || []    // Valeur par défaut

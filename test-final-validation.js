@@ -1,17 +1,19 @@
-console.log("=== VALIDATION FINALE SYSTEME ===");
+console.log("=== TEST INTÉGRATION NETTOYAGE ROBUSTE ===");
 
-const DataAdapter = require('./src/utils/dataAdapter');
-const matchHistoryManager = require('./src/utils/matchHistoryManager');
-const scoreTracker = require('./src/utils/scoreTracker');
+const { Client, GatewayIntentBits } = require('discord.js');
 
-async function finalValidation() {
-    const guildId = 'test-guild-final';
+// Test rapide pour vérifier l'intégration du nettoyage robuste
+async function testRobustCleaningIntegration() {
+    console.log('🧪 === TEST D\'INTÉGRATION NETTOYAGE ROBUSTE ===');
     
-    console.log('\n🎯 VALIDATION FINALE DES CORRECTIONS\n');
-    
-    // ✅ 1. Test des scores avec métadonnées complètes
-    console.log('1️⃣ Validation scores CampScore...');
-    const adapter = new DataAdapter(guildId);
+    // Test 1: Vérifier que RobustCleaner peut être importé
+    try {
+        const RobustCleaner = require('./src/utils/robustCleaner');
+        console.log('✅ RobustCleaner importé avec succès');
+        
+        // Test création d'instance
+        const cleaner = new RobustCleaner('test-guild-123');
+        console.log('✅ Instance RobustCleaner créée');
     
     try {
         const testScores = { camp1: 10, camp2: 7, camp3: 5 };
