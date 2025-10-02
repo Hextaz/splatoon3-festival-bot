@@ -133,16 +133,23 @@ module.exports = {
             
             // Récupérer uniquement le nombre total de votes pour cette guild
             const votesData = await adapter.getVotes();
-            const totalVotes = (votesData.camp1 || 0) + (votesData.camp2 || 0) + (votesData.camp3 || 0);
+            console.log('🔍 DEBUG votesData:', votesData);
+            
+            // Compter les votes par camp (votesData est un objet userId -> camp)
+            const votesByUser = Object.values(votesData);
+            const totalVotes = votesByUser.length;
             
             // Récupérer uniquement le nombre total d'équipes pour cette guild
             const allTeams = await adapter.getTeams();
-            const totalTeams = Array.isArray(allTeams) ? allTeams.length : 0;
+            console.log('🔍 DEBUG allTeams:', typeof allTeams, Object.keys(allTeams || {}).length);
             
-            // Récupérer l'historique des matchs pour cette guild
-            const matchHistory = await adapter.getMatchHistory();
-            console.log('🔍 DEBUG matchHistory:', matchHistory);
-            const totalMatches = Array.isArray(matchHistory) ? matchHistory.length : 0;
+            // allTeams est un objet {teamId: teamData}, pas un array
+            const totalTeams = allTeams ? Object.keys(allTeams).length : 0;
+            
+            // Récupérer les matchs pour cette guild (utilise vraiment MongoDB)
+            const matches = await adapter.getMatches();
+            console.log('🔍 DEBUG matches:', matches?.length || 0, 'matchs trouvés');
+            const totalMatches = Array.isArray(matches) ? matches.length : 0;
             
             // Créer un embed avec les informations autorisées
             const embed = new EmbedBuilder()
