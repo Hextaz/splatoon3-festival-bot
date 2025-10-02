@@ -196,16 +196,34 @@ class ProgressiveCloser {
             const guild = client.guilds.cache.get(this.guildId);
             if (!guild) return;
 
-            // Annoncer le début du nettoyage
+            // 🎯 IMPORTANT: Envoyer l'annonce de fin avec les résultats AVANT le nettoyage
             const channel = await guild.channels.fetch(festival.announcementChannelId);
             if (channel) {
                 const statusText = forced ? 
                     '⚠️ **Nettoyage forcé** (temps d\'attente dépassé)' : 
                     '✅ **Tous les matchs terminés**';
                     
+                await channel.send(statusText);
+                
+                // 🏆 ANNONCE OFFICIELLE DE FIN AVEC RÉSULTATS
+                const config = await require('../commands/config').loadConfig(guild.id);
+                const mentionText = config.announcementRoleId ? 
+                    `<@&${config.announcementRoleId}> ` : '';
+                
+                const festivalManager = require('./festivalManager');
+                const endEmbed = festivalManager.createEndEmbed(festival, guild.id);
+                
                 await channel.send({
-                    content: `${statusText}\n🧹 **Nettoyage des données en cours...**`
+                    content: `${mentionText}🏁 **LE FESTIVAL "${festival.title}" EST TERMINÉ !** 🏁`,
+                    embeds: [endEmbed]
                 });
+                
+                console.log('🏆 Annonce officielle de fin avec résultats envoyée');
+                
+                // Petit délai pour laisser le temps de voir les résultats
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                await channel.send("🧹 **Nettoyage des données en cours...**");
             }
 
             // Utiliser le nettoyage robuste
