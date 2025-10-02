@@ -1,7 +1,16 @@
-const { isMongoDBAvailable } = require('./database');
 const { Festival, Team, Vote, Match, CampScore, MapProbability, PendingResult, MatchHistory, TeamMatchCounter, GuildConfig } = require('../models/mongodb');
 const fs = require('fs').promises;
 const path = require('path');
+
+// Fonction pour vérifier la disponibilité MongoDB (évite la dépendance circulaire)
+function isMongoDBAvailable() {
+    try {
+        const mongoose = require('mongoose');
+        return mongoose.connection.readyState === 1;
+    } catch (error) {
+        return false;
+    }
+}
 
 /**
  * Adaptateur hybride pour la persistance des données
@@ -358,7 +367,8 @@ class DataAdapter {
             for (const [camp, points] of Object.entries(scoresData)) {
                 // Compter les équipes de ce camp
                 const teams = await this.getTeams();
-                const teamsCount = teams.filter(team => team.camp === camp).length;
+                const teamsArray = Object.values(teams || {});
+                const teamsCount = teamsArray.filter(team => team.camp === camp).length;
                 
                 // Compter les votes de ce camp  
                 const votes = await this.getVotes();

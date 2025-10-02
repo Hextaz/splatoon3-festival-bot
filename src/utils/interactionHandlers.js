@@ -1566,8 +1566,10 @@ const handleConfirmButton = async (interaction) => {
             const adapter = new DataAdapter(interaction.guild.id);
             
             const matchData = {
-                team1: { name: team1Name, camp: team1.camp },
-                team2: { name: team2Name, camp: team2.camp },
+                team1Name: team1Name,
+                team2Name: team2Name,
+                team1Camp: team1.camp,
+                team2Camp: team2.camp,
                 winner: team1Result === 'V' ? team1Name : team2Name,
                 multiplier: multiplier,
                 pointsAwarded: multiplier,
