@@ -20,35 +20,34 @@ module.exports = {
             .setTimestamp()
             .addFields(
                 {
-                    name: '🔄 Mode de fonctionnement',
-                    value: '**Keep-alive permanent ACTIF**\n└ Bot maintenu éveillé H24 pour réactivité maximale',
+                    name: '� Hébergement Railway',
+                    value: '**Plateforme stable et optimisée**\n└ Pas d\'hibernation - Performances constantes',
                     inline: false
                 },
                 {
                     name: '📊 Informations système',
                     value: `⏱️ **Uptime**: ${uptimeHours}h\n` +
                            `💾 **Mémoire**: ${memoryMB} MB\n` +
-                           `🏥 **Health Server**: ${global.healthServer ? 'Actif' : 'Inactif'}`,
+                           `� **Status**: En ligne`,
                     inline: true
                 },
                 {
                     name: '⚡ Performances',
                     value: '✅ **Réactivité**: Immédiate\n' +
                            '✅ **Disponibilité**: 24h/24\n' +
-                           '✅ **Stabilité**: Maximale',
+                           '✅ **Stabilité**: Optimale Railway',
                     inline: true
                 }
             );
 
-        if (process.env.NODE_ENV === 'production') {
-            embed.addFields({
-                name: '📈 Consommation Render',
-                value: `📅 **Mois en cours**: ~${Math.floor(new Date().getDate() * 24)}h utilisées\n` +
-                       `📊 **Limite mensuelle**: 750h\n` +
-                       `💰 **Marge restante**: ${750 - Math.floor(new Date().getDate() * 24)}h`,
-                inline: false
-            });
-        }
+        // Informations Railway
+        embed.addFields({
+            name: '� Hébergement Railway',
+            value: `🎯 **Plan**: Hobby Plan\n` +
+                   `� **Coût**: 1$/mois après le premier mois gratuit\n` +
+                   `� **Avantages**: Pas d'hibernation, stable H24`,
+            inline: false
+        });
 
         embed.setFooter({ 
             text: 'Bot configuré pour performance maximale - Simple et fiable' 

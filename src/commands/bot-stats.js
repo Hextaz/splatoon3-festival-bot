@@ -36,8 +36,8 @@ module.exports = {
             const memoryUsage = process.memoryUsage();
             const memoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
             
-            // Keep-alive permanent
-            const keepAliveInfo = "🟢 Keep-alive permanent actif (24/7)";
+            // Hébergement Railway
+            const hostingInfo = "� Railway - Hébergement stable sans hibernation";
             
             // Création de l'embed
             const embed = new EmbedBuilder()
@@ -49,7 +49,7 @@ module.exports = {
                     { name: '👥 Utilisateurs totaux', value: `${totalMembers.toLocaleString()}`, inline: true },
                     { name: '⏱️ Uptime', value: uptimeFormatted, inline: true },
                     { name: '💾 Mémoire utilisée', value: `${memoryMB} MB`, inline: true },
-                    { name: '🛡️ Keep-Alive', value: keepAliveInfo, inline: false }
+                    { name: '� Hébergement', value: hostingInfo, inline: false }
                 );
                 
             // Ajouter détails des serveurs si peu nombreux
