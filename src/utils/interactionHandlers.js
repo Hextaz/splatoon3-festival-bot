@@ -713,10 +713,17 @@ const handleLeaveTeam = async (interaction) => {
         const result = leaveTeam(interaction.user.id, interaction.guild.id, interaction.guild);
         const guild = interaction.guild;
         
-        // Retirer le rôle d'équipe
+        // Retirer le rôle d'équipe avec gestion d'erreur
         const teamRole = guild.roles.cache.find(role => role.name === `Team ${result.team.name}`);
         if (teamRole) {
-            await interaction.member.roles.remove(teamRole);
+            try {
+                await interaction.member.roles.remove(teamRole);
+                console.log(`✅ Rôle d'équipe ${teamRole.name} retiré de ${interaction.user.username}`);
+            } catch (error) {
+                console.error(`❌ Erreur retrait rôle d'équipe ${teamRole.name}:`, error);
+            }
+        } else {
+            console.log(`⚠️ Rôle d'équipe "Team ${result.team.name}" non trouvé`);
         }
         
         // Utiliser le gestionnaire centralisé pour le rôle Team Leader
@@ -731,12 +738,22 @@ const handleLeaveTeam = async (interaction) => {
         if (result.removed) {
             // Si l'équipe a été supprimée car vide
             if (teamRole) {
-                await teamRole.delete('Team is empty');
+                try {
+                    await teamRole.delete('Team is empty');
+                    console.log(`✅ Rôle d'équipe ${teamRole.name} supprimé (équipe vide)`);
+                } catch (error) {
+                    console.error(`❌ Erreur suppression rôle d'équipe ${teamRole.name}:`, error);
+                }
             }
             
             // Retirez le rôle de leader si la personne était leader
             if (leaderRole && result.team.leader === interaction.user.id) {
-                await interaction.member.roles.remove(leaderRole);
+                try {
+                    await interaction.member.roles.remove(leaderRole);
+                    console.log(`✅ Rôle Team Leader retiré de ${interaction.user.username}`);
+                } catch (error) {
+                    console.error(`❌ Erreur retrait rôle Team Leader:`, error);
+                }
             }
             
             await safeEdit(interaction, { 
@@ -747,16 +764,24 @@ const handleLeaveTeam = async (interaction) => {
             if (result.wasLeader && result.newLeader) {
                 // Retirer le rôle de leader de l'ancien leader
                 if (leaderRole) {
-                    await interaction.member.roles.remove(leaderRole);
+                    try {
+                        await interaction.member.roles.remove(leaderRole);
+                        console.log(`✅ Rôle Team Leader retiré de l'ancien leader ${interaction.user.username}`);
+                    } catch (error) {
+                        console.error(`❌ Erreur retrait rôle Team Leader de l'ancien leader:`, error);
+                    }
                     
                     // Attribuer le rôle de leader au nouveau leader
                     try {
                         const newLeaderMember = await guild.members.fetch(result.newLeader);
                         if (newLeaderMember) {
                             await newLeaderMember.roles.add(leaderRole);
+                            console.log(`✅ Rôle Team Leader attribué au nouveau leader ${newLeaderMember.user.username}`);
+                        } else {
+                            console.error(`❌ Nouveau leader non trouvé: ${result.newLeader}`);
                         }
                     } catch (error) {
-                        console.error('Error adding leader role to new leader:', error);
+                        console.error(`❌ Erreur attribution rôle Team Leader au nouveau leader:`, error);
                     }
                 }
                 
