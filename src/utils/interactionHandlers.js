@@ -10,6 +10,7 @@ const { loadConfig, saveConfig } = require('../commands/config');
 const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
 const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
+const { parseFrenchDate } = require('./dateUtils');
 
 // Global variables
 const pendingResultsByGuild = new Map(); // Map<guildId, Map<key, value>>
@@ -134,14 +135,8 @@ const handleFestivalSetupModal = async (interaction) => {
                 throw new Error("Format de date invalide. Utilisez JJ/MM/AAAA HH:MM");
             }
             
-            const [, day, month, year, hours, minutes] = startDateStr.match(dateRegex);
-            
-            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
-            const utcDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
-            
-            // Ajuster pour le fuseau horaire français : soustraire 2 heures 
-            // car Render.com fonctionne en UTC et nous voulons l'heure française
-            startDate = new Date(utcDate.getTime() - (2 * 60 * 60 * 1000));
+            // Utiliser l'utilitaire pour gérer correctement le fuseau horaire (Hiver UTC+1 / Été UTC+2)
+            startDate = parseFrenchDate(startDateStr);
             
             if (isNaN(startDate.getTime())) {
                 throw new Error("Date invalide");
@@ -385,21 +380,12 @@ const handleCustomEndDateModal = async (interaction) => {
     const startDate = new Date(tempFestivalData.startDate);
     
     try {
-        const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/;
-        if (!dateRegex.test(customDateStr)) {
-            throw new Error("Format de date invalide. Utilisez JJ/MM/AAAA HH:MM");
-        }
-        
-        const [, day, month, year, hours, minutes] = customDateStr.match(dateRegex);
-        
-        // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
-        const utcEndDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
-        
-        // Ajuster pour le fuseau horaire français : soustraire 2 heures 
-        // car Render.com fonctionne en UTC et nous voulons l'heure française
-        const customEndDate = new Date(utcEndDate.getTime() - (2 * 60 * 60 * 1000));
+        // Utiliser l'utilitaire pour gérer correctement le fuseau horaire (Hiver UTC+1 / Été UTC+2)
+        const customEndDate = parseFrenchDate(customDateStr);
         
         if (isNaN(customEndDate.getTime())) {
+            throw new Error("Date invalide");
+        }
             throw new Error("Date invalide");
         }
         
