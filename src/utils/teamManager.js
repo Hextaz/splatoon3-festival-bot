@@ -55,25 +55,32 @@ async function saveTeams(guildId) {
             return;
         }
 
-        // Sauvegarder chaque équipe individuellement dans MongoDB
+        // Sauvegarder toutes les équipes en une seule opération (évite race condition JSON)
         const teams = getTeamsForGuild(guildId);
         console.log(`💾 Sauvegarde de ${teams.length} équipes avec DataAdapter`);
-        for (const team of teams) {
-            await adapter.saveTeam({
-                name: team.name,
-                leaderId: team.leader,
-                members: team.members,
-                camp: team.camp,
-                isOpen: team.isOpen,
-                accessCode: team.code,
-                channelId: team.channelId,
-                roleId: team.roleId,
-                isSearching: team.busy || false,
-                lastSearchTime: team.lastSearchTime,
-                searchLockUntil: team.searchLockUntil,
-                festivalId: team.festivalId
-            });
-        }
+        
+        const teamsData = teams.map(team => ({
+            name: team.name,
+            leaderId: team.leader,
+            members: team.members,
+            camp: team.camp,
+            isOpen: team.isOpen,
+            accessCode: team.code,
+            channelId: team.channelId,
+            roleId: team.roleId,
+            isSearching: team.isSearching || false,
+            busy: team.busy || false,
+            currentOpponent: team.currentOpponent,
+            lastSearchTime: team.lastSearchTime,
+            searchLockUntil: team.searchLockUntil,
+            festivalId: team.festivalId,
+            matchChannelId: team.matchChannelId,
+            currentMatchId: team.currentMatchId,
+            currentMatchMultiplier: team.currentMatchMultiplier,
+            currentBO3: team.currentBO3
+        }));
+
+        await adapter.saveTeams(teamsData);
         console.log('✅ Équipes sauvegardées avec DataAdapter');
     } catch (error) {
         console.error('❌ ERREUR CRITIQUE lors de la sauvegarde des équipes:', error);
@@ -178,10 +185,16 @@ async function loadTeams(guildId) {
                 team.id = data.id;
                 team.channelId = data.channelId;
                 team.roleId = data.roleId;
-                team.busy = data.isSearching || false;
+                team.busy = data.busy || false;
+                team.isSearching = data.isSearching || false;
+                team.currentOpponent = data.currentOpponent || null;
                 team.lastSearchTime = data.lastSearchTime;
                 team.searchLockUntil = data.searchLockUntil;
                 team.festivalId = data.festivalId; // Restaurer le festivalId
+                team.matchChannelId = data.matchChannelId;
+                team.currentMatchId = data.currentMatchId;
+                team.currentMatchMultiplier = data.currentMatchMultiplier;
+                team.currentBO3 = data.currentBO3;
                 
                 return team;
             });

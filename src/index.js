@@ -21,9 +21,6 @@ const client = new Client({
 
 global.client = client;
 
-// Variable pour stocker le guild ID actuel
-let currentGuildId = null;
-
 // Rendre les instances disponibles globalement  
 global.guildDataManager = guildDataManager;
 
@@ -52,6 +49,16 @@ client.once('ready', () => {
     
     // Démarrer la vérification périodique des festivals
     startPeriodicFestivalCheck();
+
+    // Restaurer la file d'attente de recherche
+    const matchSearch = require('./utils/matchSearch');
+    client.guilds.cache.forEach(guild => {
+        try {
+            matchSearch.restoreSearchingTeams(guild.id);
+        } catch (error) {
+            console.error(`Erreur lors de la restauration de la file d'attente pour ${guild.id}:`, error);
+        }
+    });
 });
 
 client.on('interactionCreate', interaction => {
@@ -406,16 +413,18 @@ function startPeriodicFestivalCheck() {
     // Vérifier toutes les heures
     setInterval(async () => {
         try {
-            if (!currentGuildId) return;
-            
-            const festival = await festivalManager.loadFestival(currentGuildId);
-            if (!festival) return;
-            
-            // Utiliser la nouvelle fonction de nettoyage automatique
-            const wasExpired = await festivalManager.checkAndCleanExpiredFestival(festival, client);
-            
-            if (wasExpired) {
-                console.log('✅ Festival expiré détecté et nettoyé par vérification périodique');
+            // Parcourir tous les serveurs connectés
+            for (const [guildId, guild] of client.guilds.cache) {
+                const festivalManager = require('./utils/festivalManager');
+                const festival = await festivalManager.loadFestival(guildId);
+                if (!festival) continue;
+                
+                // Utiliser la nouvelle fonction de nettoyage automatique
+                const wasExpired = await festivalManager.checkAndCleanExpiredFestival(festival, client);
+                
+                if (wasExpired) {
+                    console.log(`✅ Festival expiré détecté et nettoyé pour guild ${guild.name} (${guildId})`);
+                }
             }
         } catch (error) {
             console.error('❌ Erreur lors de la vérification périodique du festival:', error);

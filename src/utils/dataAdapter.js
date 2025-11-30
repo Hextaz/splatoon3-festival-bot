@@ -152,6 +152,45 @@ class DataAdapter {
         }
     }
 
+    async saveTeams(teamsDataArray) {
+        if (isMongoDBAvailable()) {
+            const festival = await this.getFestival();
+            if (!festival) throw new Error('No active festival');
+
+            const operations = teamsDataArray.map(teamData => ({
+                updateOne: {
+                    filter: { 
+                        guildId: this.guildId,
+                        festivalId: festival._id,
+                        name: teamData.name
+                    },
+                    update: {
+                        $set: {
+                            ...teamData,
+                            guildId: this.guildId,
+                            festivalId: festival._id,
+                            updatedAt: new Date()
+                        }
+                    },
+                    upsert: true
+                }
+            }));
+
+            if (operations.length > 0) {
+                await Team.bulkWrite(operations);
+            }
+            return teamsDataArray;
+        } else {
+            // En mode JSON, on écrase tout le fichier avec le nouveau tableau converti en objet
+            const teamsObj = {};
+            teamsDataArray.forEach(team => {
+                const teamId = team.id || team._id || Date.now().toString() + Math.random();
+                teamsObj[teamId] = { ...team, id: teamId };
+            });
+            return this._saveJSONData('teams.json', teamsObj);
+        }
+    }
+
     async deleteTeam(teamId) {
         if (isMongoDBAvailable()) {
             return await Team.findByIdAndDelete(teamId);

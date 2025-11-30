@@ -552,6 +552,16 @@ const handleVoteButton = async (interaction) => {
 // Gestion du modal de création d'équipe
 const handleCreateTeamModal = async (interaction) => {
     const teamName = interaction.fields.getTextInputValue('teamNameInput');
+    
+    // Validation Regex pour le nom d'équipe
+    const nameRegex = /^[a-zA-Z0-9À-ÿ -]{3,20}$/;
+    if (!nameRegex.test(teamName)) {
+        return await safeReply(interaction, {
+            content: "❌ Le nom d'équipe est invalide.\nIl doit contenir entre **3 et 20 caractères** alphanumériques.\nAccents, espaces et tirets sont autorisés.",
+            ephemeral: true
+        });
+    }
+
     const camp = interaction.fields.getTextInputValue('campInput');
     const teamType = interaction.fields.getTextInputValue('teamTypeInput').toLowerCase();
     
