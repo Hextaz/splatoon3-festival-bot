@@ -386,8 +386,6 @@ const handleCustomEndDateModal = async (interaction) => {
         if (isNaN(customEndDate.getTime())) {
             throw new Error("Date invalide");
         }
-            throw new Error("Date invalide");
-        }
         
         if (customEndDate <= startDate) {
             throw new Error("La date de fin doit être après la date de début");
