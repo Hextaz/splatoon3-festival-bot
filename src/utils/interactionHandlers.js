@@ -2070,36 +2070,26 @@ const handleFinalFestivalSetup = async (interaction) => {
                 throw new Error("Tous les noms de camps sont obligatoires");
             }
             
-            // Parser les dates
-            const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/;
-            
             // Valider date de début
-            const startMatch = customStartDateStr.match(dateRegex);
-            if (!startMatch) {
+            const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/;
+            if (!dateRegex.test(customStartDateStr)) {
                 throw new Error("Format de date de début invalide. Utilisez le format JJ/MM/AAAA HH:MM");
             }
             
-            const [, startDay, startMonth, startYear, startHour, startMinute] = startMatch;
-            
-            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
-            const utcStartDate = new Date(startYear, startMonth - 1, startDay, startHour, startMinute);
-            startDate = new Date(utcStartDate.getTime() - (2 * 60 * 60 * 1000));
+            // Utiliser l'utilitaire pour gérer correctement le fuseau horaire
+            startDate = parseFrenchDate(customStartDateStr);
             
             if (isNaN(startDate.getTime())) {
                 throw new Error("Date de début invalide");
             }
             
             // Valider date de fin
-            const endMatch = customEndDateStr.match(dateRegex);
-            if (!endMatch) {
+            if (!dateRegex.test(customEndDateStr)) {
                 throw new Error("Format de date de fin invalide. Utilisez le format JJ/MM/AAAA HH:MM");
             }
             
-            const [, endDay, endMonth, endYear, endHour, endMinute] = endMatch;
-            
-            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
-            const utcEndDate = new Date(endYear, endMonth - 1, endDay, endHour, endMinute);
-            endDate = new Date(utcEndDate.getTime() - (2 * 60 * 60 * 1000));
+            // Utiliser l'utilitaire pour gérer correctement le fuseau horaire
+            endDate = parseFrenchDate(customEndDateStr);
             
             if (isNaN(endDate.getTime())) {
                 throw new Error("Date de fin invalide");
@@ -2107,7 +2097,11 @@ const handleFinalFestivalSetup = async (interaction) => {
             
             const now = new Date();
             if (startDate <= now) {
-                throw new Error("La date de début doit être dans le futur");
+                const nowParis = moment(now).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
+                const inputParis = moment(startDate).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
+                const diffSeconds = Math.round((now.getTime() - startDate.getTime()) / 1000);
+                
+                throw new Error(`La date de début doit être dans le futur.\nSaisie: ${inputParis}\nActuellement: ${nowParis}\n(Retard de ${diffSeconds} secondes)`);
             }
             
             if (endDate <= startDate) {
@@ -2136,24 +2130,24 @@ const handleFinalFestivalSetup = async (interaction) => {
         
         try {
             const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/;
-            const match = startDateInput.match(dateRegex);
-            
-            if (!match) {
+            if (!dateRegex.test(startDateInput)) {
                 throw new Error("Format de date de début invalide. Utilisez le format JJ/MM/AAAA HH:MM");
             }
             
-            const [, day, month, year, hour, minute] = match;
-            
-            // Créer la date en UTC puis ajuster pour le fuseau horaire français (UTC+2)
-            const utcDate = new Date(year, month - 1, day, hour, minute);
-            startDate = new Date(utcDate.getTime() - (2 * 60 * 60 * 1000));
+            // Utiliser l'utilitaire pour gérer correctement le fuseau horaire
+            startDate = parseFrenchDate(startDateInput);
             
             if (isNaN(startDate.getTime())) {
                 throw new Error("Date de début invalide");
             }
             
-            if (startDate <= new Date()) {
-                throw new Error("La date de début du festival doit être dans le futur.");
+            const now = new Date();
+            if (startDate <= now) {
+                const nowParis = moment(now).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
+                const inputParis = moment(startDate).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
+                const diffSeconds = Math.round((now.getTime() - startDate.getTime()) / 1000);
+                
+                throw new Error(`La date de début du festival doit être dans le futur.\nSaisie: ${inputParis}\nActuellement: ${nowParis}\n(Retard de ${diffSeconds} secondes)`);
             }
             
             // Calculer la date de fin avec la durée choisie
