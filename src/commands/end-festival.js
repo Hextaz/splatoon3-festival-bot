@@ -150,9 +150,14 @@ module.exports = {
                     console.log(`✅ Nettoyage robuste terminé:`, results);
 
                     // Nettoyage traditionnel en complément (pour la mémoire)
-                    console.log(`� Appel de resetFestivalData...`);
+                    console.log(` Appel de resetFestivalData...`);
                     await resetFestivalData(guild);
                     console.log(`✅ resetFestivalData terminé`);
+
+                    // SUPPRESSION DU FESTIVAL ET ANNULATION DES TIMERS
+                    console.log(`🗑️ Appel de deleteFestival...`);
+                    await deleteFestival(guildId);
+                    console.log(`✅ deleteFestival terminé`);
                     
                     console.log(`🎉 Festival supprimé avec succès après 30 secondes pour guild: ${guildId}`);
                     

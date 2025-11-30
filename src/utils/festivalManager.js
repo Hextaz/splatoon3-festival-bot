@@ -822,6 +822,9 @@ async function deleteFestival(guildId) {
         
         console.log(`🗑️ === DÉBUT SUPPRESSION FESTIVAL pour guildId: ${guildId} ===`);
         
+        // Annuler les timers programmés
+        cancelAllScheduledEvents();
+        
         // Suppression du festival dans MongoDB via DataAdapter (toujours, même si pas en mémoire)
         const adapter = getDataAdapter(guildId);
         if (adapter) {
@@ -847,6 +850,26 @@ async function deleteFestival(guildId) {
 let activationTimeout = null;
 let deactivationTimeout = null;
 let halfwayTimeout = null;
+
+// Fonction pour annuler tous les timers programmés
+function cancelAllScheduledEvents() {
+    console.log('🛑 Annulation de tous les événements programmés (Start, End, Halfway)...');
+    if (activationTimeout) {
+        clearTimeout(activationTimeout);
+        activationTimeout = null;
+        console.log('✅ Timer d\'activation annulé');
+    }
+    if (deactivationTimeout) {
+        clearTimeout(deactivationTimeout);
+        deactivationTimeout = null;
+        console.log('✅ Timer de désactivation annulé');
+    }
+    if (halfwayTimeout) {
+        clearTimeout(halfwayTimeout);
+        halfwayTimeout = null;
+        console.log('✅ Timer de mi-parcours annulé');
+    }
+}
 
 function scheduleActivation(festival, client) {
     const now = new Date();
@@ -985,6 +1008,21 @@ function scheduleActivation(festival, client) {
 async function activateFestivalNow(festival, client) {
     try {
         console.log('🎉 ACTIVATION DU FESTIVAL EN COURS...');
+        
+        // VÉRIFICATION DE SÉCURITÉ : Le festival est-il toujours d'actualité ?
+        if (festival.guildId) {
+            const current = getCurrentFestivalSync(festival.guildId);
+            if (!current) {
+                console.log('⚠️ Activation annulée: Aucun festival actif trouvé en mémoire pour cette guild.');
+                console.log('   Cela signifie probablement que le festival a été supprimé entre temps.');
+                return;
+            }
+            // Si les IDs sont différents (et qu'on a des IDs)
+            if (current.id && festival.id && current.id !== festival.id) {
+                console.log(`⚠️ Activation annulée: ID mismatch (Attendu: ${current.id}, Reçu: ${festival.id})`);
+                return;
+            }
+        }
         
         // Activer le festival
         festival.activate();
