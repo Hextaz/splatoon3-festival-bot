@@ -11,6 +11,7 @@ const DataAdapter = require('./dataAdapter');
 const { GAME_MODES, ALL_MAP_KEYS, MAPS } = require('../data/mapsAndModes');
 const { safeReply, safeDefer, safeFollowUp, safeEdit } = require('./responseUtils');
 const { parseFrenchDate } = require('./dateUtils');
+const moment = require('moment-timezone');
 
 // Global variables
 const pendingResultsByGuild = new Map(); // Map<guildId, Map<key, value>>
@@ -144,7 +145,11 @@ const handleFestivalSetupModal = async (interaction) => {
 
             const now = new Date();
             if (startDate <= now) {
-                throw new Error("La date de début du festival doit être dans le futur. Veuillez choisir une date et heure ultérieure à maintenant.");
+                const nowParis = moment(now).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
+                const inputParis = moment(startDate).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
+                const diffSeconds = Math.round((now.getTime() - startDate.getTime()) / 1000);
+                
+                throw new Error(`La date doit être dans le futur.\nSaisie: ${inputParis}\nActuellement: ${nowParis}\n(Retard de ${diffSeconds} secondes)`);
             }
         } catch (error) {
             return await safeEdit(interaction, {
