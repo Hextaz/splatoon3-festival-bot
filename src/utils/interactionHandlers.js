@@ -145,11 +145,7 @@ const handleFestivalSetupModal = async (interaction) => {
 
             const now = new Date();
             if (startDate <= now) {
-                const nowParis = moment(now).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
-                const inputParis = moment(startDate).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
-                const diffSeconds = Math.round((now.getTime() - startDate.getTime()) / 1000);
-                
-                throw new Error(`La date doit être dans le futur.\nSaisie: ${inputParis}\nActuellement: ${nowParis}\n(Retard de ${diffSeconds} secondes)`);
+                throw new Error("La date doit être dans le futur.");
             }
         } catch (error) {
             return await safeEdit(interaction, {
@@ -2097,11 +2093,7 @@ const handleFinalFestivalSetup = async (interaction) => {
             
             const now = new Date();
             if (startDate <= now) {
-                const nowParis = moment(now).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
-                const inputParis = moment(startDate).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
-                const diffSeconds = Math.round((now.getTime() - startDate.getTime()) / 1000);
-                
-                throw new Error(`La date de début doit être dans le futur.\nSaisie: ${inputParis}\nActuellement: ${nowParis}\n(Retard de ${diffSeconds} secondes)`);
+                throw new Error("La date de début doit être dans le futur");
             }
             
             if (endDate <= startDate) {
@@ -2143,11 +2135,7 @@ const handleFinalFestivalSetup = async (interaction) => {
             
             const now = new Date();
             if (startDate <= now) {
-                const nowParis = moment(now).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
-                const inputParis = moment(startDate).tz("Europe/Paris").format("DD/MM/YYYY HH:mm:ss");
-                const diffSeconds = Math.round((now.getTime() - startDate.getTime()) / 1000);
-                
-                throw new Error(`La date de début du festival doit être dans le futur.\nSaisie: ${inputParis}\nActuellement: ${nowParis}\n(Retard de ${diffSeconds} secondes)`);
+                throw new Error("La date de début du festival doit être dans le futur.");
             }
             
             // Calculer la date de fin avec la durée choisie
