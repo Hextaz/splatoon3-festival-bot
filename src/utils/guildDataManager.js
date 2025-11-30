@@ -2,7 +2,6 @@
 // Gestionnaire de données séparées par serveur Discord (MongoDB uniquement)
 
 const DataAdapter = require('./dataAdapter');
-const { isMongoDBAvailable } = require('./database');
 
 class GuildDataManager {
     constructor() {
@@ -20,6 +19,7 @@ class GuildDataManager {
     // Charger des données spécifiques à un serveur
     async loadGuildData(guildId, dataType, defaultValue = null) {
         try {
+            const { isMongoDBAvailable } = require('./database');
             if (!isMongoDBAvailable()) {
                 throw new Error('MongoDB non disponible');
             }
@@ -69,10 +69,10 @@ class GuildDataManager {
             return defaultValue;
         }
     }
-
     // Sauvegarder des données spécifiques à un serveur
     async saveGuildData(guildId, dataType, data) {
         try {
+            const { isMongoDBAvailable } = require('./database');
             if (!isMongoDBAvailable()) {
                 throw new Error('MongoDB non disponible');
             }
@@ -138,10 +138,10 @@ class GuildDataManager {
             throw error;
         }
     }
-
     // Supprimer des données spécifiques à un serveur
     async deleteGuildData(guildId, dataType) {
         try {
+            const { isMongoDBAvailable } = require('./database');
             if (!isMongoDBAvailable()) {
                 throw new Error('MongoDB non disponible');
             }
@@ -156,10 +156,10 @@ class GuildDataManager {
             throw error;
         }
     }
-
     // Lister tous les serveurs avec des données
     async listGuildsWithData() {
         try {
+            const { isMongoDBAvailable } = require('./database');
             if (!isMongoDBAvailable()) {
                 console.warn('MongoDB non disponible - impossible de lister les serveurs');
                 return [];

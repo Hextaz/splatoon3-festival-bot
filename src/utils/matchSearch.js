@@ -1615,6 +1615,9 @@ async function repairInconsistentTeamStates(guildId, guild = null) {
         console.log(`✅ Aucune réparation d'équipe nécessaire pour guild ${guildId}`);
     }
     
+    return repairedCount;
+}
+
 // Fonction pour restaurer la file d'attente de recherche au démarrage
 function restoreSearchingTeams(guildId) {
     console.log(`🔄 Restauration de la file d'attente pour guild ${guildId}...`);
@@ -1675,18 +1678,15 @@ module.exports = {
     cleanupSearch,
     createMatch,
     finishMatch,
-    getSearchingTeams: (guildId) => getSearchingTeamsForGuild(guildId), // CORRIGÉ pour isolation guild
+    getSearchingTeams: (guildId) => getSearchingTeamsForGuild(guildId),
     resetSearchQueue,
     repairInconsistentStates,
     getTeamMatchHistory,
     calculateOpponentScore,
     initializeMatchCounters,
     verifyAndCleanupMatchChannels,
-    repairMatchStates, // ← AJOUTER
-    createMatchId, // ← AJOUTER la fonction createMatchId
-    repairInconsistentTeamStates, // ← NOUVELLE fonction de réparation
-    restoreSearchingTeams // ← AJOUTER
-};  repairMatchStates, // ← AJOUTER
-    createMatchId, // ← AJOUTER la fonction createMatchId
-    repairInconsistentTeamStates // ← NOUVELLE fonction de réparation
+    repairMatchStates,
+    createMatchId,
+    repairInconsistentTeamStates,
+    restoreSearchingTeams
 };
