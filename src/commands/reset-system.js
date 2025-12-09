@@ -2,6 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 const { safeEdit } = require('../utils/responseUtils');
+const { deleteFestival } = require('../utils/festivalManager');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -15,6 +16,15 @@ module.exports = {
         try {
             console.log('=== DÉBUT RÉINITIALISATION COMPLÈTE DU SYSTÈME ===');
             
+            // 0. ARRÊTER LES TIMERS ET NETTOYER LA MÉMOIRE DU BOT
+            console.log('🛑 Arrêt des timers et nettoyage mémoire...');
+            try {
+                await deleteFestival(interaction.guild.id);
+                console.log('✅ Timers annulés et festival retiré de la mémoire');
+            } catch (e) {
+                console.warn('⚠️ Erreur lors du nettoyage mémoire (non critique):', e.message);
+            }
+
             // 1. NETTOYER MONGODB via DataAdapter
             const DataAdapter = require('../utils/dataAdapter');
             const adapter = new DataAdapter(interaction.guild.id);
